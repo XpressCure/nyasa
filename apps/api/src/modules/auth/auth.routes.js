@@ -27,7 +27,6 @@ authRoutes.post(
       loginFilter,
       {
         $setOnInsert: {
-          fullName: body.fullName,
           ...(body.email ? { email: body.email.toLowerCase() } : {}),
           ...(body.phone ? { phone: body.phone } : {}),
           authProviders: [{ provider: authProvider, verifiedAt: new Date() }]
