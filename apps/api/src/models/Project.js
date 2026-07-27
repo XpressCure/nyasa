@@ -13,7 +13,7 @@ const projectSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "proposed", "active", "paused", "completed", "archived"],
+      enum: ["draft", "proposed", "active", "implementation", "paused", "completed", "archived"],
       default: "draft"
     },
     visibility: { type: String, enum: ["family", "admins_only", "custom"], default: "family" },

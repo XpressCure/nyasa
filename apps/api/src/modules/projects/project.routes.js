@@ -22,7 +22,7 @@ const createProjectSchema = z.object({
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/),
   description: z.string().optional(),
   category: z.enum(["renovation", "education", "health", "event", "asset_maintenance", "community", "other"]).default("other"),
-  status: z.enum(["draft", "proposed", "active", "paused"]).default("active"),
+  status: z.enum(["draft", "proposed", "active", "implementation", "paused"]).default("active"),
   targetBudgetRupees: z.coerce.number().min(0),
   projectLeadMemberId: z.string().min(1).optional(),
   startDate: z.string().optional(),
@@ -33,7 +33,7 @@ const updateProjectSchema = z.object({
   title: z.string().min(2).optional(),
   description: z.string().optional(),
   category: z.enum(["renovation", "education", "health", "event", "asset_maintenance", "community", "other"]).optional(),
-  status: z.enum(["draft", "proposed", "active", "paused", "completed", "archived"]).optional(),
+  status: z.enum(["draft", "proposed", "active", "implementation", "paused", "completed", "archived"]).optional(),
   targetBudgetRupees: z.coerce.number().min(0).optional(),
   completionPercent: z.coerce.number().min(0).max(100).optional(),
   projectLeadMemberId: z.string().min(1).optional()
@@ -56,6 +56,8 @@ function serializeProject(project, financials = {}) {
   const targetBudgetPaise = project.targetBudgetPaise || 0;
   const fundingPercent = targetBudgetPaise > 0 ? Math.min(Math.round((allocatedPaise / targetBudgetPaise) * 100), 100) : 0;
   const isFullyFunded = targetBudgetPaise > 0 && allocatedPaise >= targetBudgetPaise;
+  const targetRemainingPaise = Math.max(targetBudgetPaise - allocatedPaise, 0);
+  const availableToSpendPaise = Math.max(allocatedPaise - spentPaise, 0);
 
   return {
     id: project._id,
@@ -70,9 +72,13 @@ function serializeProject(project, financials = {}) {
     allocatedRupees: paiseToRupees(allocatedPaise),
     fundingPercent,
     isFullyFunded,
-    implementationStatus: isFullyFunded ? "ready_to_begin" : "funding",
+    implementationStatus: project.status === "implementation" ? "in_implementation" : isFullyFunded ? "ready_to_begin" : "funding",
+    targetRemainingPaise,
+    targetRemainingRupees: paiseToRupees(targetRemainingPaise),
     spentPaise,
     spentRupees: paiseToRupees(spentPaise),
+    availableToSpendPaise,
+    availableToSpendRupees: paiseToRupees(availableToSpendPaise),
     remainingPaise: Math.max(targetBudgetPaise - spentPaise, 0),
     remainingRupees: paiseToRupees(Math.max(targetBudgetPaise - spentPaise, 0)),
     completionPercent: project.completionPercent,
@@ -263,6 +269,16 @@ projectRoutes.patch(
     if (body.title !== undefined) project.title = body.title;
     if (body.description !== undefined) project.description = body.description;
     if (body.category !== undefined) project.category = body.category;
+    if (body.status === "implementation") {
+      const financials = await getProjectFinancials(req.familyId, [project._id]);
+      const projectFinancials = financials.get(String(project._id));
+      const allocatedPaise = projectFinancials?.allocatedPaise || 0;
+
+      if (project.targetBudgetPaise > 0 && allocatedPaise < project.targetBudgetPaise) {
+        throw httpError(400, "Mission can enter implementation only after the target budget is fully allocated.", "PROJECT_NOT_FULLY_FUNDED");
+      }
+    }
+
     if (body.status !== undefined) {
       project.status = body.status;
       if (body.status === "completed" && !project.completedAt) project.completedAt = new Date();

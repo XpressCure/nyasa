@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
@@ -60,6 +61,54 @@ async function findProjectOrThrow({ familyId, projectId }) {
   return project;
 }
 
+async function calculateProjectAllocatedPaise({ familyId, projectId }) {
+  const normalizedFamilyId =
+    typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+
+  const rows = await LedgerTransaction.aggregate([
+    {
+      $match: {
+        familyId: normalizedFamilyId,
+        projectId,
+        type: "allocation",
+        direction: "debit",
+        status: "posted"
+      }
+    },
+    {
+      $group: {
+        _id: "$projectId",
+        amountPaise: { $sum: "$amountPaise" }
+      }
+    }
+  ]);
+
+  return rows[0]?.amountPaise || 0;
+}
+
+async function calculateProjectExpensePaise({ familyId, projectId, statuses }) {
+  const normalizedFamilyId =
+    typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+
+  const rows = await Expense.aggregate([
+    {
+      $match: {
+        familyId: normalizedFamilyId,
+        projectId,
+        status: { $in: statuses }
+      }
+    },
+    {
+      $group: {
+        _id: "$projectId",
+        amountPaise: { $sum: "$amountPaise" }
+      }
+    }
+  ]);
+
+  return rows[0]?.amountPaise || 0;
+}
+
 expenseRoutes.use(requireAuth);
 
 expenseRoutes.get(
@@ -89,6 +138,23 @@ expenseRoutes.post(
 
     if (amountPaise <= 0) {
       throw httpError(400, "Expense amount must be greater than zero.", "INVALID_AMOUNT");
+    }
+
+    const [allocatedPaise, committedExpensePaise] = await Promise.all([
+      calculateProjectAllocatedPaise({ familyId: req.familyId, projectId: project._id }),
+      calculateProjectExpensePaise({ familyId: req.familyId, projectId: project._id, statuses: ["submitted", "approved"] })
+    ]);
+
+    if (project.targetBudgetPaise > 0 && allocatedPaise < project.targetBudgetPaise) {
+      throw httpError(
+        400,
+        "Expenses can be submitted only after the mission target budget is fully allocated.",
+        "PROJECT_NOT_FULLY_FUNDED"
+      );
+    }
+
+    if (committedExpensePaise + amountPaise > allocatedPaise) {
+      throw httpError(400, "Expense amount exceeds the mission amount available to spend.", "PROJECT_SPEND_LIMIT_EXCEEDED");
     }
 
     const expense = await Expense.create({
@@ -139,6 +205,15 @@ expenseRoutes.post(
     }
 
     const project = await findProjectOrThrow({ familyId: req.familyId, projectId: expense.projectId });
+    const [allocatedPaise, approvedExpensePaise] = await Promise.all([
+      calculateProjectAllocatedPaise({ familyId: req.familyId, projectId: project._id }),
+      calculateProjectExpensePaise({ familyId: req.familyId, projectId: project._id, statuses: ["approved"] })
+    ]);
+
+    if (approvedExpensePaise + expense.amountPaise > allocatedPaise) {
+      throw httpError(400, "Approving this expense would exceed the mission amount available to spend.", "PROJECT_SPEND_LIMIT_EXCEEDED");
+    }
+
     const transaction = await LedgerTransaction.create({
       familyId: req.familyId,
       memberId: expense.submittedBy,

@@ -33,12 +33,15 @@ export function ProjectsPage() {
   const [expenseVendorName, setExpenseVendorName] = useState("Local vendor");
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
   const [expenseDescription, setExpenseDescription] = useState("Mission implementation expense");
+  const [rejectionReason, setRejectionReason] = useState("Needs more detail before approval");
   const canCreateProjects = hasPermission(session, "projects.create");
   const canManageProjects = hasPermission(session, "projects.manage");
   const canViewExpenses = hasPermission(session, "expenses.view");
   const canSubmitExpenses = hasPermission(session, "expenses.submit");
   const canApproveExpenses = hasPermission(session, "expenses.approve");
   const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const canSubmitForSelectedProject =
+    canSubmitExpenses && selectedProject && selectedProject.isFullyFunded && selectedProject.availableToSpendPaise > 0;
 
   useEffect(() => {
     loadCurrentSession()
@@ -157,7 +160,7 @@ export function ProjectsPage() {
         description: expenseDescription
       });
       setMessage("Expense submitted for approval.");
-      await loadExpenses(selectedProjectId);
+      await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
     } catch (error) {
       setMessage(error.message);
     }
@@ -182,10 +185,10 @@ export function ProjectsPage() {
 
     try {
       await apiPost(`/expenses/family/${familyId}/${expenseId}/reject`, {
-        rejectionReason: "Rejected during review"
+        rejectionReason
       });
       setMessage("Expense rejected.");
-      await loadExpenses(selectedProjectId);
+      await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
     } catch (error) {
       setMessage(error.message);
     }
@@ -274,8 +277,10 @@ export function ProjectsPage() {
                   <span>Target {formatMoney(project.targetBudgetRupees)}</span>
                   <span>Allocated {formatMoney(project.allocatedRupees)}</span>
                   <span>Funding {project.fundingPercent || 0}%</span>
-                  <span>{project.isFullyFunded ? "Ready to begin" : "Collecting contributions"}</span>
                   <span>Spent {formatMoney(project.spentRupees)}</span>
+                  <span>Budget Gap {formatMoney(project.targetRemainingRupees)}</span>
+                  <span>Available {formatMoney(project.availableToSpendRupees)}</span>
+                  <span>{formatLabel(project.implementationStatus)}</span>
                   <span>Completion {project.completionPercent}%</span>
                 </div>
                 <div className="progress-track">
@@ -287,6 +292,7 @@ export function ProjectsPage() {
                       <option value="draft">Draft</option>
                       <option value="proposed">Proposed</option>
                       <option value="active">Active</option>
+                      <option value="implementation">Implementation</option>
                       <option value="paused">Paused</option>
                       <option value="completed">Completed</option>
                       <option value="archived">Archived</option>
@@ -326,7 +332,38 @@ export function ProjectsPage() {
             <p>Select a mission to load its expenses.</p>
           )}
 
-          {canSubmitExpenses && selectedProject ? (
+          {selectedProject ? (
+            <div className="mission-financials">
+              <div>
+                <span>Target</span>
+                <strong>{formatMoney(selectedProject.targetBudgetRupees)}</strong>
+              </div>
+              <div>
+                <span>Allocated</span>
+                <strong>{formatMoney(selectedProject.allocatedRupees)}</strong>
+              </div>
+              <div>
+                <span>Spent</span>
+                <strong>{formatMoney(selectedProject.spentRupees)}</strong>
+              </div>
+              <div>
+                <span>Available</span>
+                <strong>{formatMoney(selectedProject.availableToSpendRupees)}</strong>
+              </div>
+              <div>
+                <span>Budget Gap</span>
+                <strong>{formatMoney(selectedProject.targetRemainingRupees)}</strong>
+              </div>
+            </div>
+          ) : null}
+
+          {selectedProject && !selectedProject.isFullyFunded ? (
+            <p className="section-note">
+              This mission is still collecting contributions. Expenses can be submitted after the target budget is fully allocated.
+            </p>
+          ) : null}
+
+          {canSubmitForSelectedProject ? (
             <form className="form-grid" onSubmit={submitExpense}>
               <label>
                 Amount
@@ -363,6 +400,17 @@ export function ProjectsPage() {
               </label>
               <button type="submit">Submit Expense</button>
             </form>
+          ) : null}
+
+          {selectedProject && canSubmitForSelectedProject ? (
+            <p className="section-note">Submitted expenses appear in mission spent totals and wait for owner/admin approval.</p>
+          ) : null}
+
+          {canApproveExpenses && selectedProject ? (
+            <label className="reject-reason">
+              Rejection reason
+              <input value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} />
+            </label>
           ) : null}
 
           {expenses.length ? (

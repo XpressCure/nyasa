@@ -231,6 +231,31 @@ select {
   padding: 8px 12px;
 }
 
+.mission-financials {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.mission-financials div {
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.mission-financials span {
+  color: #68756e;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.mission-financials strong {
+  display: block;
+  font-size: 18px;
+}
+
 .project-list {
   display: grid;
   gap: 16px;
@@ -506,6 +531,18 @@ select {
   padding: 10px 12px;
 }
 
+.reject-reason {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.reject-reason input {
+  border: 1px solid #cfc8bc;
+  border-radius: 8px;
+  padding: 12px;
+}
+
 .spaced-band {
   margin-top: 20px;
 }
@@ -530,6 +567,10 @@ select {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-financials {
     grid-template-columns: 1fr;
   }
 
