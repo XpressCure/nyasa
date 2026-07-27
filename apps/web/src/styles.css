@@ -335,6 +335,24 @@ select {
   padding: 12px 14px;
 }
 
+.member-row {
+  align-items: center;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.member-row span {
+  color: #4e5b53;
+  display: block;
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
 .invite-row span {
   color: #4e5b53;
   display: block;
@@ -346,6 +364,12 @@ select {
   display: flex;
   flex: 0 0 auto;
   gap: 8px;
+}
+
+.row-actions select {
+  border: 1px solid #cfc8bc;
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
 .spaced-band {
@@ -373,6 +397,16 @@ select {
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .member-row,
+  .invite-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .row-actions {
+    flex-wrap: wrap;
   }
 
   .main-panel {

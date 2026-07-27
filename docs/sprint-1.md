@@ -21,6 +21,8 @@ Create the technical foundation for Nyasa:
 - `GET /api/families/:familyId/dashboard`
 - `GET /api/members/family/:familyId`
 - `PATCH /api/members/family/:familyId/me`
+- `PATCH /api/members/family/:familyId/:memberId/role`
+- `PATCH /api/members/family/:familyId/:memberId/status`
 - `GET /api/permissions/family/:familyId/me`
 - `GET /api/audit-logs/family/:familyId`
 - `POST /api/invitations`
@@ -33,7 +35,7 @@ Create the technical foundation for Nyasa:
 
 1. Replace development login with OTP and Google login.
 2. Add seed script for first family.
-3. Add automated tests for family creation, invitations, and permission checks.
+3. Add automated tests for family creation, invitations, member management, and permission checks.
 4. Replace manually copied invite links with email/WhatsApp delivery.
 5. Replace development login with OTP and Google login.
 

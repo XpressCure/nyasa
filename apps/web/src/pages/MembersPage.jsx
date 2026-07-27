@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PageHeader } from "../components/PageHeader.jsx";
-import { apiGet, apiPost, apiPostEmpty } from "../lib/api.js";
+import { apiGet, apiPatch, apiPost, apiPostEmpty } from "../lib/api.js";
 
 export function MembersPage() {
   const [members, setMembers] = useState([]);
@@ -95,6 +95,42 @@ export function MembersPage() {
     return invitation.inviteUrl ? `${window.location.origin}${invitation.inviteUrl}` : "";
   }
 
+  async function updateMemberRole(memberId, role) {
+    const familyId = getFamilyId();
+    if (!familyId) {
+      setMessage("Create or select a family first.");
+      return;
+    }
+
+    try {
+      await apiPatch(`/members/family/${familyId}/${memberId}/role`, { role });
+      setMessage("Member role updated.");
+      await loadMembers();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function updateMemberStatus(memberId, status) {
+    const familyId = getFamilyId();
+    if (!familyId) {
+      setMessage("Create or select a family first.");
+      return;
+    }
+
+    try {
+      await apiPatch(`/members/family/${familyId}/${memberId}/status`, { status });
+      setMessage(status === "removed" ? "Member removed." : "Member status updated.");
+      await loadMembers();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  function formatRole(role) {
+    return role.replaceAll("_", " ");
+  }
+
   return (
     <section>
       <PageHeader
@@ -146,9 +182,33 @@ export function MembersPage() {
         {members.length ? (
           <div className="list-stack">
             {members.map((member) => (
-              <div className="list-row" key={member._id}>
-                <span>{member.displayName}</span>
-                <strong>{member.role}</strong>
+              <div className="member-row" key={member._id}>
+                <div>
+                  <strong>{member.displayName}</strong>
+                  <span>{formatRole(member.role)} - {member.status}</span>
+                </div>
+                <div className="row-actions">
+                  <select value={member.role} onChange={(event) => updateMemberRole(member._id, event.target.value)}>
+                    <option value="owner">Owner</option>
+                    <option value="admin">Admin</option>
+                    <option value="project_lead">Project Lead</option>
+                    <option value="member">Member</option>
+                    <option value="viewer">Viewer</option>
+                    <option value="external_advisor">External Advisor</option>
+                  </select>
+                  {member.status === "active" ? (
+                    <button type="button" className="secondary-button" onClick={() => updateMemberStatus(member._id, "inactive")}>
+                      Deactivate
+                    </button>
+                  ) : (
+                    <button type="button" className="secondary-button" onClick={() => updateMemberStatus(member._id, "active")}>
+                      Activate
+                    </button>
+                  )}
+                  <button type="button" className="secondary-button" onClick={() => updateMemberStatus(member._id, "removed")}>
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -166,7 +226,7 @@ export function MembersPage() {
                 <div className="invite-row" key={invitation.id}>
                   <div>
                     <strong>{invitation.invitedName || invitation.invitedEmail || invitation.invitedPhone}</strong>
-                    <span>{invitation.intendedRole.replace("_", " ")} · {invitation.status}</span>
+                    <span>{formatRole(invitation.intendedRole)} - {invitation.status}</span>
                   </div>
                   <div className="row-actions">
                     {url ? (
