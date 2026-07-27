@@ -8,6 +8,7 @@ export function InviteAcceptPage() {
   const [invite, setInvite] = useState(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("Loading invitation...");
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export function InviteAcceptPage() {
         setInvite(response.data);
         setFullName(response.data.invitedName || "");
         setEmail(response.data.invitedEmail || "");
+        setPhone(response.data.invitedPhone || "");
         setMessage("");
       } catch (error) {
         setMessage(error.message);
@@ -31,13 +33,17 @@ export function InviteAcceptPage() {
     setMessage("");
 
     try {
-      const login = await apiPost("/auth/dev-login", { fullName, email });
+      const login = await apiPost("/auth/dev-login", {
+        fullName,
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {})
+      });
       localStorage.setItem("nyasa_token", login.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(login.data.user));
 
       const accepted = await apiPost("/invitations/accept", { token });
       localStorage.setItem("nyasa_family_id", accepted.data.family._id);
-      navigate("/");
+      navigate("/profile");
     } catch (error) {
       setMessage(error.message);
     }
@@ -64,6 +70,10 @@ export function InviteAcceptPage() {
             <label>
               Email
               <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
+            </label>
+            <label>
+              Phone number
+              <input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" />
             </label>
             {message ? <p className="form-error">{message}</p> : null}
             <button type="submit">Accept Invitation</button>

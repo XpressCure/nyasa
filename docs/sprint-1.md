@@ -57,7 +57,7 @@ Expense bills can be stored locally in development or in AWS S3 with `STORAGE_DR
 
 Member wallet top-ups use Razorpay Checkout. Wallet ledger credits are posted only after Razorpay signature verification succeeds.
 
-The web app includes a public family-facing homepage at `/`, an internal dashboard at `/dashboard`, and a self-service profile page at `/profile` where members can update their own bio, city, country, and profession.
+The web app includes a public family-facing homepage at `/`, an internal dashboard at `/dashboard`, and a self-service profile page at `/profile` where members can update their own bio, city, country, and profession. Family launch onboarding supports name + phone sign-in, and owners can create invite links with phone numbers.
 
 ## Next Engineering Tasks
 

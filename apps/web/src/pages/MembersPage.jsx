@@ -6,7 +6,8 @@ export function MembersPage() {
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [invitedName, setInvitedName] = useState("Ajay Singh");
-  const [invitedEmail, setInvitedEmail] = useState("ajay@example.com");
+  const [invitedPhone, setInvitedPhone] = useState("9876543210");
+  const [invitedEmail, setInvitedEmail] = useState("");
   const [intendedRole, setIntendedRole] = useState("member");
   const [inviteUrl, setInviteUrl] = useState("");
   const [message, setMessage] = useState("");
@@ -63,7 +64,8 @@ export function MembersPage() {
       const response = await apiPost("/invitations", {
         familyId,
         invitedName,
-        invitedEmail,
+        invitedEmail: invitedEmail || undefined,
+        invitedPhone: invitedPhone || undefined,
         intendedRole
       });
       const absoluteInviteUrl = `${window.location.origin}${response.data.inviteUrl}`;
@@ -146,7 +148,11 @@ export function MembersPage() {
             <input value={invitedName} onChange={(event) => setInvitedName(event.target.value)} />
           </label>
           <label>
-            Email
+            Phone
+            <input value={invitedPhone} onChange={(event) => setInvitedPhone(event.target.value)} type="tel" />
+          </label>
+          <label>
+            Email optional
             <input value={invitedEmail} onChange={(event) => setInvitedEmail(event.target.value)} type="email" />
           </label>
           <label>
@@ -225,8 +231,9 @@ export function MembersPage() {
               return (
                 <div className="invite-row" key={invitation.id}>
                   <div>
-                    <strong>{invitation.invitedName || invitation.invitedEmail || invitation.invitedPhone}</strong>
+                    <strong>{invitation.invitedName || invitation.invitedPhone || invitation.invitedEmail}</strong>
                     <span>{formatRole(invitation.intendedRole)} - {invitation.status}</span>
+                    <span>{invitation.invitedPhone || invitation.invitedEmail || "No contact saved"}</span>
                   </div>
                   <div className="row-actions">
                     {url ? (

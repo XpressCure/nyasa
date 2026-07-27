@@ -9,7 +9,7 @@ const launchItems = [
   },
   {
     title: "Member profiles",
-    text: "Members can sign in, accept invites, and update their own bio, city, profession, and story."
+    text: "Members can sign in with name and phone, accept invites, and update their own bio, city, profession, and story."
   },
   {
     title: "Kosh and missions",
@@ -24,7 +24,7 @@ const launchItems = [
 const walkthrough = {
   member: {
     title: "For family members",
-    points: ["Create or accept an account", "Update profile and bio", "Add money to wallet", "Allocate to missions"]
+    points: ["Sign in with name and phone", "Accept family invite", "Update profile and bio", "Allocate to missions"]
   },
   owner: {
     title: "For owners",
@@ -71,7 +71,7 @@ export function HomePage() {
           </p>
           <div className="home-actions">
             <Link className="home-cta" to="/login">
-              Create or sign in
+              Sign in and fill bio
               <ArrowRight size={18} />
             </Link>
             <Link className="home-secondary" to="/dashboard">
@@ -161,7 +161,7 @@ export function HomePage() {
         <div>
           <Users size={24} />
           <strong>Can family members create accounts?</strong>
-          <p>Yes. Today they can sign in with the development login or accept an invite link. Production OTP/Google login is the next auth upgrade.</p>
+          <p>Yes. Today they can sign in with name and phone or accept an invite link. Production OTP/Google login is the next auth upgrade.</p>
         </div>
         <div>
           <ShieldCheck size={24} />

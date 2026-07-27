@@ -10,23 +10,35 @@ export const authRoutes = Router();
 
 const devLoginSchema = z.object({
   fullName: z.string().min(2),
-  email: z.string().email()
+  email: z.string().email().optional(),
+  phone: z.string().min(6).optional()
+}).refine((value) => value.email || value.phone, {
+  message: "Email or phone is required"
 });
 
 authRoutes.post(
   "/dev-login",
   asyncHandler(async (req, res) => {
     const body = devLoginSchema.parse(req.body);
+    const loginFilter = body.phone ? { phone: body.phone } : { email: body.email.toLowerCase() };
+    const authProvider = body.phone ? "phone_otp" : "email_magic_link";
 
     const user = await User.findOneAndUpdate(
-      { email: body.email.toLowerCase() },
+      loginFilter,
       {
         $setOnInsert: {
           fullName: body.fullName,
-          email: body.email.toLowerCase(),
-          authProviders: [{ provider: "email_magic_link", verifiedAt: new Date() }]
+          ...(body.email ? { email: body.email.toLowerCase() } : {}),
+          ...(body.phone ? { phone: body.phone } : {}),
+          authProviders: [{ provider: authProvider, verifiedAt: new Date() }]
         },
-        $set: { lastLoginAt: new Date(), status: "active" }
+        $set: {
+          fullName: body.fullName,
+          ...(body.email ? { email: body.email.toLowerCase() } : {}),
+          ...(body.phone ? { phone: body.phone } : {}),
+          lastLoginAt: new Date(),
+          status: "active"
+        }
       },
       { upsert: true, new: true }
     );
@@ -48,7 +60,8 @@ authRoutes.post(
         user: {
           id: user._id,
           fullName: user.fullName,
-          email: user.email
+          email: user.email,
+          phone: user.phone
         }
       }
     });
