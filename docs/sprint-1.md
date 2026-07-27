@@ -23,14 +23,19 @@ Create the technical foundation for Nyasa:
 - `PATCH /api/members/family/:familyId/me`
 - `GET /api/permissions/family/:familyId/me`
 - `GET /api/audit-logs/family/:familyId`
+- `POST /api/invitations`
+- `GET /api/invitations/family/:familyId`
+- `GET /api/invitations/preview/:token`
+- `POST /api/invitations/accept`
+- `POST /api/invitations/:invitationId/revoke`
 
 ## Next Engineering Tasks
 
 1. Replace development login with OTP and Google login.
-2. Add invitation create/accept flow.
-3. Add seed script for first family.
-4. Add automated tests for family creation and permission checks.
-5. Connect React screens to the API.
+2. Add seed script for first family.
+3. Add automated tests for family creation, invitations, and permission checks.
+4. Replace manually copied invite links with email/WhatsApp delivery.
+5. Replace development login with OTP and Google login.
 
 ## Local Verification
 

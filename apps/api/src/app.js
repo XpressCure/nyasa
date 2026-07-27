@@ -9,6 +9,7 @@ import { auditRoutes } from "./modules/audit/audit.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { familyRoutes } from "./modules/families/family.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
+import { invitationRoutes } from "./modules/invitations/invitation.routes.js";
 import { memberRoutes } from "./modules/members/member.routes.js";
 import { permissionRoutes } from "./modules/permissions/permission.routes.js";
 
@@ -23,6 +24,7 @@ export function createApp() {
   app.use("/api/health", healthRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/families", familyRoutes);
+  app.use("/api/invitations", invitationRoutes);
   app.use("/api/members", memberRoutes);
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/audit-logs", auditRoutes);
