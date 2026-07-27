@@ -16,6 +16,9 @@ export function LoginPage() {
       const response = await apiPost("/auth/dev-login", { fullName, phone });
       localStorage.setItem("nyasa_token", response.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(response.data.user));
+      if (response.data.family?._id) {
+        localStorage.setItem("nyasa_family_id", response.data.family._id);
+      }
       navigate("/profile");
     } catch (apiError) {
       setError(apiError.message);

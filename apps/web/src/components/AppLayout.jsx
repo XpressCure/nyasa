@@ -1,15 +1,30 @@
-import { Archive, GitBranch, Home, Landmark, UserCircle, Users } from "lucide-react";
+import { Archive, BookOpenText, GitBranch, HeartHandshake, Home, Images, Landmark, Network, Search, UserCircle, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: Home },
-  { to: "/family", label: "Family", icon: Users },
-  { to: "/profile", label: "Profile", icon: UserCircle },
-  { to: "/treasury", label: "Kosh", icon: Landmark },
-  { to: "/projects", label: "Missions", icon: GitBranch },
-  { to: "/members", label: "Members", icon: Archive }
+const navSections = [
+  {
+    title: "Workspace",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: Home },
+      { to: "/family", label: "Family", icon: Users },
+      { to: "/profile", label: "Profile", icon: UserCircle },
+      { to: "/treasury", label: "Kosh", icon: Landmark },
+      { to: "/projects", label: "Missions", icon: GitBranch },
+      { to: "/members", label: "Members", icon: Archive }
+    ]
+  },
+  {
+    title: "Coming Next",
+    items: [
+      { label: "Family Gallery", icon: Images, planned: true },
+      { label: "Family Tree", icon: Network, planned: true },
+      { label: "Family Research", icon: Search, planned: true },
+      { label: "Social Works", icon: HeartHandshake, planned: true },
+      { label: "Legacy Library", icon: BookOpenText, planned: true }
+    ]
+  }
 ];
 
 export function AppLayout() {
@@ -24,15 +39,30 @@ export function AppLayout() {
           </div>
         </div>
         <nav className="nav-list">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink key={item.to} to={item.to} className="nav-link">
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
+          {navSections.map((section) => (
+            <div className="nav-section" key={section.title}>
+              <span className="nav-section-title">{section.title}</span>
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                if (item.planned) {
+                  return (
+                    <span className="nav-link nav-link-planned" key={item.label}>
+                      <Icon size={18} />
+                      <span>{item.label}</span>
+                      <small>soon</small>
+                    </span>
+                  );
+                }
+
+                return (
+                  <NavLink key={item.to} to={item.to} className="nav-link">
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <SessionPanel />
         <ApiStatus />

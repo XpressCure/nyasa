@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPatch } from "../lib/api.js";
 
@@ -17,10 +18,24 @@ export function ProfilePage() {
   }
 
   async function loadProfile() {
-    const familyId = getFamilyId();
+    let familyId = getFamilyId();
 
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      try {
+        const familiesResponse = await apiGet("/families");
+        const firstMembership = familiesResponse.data[0];
+        if (firstMembership?.familyId?._id) {
+          familyId = firstMembership.familyId._id;
+          localStorage.setItem("nyasa_family_id", familyId);
+        }
+      } catch (error) {
+        setMessage(error.message);
+        return;
+      }
+    }
+
+    if (!familyId) {
+      setMessage("Join or create the Alahdadpur family workspace first, then complete your profile.");
       return;
     }
 
@@ -78,7 +93,17 @@ export function ProfilePage() {
           <p className="section-note">
             Signed in as <strong>{profile.displayName}</strong>. Your role is <strong>{profile.role?.replaceAll("_", " ")}</strong>.
           </p>
-        ) : null}
+        ) : (
+          <div className="empty-state">
+            <h3>Start with the Alahdadpur family workspace</h3>
+            <p>
+              Your bio is connected to the family workspace so relatives can see who you are, where you live, your profession, and your story.
+            </p>
+            <Link className="secondary-button" to="/family">
+              Open Family Workspace
+            </Link>
+          </div>
+        )}
         <form className="form-grid profile-form" onSubmit={saveProfile}>
           <label>
             Display name
@@ -104,7 +129,9 @@ export function ProfilePage() {
             Bio
             <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows="5" />
           </label>
-          <button type="submit">Save Profile</button>
+          <button type="submit" disabled={!getFamilyId()}>
+            Save Profile
+          </button>
         </form>
         <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadProfile}>
