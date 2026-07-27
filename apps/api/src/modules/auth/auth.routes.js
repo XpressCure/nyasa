@@ -33,8 +33,6 @@ authRoutes.post(
         },
         $set: {
           fullName: body.fullName,
-          ...(body.email ? { email: body.email.toLowerCase() } : {}),
-          ...(body.phone ? { phone: body.phone } : {}),
           lastLoginAt: new Date(),
           status: "active"
         }
