@@ -1,13 +1,17 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Family } from "../../models/Family.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
+import { LedgerTransaction } from "../../models/LedgerTransaction.js";
+import { Project } from "../../models/Project.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { permissions } from "../permissions/permissions.js";
+import { calculatePostedBalance, getOrCreateMainTreasury } from "../treasury/treasury.service.js";
 
 export const familyRoutes = Router();
 
@@ -76,9 +80,28 @@ familyRoutes.get(
   "/:familyId/dashboard",
   requireFamilyPermission(permissions.workspaceView),
   asyncHandler(async (req, res) => {
-    const [family, memberCount] = await Promise.all([
+    const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+    const normalizedFamilyId = new mongoose.Types.ObjectId(req.familyId);
+    const treasury = await getOrCreateMainTreasury({ familyId: req.familyId, userId: req.user._id });
+
+    const [family, memberCount, activeProjects, completedProjects, treasuryBalancePaise, contributionRows] = await Promise.all([
       Family.findById(req.familyId),
-      FamilyMember.countDocuments({ familyId: req.familyId, status: "active" })
+      FamilyMember.countDocuments({ familyId: req.familyId, status: "active" }),
+      Project.countDocuments({ familyId: req.familyId, status: { $in: ["proposed", "active", "implementation"] } }),
+      Project.countDocuments({ familyId: req.familyId, status: "completed" }),
+      calculatePostedBalance({ familyId: req.familyId, treasuryAccountId: treasury._id }),
+      LedgerTransaction.aggregate([
+        {
+          $match: {
+            familyId: normalizedFamilyId,
+            type: "contribution",
+            direction: "credit",
+            status: "posted",
+            createdAt: { $gte: startOfYear }
+          }
+        },
+        { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
+      ])
     ]);
 
     res.json({
@@ -86,10 +109,10 @@ familyRoutes.get(
         family,
         metrics: {
           memberCount,
-          activeProjects: 0,
-          completedProjects: 0,
-          treasuryBalance: 0,
-          contributionThisYear: 0
+          activeProjects,
+          completedProjects,
+          treasuryBalance: treasuryBalancePaise / 100,
+          contributionThisYear: (contributionRows[0]?.amountPaise || 0) / 100
         }
       }
     });

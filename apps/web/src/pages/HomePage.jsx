@@ -156,30 +156,30 @@ export function HomePage() {
           <div className="portal-preview">
             <div className="preview-metrics">
               <div>
-                <span>Members</span>
-                <strong>48</strong>
+                <span>Profiles</span>
+                <strong>Live</strong>
               </div>
               <div>
                 <span>Kosh</span>
-                <strong>INR 12.8L</strong>
+                <strong>Ready</strong>
               </div>
               <div>
-                <span>Missions</span>
-                <strong>6</strong>
+                <span>Launch Missions</span>
+                <strong>3</strong>
               </div>
             </div>
             <div className="preview-mission">
               <div>
                 <strong>Alahdadpur Ancestral House Mission</strong>
-                <span>Funded by 14 family members</span>
+                <span>Prepared for transparent family contributions</span>
               </div>
               <div className="preview-progress">
-                <span style={{ width: "82%" }} />
+                <span style={{ width: "8%" }} />
               </div>
             </div>
             <div className="preview-row">
               <CheckCircle2 size={18} />
-              Bill uploaded and waiting for owner review
+              Live database prepared with Alahdadpur workspace
             </div>
           </div>
         </div>
