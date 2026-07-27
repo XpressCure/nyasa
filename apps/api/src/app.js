@@ -12,6 +12,7 @@ import { healthRoutes } from "./modules/health/health.routes.js";
 import { invitationRoutes } from "./modules/invitations/invitation.routes.js";
 import { memberRoutes } from "./modules/members/member.routes.js";
 import { permissionRoutes } from "./modules/permissions/permission.routes.js";
+import { treasuryRoutes } from "./modules/treasury/treasury.routes.js";
 
 export function createApp() {
   const app = express();
@@ -27,6 +28,7 @@ export function createApp() {
   app.use("/api/invitations", invitationRoutes);
   app.use("/api/members", memberRoutes);
   app.use("/api/permissions", permissionRoutes);
+  app.use("/api/treasury", treasuryRoutes);
   app.use("/api/audit-logs", auditRoutes);
 
   app.use(notFound);

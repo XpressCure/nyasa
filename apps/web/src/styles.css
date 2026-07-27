@@ -346,6 +346,30 @@ select {
   padding: 12px 14px;
 }
 
+.ledger-row {
+  align-items: center;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.ledger-row span,
+.ledger-row small,
+.ledger-member span {
+  color: #4e5b53;
+  display: block;
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
+.ledger-member {
+  text-align: right;
+}
+
 .member-row span {
   color: #4e5b53;
   display: block;
@@ -400,9 +424,14 @@ select {
   }
 
   .member-row,
-  .invite-row {
+  .invite-row,
+  .ledger-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .ledger-member {
+    text-align: left;
   }
 
   .row-actions {
