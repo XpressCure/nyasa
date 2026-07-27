@@ -72,6 +72,7 @@ invitationRoutes.post(
       invitedName: body.invitedName,
       intendedRole: body.intendedRole,
       tokenHash: hashInvitationToken(token),
+      publicToken: token,
       expiresAt,
       invitedBy: req.member._id
     });
@@ -107,8 +108,25 @@ invitationRoutes.get(
   "/family/:familyId",
   requireFamilyPermission(permissions.membersInvite),
   asyncHandler(async (req, res) => {
-    const invitations = await Invitation.find({ familyId: req.familyId }).sort({ createdAt: -1 }).limit(100);
-    res.json({ data: invitations });
+    const invitations = await Invitation.find({ familyId: req.familyId })
+      .select("+publicToken")
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    const data = invitations.map((invitation) => ({
+      id: invitation._id,
+      invitedName: invitation.invitedName,
+      invitedEmail: invitation.invitedEmail,
+      invitedPhone: invitation.invitedPhone,
+      intendedRole: invitation.intendedRole,
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+      acceptedAt: invitation.acceptedAt,
+      inviteUrl: invitation.status === "pending" && invitation.publicToken ? `/invite/${invitation.publicToken}` : null,
+      createdAt: invitation.createdAt
+    }));
+
+    res.json({ data });
   })
 );
 

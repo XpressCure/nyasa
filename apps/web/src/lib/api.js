@@ -37,6 +37,12 @@ export async function apiPost(path, body) {
   });
 }
 
+export async function apiPostEmpty(path) {
+  return apiRequest(path, {
+    method: "POST"
+  });
+}
+
 export async function apiPatch(path, body) {
   return apiRequest(path, {
     method: "PATCH",

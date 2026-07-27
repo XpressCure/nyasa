@@ -5,6 +5,7 @@ import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Family } from "../../models/Family.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
 import { asyncHandler } from "../../utils/async-handler.js";
+import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { permissions } from "../permissions/permissions.js";
 
@@ -23,6 +24,11 @@ familyRoutes.post(
   "/",
   asyncHandler(async (req, res) => {
     const body = createFamilySchema.parse(req.body);
+    const existingFamily = await Family.findOne({ slug: body.slug.toLowerCase() });
+
+    if (existingFamily) {
+      throw httpError(409, "A family with this slug already exists. Load and select it instead.", "FAMILY_SLUG_EXISTS");
+    }
 
     const family = await Family.create({
       ...body,

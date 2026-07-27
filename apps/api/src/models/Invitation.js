@@ -12,6 +12,7 @@ const invitationSchema = new mongoose.Schema(
       default: "member"
     },
     tokenHash: { type: String, required: true, unique: true },
+    publicToken: { type: String, select: false },
     status: {
       type: String,
       enum: ["pending", "accepted", "expired", "revoked"],

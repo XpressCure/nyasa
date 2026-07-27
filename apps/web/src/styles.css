@@ -279,12 +279,30 @@ select {
 }
 
 .copy-box {
+  align-items: center;
   background: #f4f1e9;
   border: 1px solid #ded8ca;
   border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
   margin-top: 16px;
   overflow-wrap: anywhere;
   padding: 14px;
+}
+
+.copy-box span {
+  min-width: 0;
+}
+
+.copy-box button {
+  background: #17211c;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  flex: 0 0 auto;
+  padding: 10px 14px;
 }
 
 .list-stack {
@@ -304,6 +322,30 @@ select {
   padding: 12px 14px;
   text-align: left;
   width: 100%;
+}
+
+.invite-row {
+  align-items: center;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.invite-row span {
+  color: #4e5b53;
+  display: block;
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
+.row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .spaced-band {
