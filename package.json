@@ -1,0 +1,21 @@
+{
+  "name": "nyasa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyasa family operating system monorepo.",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "dev:api": "npm run dev -w apps/api",
+    "dev:web": "npm run dev -w apps/web",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "engines": {
+    "node": ">=16.13.0"
+  }
+}
