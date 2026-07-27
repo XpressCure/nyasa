@@ -45,6 +45,8 @@ Create the technical foundation for Nyasa:
 - `POST /api/expenses/family/:familyId/project/:projectId`
 - `POST /api/expenses/family/:familyId/:expenseId/approve`
 - `POST /api/expenses/family/:familyId/:expenseId/reject`
+- `POST /api/documents/family/:familyId/expenses/:expenseId`
+- `GET /api/documents/family/:familyId/:documentId/download`
 
 Project financial summaries expose target, allocated, spent, budget gap, and available-to-spend values. Missions can enter `implementation` only after their target budget is fully allocated, and expenses can be submitted only after that same funding threshold is met.
 

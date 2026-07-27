@@ -47,6 +47,7 @@ function serializeExpense(expense) {
     rejectedAt: expense.rejectedAt,
     rejectionReason: expense.rejectionReason,
     ledgerTransactionId: expense.ledgerTransactionId,
+    billDocuments: expense.billDocumentIds || [],
     createdAt: expense.createdAt
   };
 }
@@ -121,6 +122,7 @@ expenseRoutes.get(
       .populate("submittedBy", "displayName role")
       .populate("approvedBy", "displayName role")
       .populate("rejectedBy", "displayName role")
+      .populate("billDocumentIds", "originalName mimeType sizeBytes category createdAt")
       .sort({ expenseDate: -1, createdAt: -1 })
       .limit(100);
 

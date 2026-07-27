@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../components/PageHeader.jsx";
-import { apiGet, apiPatch, apiPost } from "../lib/api.js";
+import { API_BASE_URL, apiGet, apiPatch, apiPost } from "../lib/api.js";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 function formatMoney(amountRupees = 0) {
@@ -33,6 +33,8 @@ export function ProjectsPage() {
   const [expenseVendorName, setExpenseVendorName] = useState("Local vendor");
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
   const [expenseDescription, setExpenseDescription] = useState("Mission implementation expense");
+  const [billFile, setBillFile] = useState(null);
+  const [billInputKey, setBillInputKey] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("Needs more detail before approval");
   const canCreateProjects = hasPermission(session, "projects.create");
   const canManageProjects = hasPermission(session, "projects.manage");
@@ -152,15 +154,88 @@ export function ProjectsPage() {
     }
 
     try {
-      await apiPost(`/expenses/family/${familyId}/project/${selectedProjectId}`, {
+      const response = await apiPost(`/expenses/family/${familyId}/project/${selectedProjectId}`, {
         amountRupees: expenseAmountRupees,
         category: expenseCategory,
         vendorName: expenseVendorName,
         expenseDate,
         description: expenseDescription
       });
-      setMessage("Expense submitted for approval.");
+
+      if (billFile) {
+        await uploadExpenseBill({ familyId, expenseId: response.data.id, file: billFile });
+        setBillFile(null);
+        setBillInputKey((current) => current + 1);
+      }
+
       await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
+      setMessage(billFile ? "Expense submitted with bill for approval." : "Expense submitted for approval.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function uploadExpenseBill({ familyId, expenseId, file }) {
+    if (file.size > 8 * 1024 * 1024) {
+      throw new Error("Bill file must be 8 MB or smaller.");
+    }
+
+    const token = localStorage.getItem("nyasa_token");
+    const dataBase64 = await readFileAsBase64(file);
+    const response = await fetch(`${API_BASE_URL}/documents/family/${familyId}/expenses/${expenseId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        originalName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        dataBase64
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(payload.error?.message || `Bill upload failed: ${response.status}`);
+    }
+
+    return payload;
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = () => reject(new Error("Could not read bill file."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function downloadDocument(document) {
+    const familyId = getFamilyId();
+    const token = localStorage.getItem("nyasa_token");
+    const documentId = document.id || document._id;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/family/${familyId}/${documentId}/download`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Document download failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = downloadUrl;
+      link.download = document.originalName || "expense-bill";
+      link.click();
+      URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       setMessage(error.message);
     }
@@ -398,6 +473,15 @@ export function ProjectsPage() {
                 Description
                 <input value={expenseDescription} onChange={(event) => setExpenseDescription(event.target.value)} />
               </label>
+              <label>
+                Bill or Photo
+                <input
+                  key={billInputKey}
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={(event) => setBillFile(event.target.files?.[0] || null)}
+                  type="file"
+                />
+              </label>
               <button type="submit">Submit Expense</button>
             </form>
           ) : null}
@@ -423,6 +507,17 @@ export function ProjectsPage() {
                       {formatLabel(expense.category)} - {expense.vendorName || "No vendor"} - {formatLabel(expense.status)}
                     </span>
                     <small>{expense.description || "No description added."}</small>
+                    {expense.billDocuments?.length ? (
+                      <div className="document-list">
+                        {expense.billDocuments.map((document) => (
+                          <button key={document.id || document._id} type="button" onClick={() => downloadDocument(document)}>
+                            {document.originalName}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <small>No bill attached.</small>
+                    )}
                   </div>
                   <div className="ledger-member">
                     <strong>{expense.submittedBy?.displayName || "Member"}</strong>
