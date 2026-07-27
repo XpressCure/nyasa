@@ -14,6 +14,7 @@
     "db:up": "docker compose up -d mongo",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f mongo",
+    "db:prepare-live": "npm run db:prepare-live --workspace @nyasa/api",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
     "test": "npm run test --workspaces"
