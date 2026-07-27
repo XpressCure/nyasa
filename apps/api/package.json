@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "build": "node --check src/server.js",
+    "build": "node -e \"process.env.MONGODB_URI='mongodb://127.0.0.1:27017/nyasa'; process.env.JWT_SECRET='dev-build-secret-dev-build-secret'; import('./src/app.js').then(() => console.log('api build ok'))\"",
     "lint": "eslint src",
     "test": "node --test"
   },
