@@ -85,6 +85,13 @@ const futureSections = [
   }
 ];
 
+const launchMessageHighlights = [
+  "परिवार की विरासत, इतिहास और स्मृतियों को सुरक्षित रखना।",
+  "Alahdadpur और पैतृक घर से जुड़े कार्यों को संगठित रूप से आगे बढ़ाना।",
+  "Family Funds को पारदर्शी तरीके से संचालित करना।",
+  "आने वाली पीढ़ियों के लिए एक मजबूत, जुड़ा हुआ आधार बनाना।"
+];
+
 export function HomePage() {
   const [activeView, setActiveView] = useState("member");
   const active = walkthrough[activeView];
@@ -123,6 +130,7 @@ export function HomePage() {
             Nyasa Trust is being built around Alahdadpur: a shared family platform to preserve our roots, coordinate village missions, pool money
             into Kosh, and keep a transparent record of work, decisions, and legacy.
           </p>
+          <p className="home-blessing-line">परिवार के सभी बड़े-बुजुर्गों, भाइयों, बहनों और बच्चों को सादर प्रणाम।</p>
           <div className="village-pill-row">
             <span>Alahdadpur</span>
             <span>Family trust</span>
@@ -174,6 +182,31 @@ export function HomePage() {
               Bill uploaded and waiting for owner review
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="home-section launch-message-section" id="sankalp">
+        <div className="launch-note-card">
+          <span className="home-kicker">
+            <Landmark size={16} />
+            Launch Sankalp
+          </span>
+          <h2>बड़े डैडी के 72वें जन्मदिवस पर एक पारिवारिक संकल्प।</h2>
+          <p>
+            Nyasa Trust केवल एक सॉफ्टवेयर नहीं है। यह हमारे परिवार की सामूहिक यात्रा का डिजिटल अभिलेख है: विश्वास, अपनापन,
+            आध्यात्मिक आधार, Alahdadpur से जुड़ी स्मृतियाँ, और आने वाली पीढ़ियों के लिए हमारी जिम्मेदारी।
+          </p>
+          <blockquote>
+            "आज हम न्यासी हैं, कल हमारी संताने होंगी। विरासत हमारी नहीं, हमारी जिम्मेदारी है।"
+          </blockquote>
+        </div>
+        <div className="launch-message-list">
+          {launchMessageHighlights.map((highlight) => (
+            <div key={highlight}>
+              <CheckCircle2 size={18} />
+              <span>{highlight}</span>
+            </div>
+          ))}
         </div>
       </section>
 

@@ -672,6 +672,12 @@ select {
   max-width: 720px;
 }
 
+.home-hero-copy .home-blessing-line {
+  color: #34513f;
+  font-size: 18px;
+  margin-top: 14px;
+}
+
 .home-kicker {
   color: #34513f;
   gap: 8px;
@@ -825,6 +831,63 @@ select {
   font-size: 36px;
   line-height: 1.1;
   margin: 8px 0 22px;
+}
+
+.launch-message-section {
+  align-items: stretch;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.65fr);
+  padding-top: 24px;
+}
+
+.launch-note-card,
+.launch-message-list {
+  background: #ffffff;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(35, 32, 26, 0.06);
+  padding: 24px;
+}
+
+.launch-note-card p {
+  color: #4e5b53;
+  font-size: 18px;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.launch-note-card blockquote {
+  border-left: 4px solid #d7a84f;
+  color: #17211c;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 24px 0 0;
+  padding-left: 18px;
+}
+
+.launch-message-list {
+  align-content: center;
+  display: grid;
+  gap: 12px;
+}
+
+.launch-message-list div {
+  align-items: flex-start;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  color: #34513f;
+  display: flex;
+  gap: 10px;
+  line-height: 1.5;
+  padding: 14px;
+}
+
+.launch-message-list svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 
 .village-section {
@@ -1058,6 +1121,7 @@ select {
   }
 
   .home-hero,
+  .launch-message-section,
   .interactive-section,
   .village-section,
   .launch-grid,
