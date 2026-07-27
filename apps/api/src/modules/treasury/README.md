@@ -12,12 +12,13 @@ Implemented:
 4. Summary API
 5. Manual contribution API
 6. Transaction history API
+7. Wallet-to-project allocation API
 
 Next:
 
-1. Allocation APIs
-2. Ledger reversal APIs
-3. Razorpay payment records
-4. Ledger tests
+1. Ledger reversal APIs
+2. Razorpay payment records
+3. Ledger tests
+4. Allocation reporting refinements
 
 Critical rule: ledger transactions are append-only.

@@ -98,7 +98,7 @@ async function getProjectFinancials(familyId, projectIds) {
     const projectId = String(row._id.projectId);
     const current = map.get(projectId) || { allocatedPaise: 0, spentPaise: 0 };
 
-    if (row._id.type === "allocation" && row._id.direction === "credit") {
+    if (row._id.type === "allocation" && row._id.direction === "debit") {
       current.allocatedPaise += row.amountPaise;
     }
 

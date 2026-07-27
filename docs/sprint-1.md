@@ -33,6 +33,7 @@ Create the technical foundation for Nyasa:
 - `GET /api/treasury/family/:familyId/summary`
 - `GET /api/treasury/family/:familyId/transactions`
 - `POST /api/treasury/family/:familyId/manual-contributions`
+- `POST /api/treasury/family/:familyId/allocations`
 - `GET /api/projects/family/:familyId`
 - `POST /api/projects/family/:familyId`
 - `GET /api/projects/family/:familyId/:projectId`
@@ -47,7 +48,7 @@ Create the technical foundation for Nyasa:
 3. Add automated tests for family creation, invitations, member management, and permission checks.
 4. Add ledger tests for manual contributions and balance calculations.
 5. Add project tests for creation, status changes, and family scoping.
-6. Add allocation APIs for wallet-to-project funding.
+6. Add ledger reversal APIs for audited corrections.
 7. Replace manually copied invite links with email/WhatsApp delivery.
 8. Replace development login with OTP and Google login.
 

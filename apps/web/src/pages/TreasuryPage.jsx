@@ -17,8 +17,12 @@ function formatRole(role = "") {
 export function TreasuryPage() {
   const [summary, setSummary] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [amountRupees, setAmountRupees] = useState("5000");
   const [description, setDescription] = useState("Manual family contribution");
+  const [allocationAmountRupees, setAllocationAmountRupees] = useState("1000");
+  const [allocationProjectId, setAllocationProjectId] = useState("");
+  const [allocationDescription, setAllocationDescription] = useState("Allocated from Kosh wallet");
   const [message, setMessage] = useState("");
 
   function getFamilyId() {
@@ -45,6 +49,22 @@ export function TreasuryPage() {
     }
   }
 
+  async function loadProjects() {
+    const familyId = getFamilyId();
+    if (!familyId) {
+      setMessage("Create or select a family first.");
+      return;
+    }
+
+    try {
+      const response = await apiGet(`/projects/family/${familyId}`);
+      setProjects(response.data);
+      setMessage(response.data.length ? "Loaded missions for allocation." : "Create a mission before allocating funds.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   async function recordContribution(event) {
     event.preventDefault();
     const familyId = getFamilyId();
@@ -60,6 +80,33 @@ export function TreasuryPage() {
       });
       setMessage("Manual contribution recorded.");
       await loadTreasury();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function allocateToProject(event) {
+    event.preventDefault();
+    const familyId = getFamilyId();
+    if (!familyId) {
+      setMessage("Create or select a family first.");
+      return;
+    }
+
+    if (!allocationProjectId) {
+      setMessage("Choose a mission to allocate funds.");
+      return;
+    }
+
+    try {
+      await apiPost(`/treasury/family/${familyId}/allocations`, {
+        projectId: allocationProjectId,
+        amountRupees: allocationAmountRupees,
+        description: allocationDescription
+      });
+      setMessage("Funds allocated to mission.");
+      await loadTreasury();
+      await loadProjects();
     } catch (error) {
       setMessage(error.message);
     }
@@ -104,6 +151,40 @@ export function TreasuryPage() {
           </button>
         </form>
         {message ? <p className="form-message">{message}</p> : null}
+      </section>
+
+      <section className="content-band spaced-band">
+        <h2>Allocate To Mission</h2>
+        <form className="form-grid" onSubmit={allocateToProject}>
+          <label>
+            Mission
+            <select value={allocationProjectId} onChange={(event) => setAllocationProjectId(event.target.value)}>
+              <option value="">Select mission</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.title} ({formatMoney(project.allocatedRupees)} allocated)
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Amount
+            <input
+              value={allocationAmountRupees}
+              onChange={(event) => setAllocationAmountRupees(event.target.value)}
+              type="number"
+              min="1"
+            />
+          </label>
+          <label>
+            Description
+            <input value={allocationDescription} onChange={(event) => setAllocationDescription(event.target.value)} />
+          </label>
+          <button type="submit">Allocate Funds</button>
+          <button type="button" className="secondary-button" onClick={loadProjects}>
+            Load Missions
+          </button>
+        </form>
       </section>
 
       <section className="content-band spaced-band">
