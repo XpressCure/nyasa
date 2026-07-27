@@ -4,8 +4,13 @@ const webpack = require("webpack");
 
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
-module.exports = {
+module.exports = (_env, argv) => {
+  const isProduction = argv.mode === "production";
+
+  return {
   entry: path.resolve(__dirname, "src/main.jsx"),
+  mode: isProduction ? "production" : "development",
+  devtool: isProduction ? "source-map" : "eval-cheap-module-source-map",
   output: {
     clean: true,
     filename: "main.[contenthash].js",
@@ -47,5 +52,9 @@ module.exports = {
   devServer: {
     historyApiFallback: true,
     hot: true
+  },
+  performance: {
+    hints: isProduction ? "warning" : false
   }
+};
 };
