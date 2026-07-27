@@ -1,6 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
-import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
@@ -11,6 +8,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { permissions } from "../permissions/permissions.js";
+import { getDocumentObject, saveDocumentFile } from "./document-storage.service.js";
 
 export const documentRoutes = Router();
 
@@ -39,23 +37,6 @@ function serializeDocument(document) {
   };
 }
 
-function getSafeExtension(originalName, mimeType) {
-  const extension = path.extname(originalName).toLowerCase();
-
-  if (extension && /^[a-z0-9.]+$/.test(extension)) {
-    return extension;
-  }
-
-  const fallbackExtensions = {
-    "application/pdf": ".pdf",
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp"
-  };
-
-  return fallbackExtensions[mimeType] || ".bin";
-}
-
 documentRoutes.use(requireAuth);
 
 documentRoutes.post(
@@ -79,21 +60,27 @@ documentRoutes.post(
       throw httpError(400, "Uploaded file size is invalid.", "INVALID_UPLOAD_SIZE");
     }
 
-    const uploadDir = path.resolve("uploads", String(req.familyId), "expenses", String(expense._id));
-    const storedName = `${Date.now()}-${randomUUID()}${getSafeExtension(body.originalName, body.mimeType)}`;
-    const storagePath = path.join(uploadDir, storedName);
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(storagePath, fileBuffer);
+    const storedFile = await saveDocumentFile({
+      familyId: req.familyId,
+      expenseId: expense._id,
+      originalName: body.originalName,
+      mimeType: body.mimeType,
+      fileBuffer
+    });
 
     const document = await Document.create({
       familyId: req.familyId,
       projectId: expense.projectId,
       expenseId: expense._id,
       originalName: body.originalName,
-      storedName,
+      storedName: storedFile.storedName,
       mimeType: body.mimeType,
       sizeBytes: body.sizeBytes,
-      storagePath,
+      storageDriver: storedFile.storageDriver,
+      storagePath: storedFile.storagePath,
+      storageKey: storedFile.storageKey,
+      bucketName: storedFile.bucketName,
+      region: storedFile.region,
       category: "expense_bill",
       uploadedBy: req.member._id
     });
@@ -130,6 +117,14 @@ documentRoutes.get(
 
     if (!document) {
       throw httpError(404, "Document not found.", "DOCUMENT_NOT_FOUND");
+    }
+
+    if (document.storageDriver === "s3") {
+      const s3Object = await getDocumentObject(document);
+      res.setHeader("Content-Type", document.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${document.originalName.replaceAll("\"", "")}"`);
+      s3Object.Body.pipe(res);
+      return;
     }
 
     res.download(document.storagePath, document.originalName);

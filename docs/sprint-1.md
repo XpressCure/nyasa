@@ -50,6 +50,8 @@ Create the technical foundation for Nyasa:
 
 Project financial summaries expose target, allocated, spent, budget gap, and available-to-spend values. Missions can enter `implementation` only after their target budget is fully allocated, and expenses can be submitted only after that same funding threshold is met.
 
+Expense bills can be stored locally in development or in AWS S3 with `STORAGE_DRIVER=s3`. The API streams S3 downloads through authenticated routes so the bucket can remain private.
+
 ## Next Engineering Tasks
 
 1. Replace development login with OTP and Google login.

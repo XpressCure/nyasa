@@ -9,7 +9,11 @@ const documentSchema = new mongoose.Schema(
     storedName: { type: String, required: true },
     mimeType: { type: String, required: true },
     sizeBytes: { type: Number, required: true, min: 1 },
-    storagePath: { type: String, required: true },
+    storageDriver: { type: String, enum: ["local", "s3"], default: "local" },
+    storagePath: String,
+    storageKey: String,
+    bucketName: String,
+    region: String,
     category: {
       type: String,
       enum: ["expense_bill", "project_photo", "project_document", "other"],
