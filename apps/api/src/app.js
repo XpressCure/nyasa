@@ -13,6 +13,7 @@ import { familyRoutes } from "./modules/families/family.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { invitationRoutes } from "./modules/invitations/invitation.routes.js";
 import { memberRoutes } from "./modules/members/member.routes.js";
+import { paymentRoutes } from "./modules/payments/payment.routes.js";
 import { permissionRoutes } from "./modules/permissions/permission.routes.js";
 import { projectRoutes } from "./modules/projects/project.routes.js";
 import { treasuryRoutes } from "./modules/treasury/treasury.routes.js";
@@ -30,6 +31,7 @@ export function createApp() {
   app.use("/api/families", familyRoutes);
   app.use("/api/invitations", invitationRoutes);
   app.use("/api/members", memberRoutes);
+  app.use("/api/payments", paymentRoutes);
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/projects", projectRoutes);
   app.use("/api/expenses", expenseRoutes);

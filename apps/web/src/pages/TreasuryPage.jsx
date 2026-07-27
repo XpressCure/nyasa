@@ -15,6 +15,21 @@ function formatRole(role = "") {
   return role.replaceAll("_", " ");
 }
 
+function loadRazorpayCheckout() {
+  return new Promise((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve();
+      return;
+    }
+
+    const script = window.document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Could not load Razorpay Checkout."));
+    window.document.body.appendChild(script);
+  });
+}
+
 export function TreasuryPage() {
   const [summary, setSummary] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -126,12 +141,52 @@ export function TreasuryPage() {
     }
 
     try {
-      await apiPost(`/treasury/family/${familyId}/my-contributions`, {
+      setMessage("Creating secure payment order...");
+      const orderResponse = await apiPost(`/payments/family/${familyId}/razorpay-orders`, {
         amountRupees: selfContributionAmountRupees,
         description: selfContributionDescription
       });
-      setMessage("Money added to your wallet.");
-      await loadTreasury();
+      await loadRazorpayCheckout();
+
+      const paymentOrder = orderResponse.data;
+      const checkout = new window.Razorpay({
+        key: paymentOrder.razorpayKeyId,
+        amount: paymentOrder.amountPaise,
+        currency: paymentOrder.currency,
+        name: "Nyasa",
+        description: paymentOrder.description,
+        order_id: paymentOrder.providerOrderId,
+        prefill: {
+          name: paymentOrder.user.fullName,
+          email: paymentOrder.user.email
+        },
+        notes: {
+          familyId,
+          paymentOrderId: paymentOrder.paymentOrderId
+        },
+        handler: async (response) => {
+          try {
+            await apiPost(`/payments/family/${familyId}/razorpay-payments/verify`, {
+              paymentOrderId: paymentOrder.paymentOrderId,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            });
+            setMessage("Payment verified. Money added to your wallet.");
+            await loadTreasury();
+          } catch (error) {
+            setMessage(error.message);
+          }
+        },
+        modal: {
+          ondismiss: () => setMessage("Payment was not completed.")
+        },
+        theme: {
+          color: "#17211c"
+        }
+      });
+
+      checkout.open();
     } catch (error) {
       setMessage(error.message);
     }
@@ -188,7 +243,7 @@ export function TreasuryPage() {
 
       <section className="content-band">
         <h2>Add To My Wallet</h2>
-        <p className="section-note">Members add money here first. Then they allocate wallet balance to a specific mission.</p>
+        <p className="section-note">Members add money through Razorpay first. After verification, wallet balance can be allocated to a mission.</p>
         {canContribute ? (
           <form className="form-grid" onSubmit={addToMyWallet}>
             <label>
@@ -204,7 +259,7 @@ export function TreasuryPage() {
               Description
               <input value={selfContributionDescription} onChange={(event) => setSelfContributionDescription(event.target.value)} />
             </label>
-            <button type="submit">Add To My Wallet</button>
+            <button type="submit">Pay With Razorpay</button>
           </form>
         ) : (
           <p>Your current role cannot add money to a wallet.</p>

@@ -47,10 +47,14 @@ Create the technical foundation for Nyasa:
 - `POST /api/expenses/family/:familyId/:expenseId/reject`
 - `POST /api/documents/family/:familyId/expenses/:expenseId`
 - `GET /api/documents/family/:familyId/:documentId/download`
+- `POST /api/payments/family/:familyId/razorpay-orders`
+- `POST /api/payments/family/:familyId/razorpay-payments/verify`
 
 Project financial summaries expose target, allocated, spent, budget gap, and available-to-spend values. Missions can enter `implementation` only after their target budget is fully allocated, and expenses can be submitted only after that same funding threshold is met.
 
 Expense bills can be stored locally in development or in AWS S3 with `STORAGE_DRIVER=s3`. The API streams S3 downloads through authenticated routes so the bucket can remain private.
+
+Member wallet top-ups use Razorpay Checkout. Wallet ledger credits are posted only after Razorpay signature verification succeeds.
 
 ## Next Engineering Tasks
 
