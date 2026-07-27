@@ -52,6 +52,8 @@ function serializeProject(project, financials = {}) {
   const allocatedPaise = financials.allocatedPaise || 0;
   const spentPaise = financials.spentPaise || 0;
   const targetBudgetPaise = project.targetBudgetPaise || 0;
+  const fundingPercent = targetBudgetPaise > 0 ? Math.min(Math.round((allocatedPaise / targetBudgetPaise) * 100), 100) : 0;
+  const isFullyFunded = targetBudgetPaise > 0 && allocatedPaise >= targetBudgetPaise;
 
   return {
     id: project._id,
@@ -64,6 +66,9 @@ function serializeProject(project, financials = {}) {
     targetBudgetRupees: paiseToRupees(targetBudgetPaise),
     allocatedPaise,
     allocatedRupees: paiseToRupees(allocatedPaise),
+    fundingPercent,
+    isFullyFunded,
+    implementationStatus: isFullyFunded ? "ready_to_begin" : "funding",
     spentPaise,
     spentRupees: paiseToRupees(spentPaise),
     remainingPaise: Math.max(targetBudgetPaise - spentPaise, 0),

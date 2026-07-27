@@ -13,6 +13,7 @@ Implemented:
 5. Manual contribution API
 6. Transaction history API
 7. Wallet-to-project allocation API
+8. Member self-contribution API
 
 Next:
 
@@ -20,5 +21,6 @@ Next:
 2. Razorpay payment records
 3. Ledger tests
 4. Allocation reporting refinements
+5. Payment gateway integration for real member self-contributions
 
 Critical rule: ledger transactions are append-only.

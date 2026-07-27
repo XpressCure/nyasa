@@ -25,6 +25,26 @@ const allocationSchema = z.object({
   description: z.string().max(280).optional()
 });
 
+async function createContributionTransaction({ familyId, userId, memberId, amountPaise, description, source }) {
+  const treasury = await getOrCreateMainTreasury({ familyId, userId });
+  const wallet = await getOrCreateWallet({ familyId, memberId });
+
+  return LedgerTransaction.create({
+    familyId,
+    treasuryAccountId: treasury._id,
+    walletId: wallet._id,
+    memberId,
+    type: "contribution",
+    direction: "credit",
+    amountPaise,
+    description,
+    status: "posted",
+    postedAt: new Date(),
+    metadata: { source },
+    createdBy: userId
+  });
+}
+
 treasuryRoutes.use(requireAuth);
 
 treasuryRoutes.get(
@@ -106,23 +126,13 @@ treasuryRoutes.post(
       throw httpError(400, "Contribution amount must be greater than zero.", "INVALID_AMOUNT");
     }
 
-    const memberId = body.memberId || req.member._id;
-    const treasury = await getOrCreateMainTreasury({ familyId: req.familyId, userId: req.user._id });
-    const wallet = await getOrCreateWallet({ familyId: req.familyId, memberId });
-
-    const transaction = await LedgerTransaction.create({
+    const transaction = await createContributionTransaction({
       familyId: req.familyId,
-      treasuryAccountId: treasury._id,
-      walletId: wallet._id,
-      memberId,
-      type: "contribution",
-      direction: "credit",
+      userId: req.user._id,
+      memberId: body.memberId || req.member._id,
       amountPaise,
       description: body.description || "Manual contribution",
-      status: "posted",
-      postedAt: new Date(),
-      metadata: { source: "manual" },
-      createdBy: req.user._id
+      source: "manual_admin_entry"
     });
 
     await writeAuditLog({
@@ -134,7 +144,47 @@ treasuryRoutes.post(
       entityId: String(transaction._id),
       summary: `Recorded manual contribution of INR ${paiseToRupees(amountPaise)}`,
       after: {
-        memberId,
+        memberId: transaction.memberId,
+        amountPaise,
+        transactionId: transaction._id
+      },
+      req
+    });
+
+    res.status(201).json({ data: transaction });
+  })
+);
+
+treasuryRoutes.post(
+  "/family/:familyId/my-contributions",
+  requireFamilyPermission(permissions.treasuryContribute),
+  asyncHandler(async (req, res) => {
+    const body = contributionSchema.omit({ memberId: true }).parse(req.body);
+    const amountPaise = rupeesToPaise(body.amountRupees);
+
+    if (amountPaise <= 0) {
+      throw httpError(400, "Contribution amount must be greater than zero.", "INVALID_AMOUNT");
+    }
+
+    const transaction = await createContributionTransaction({
+      familyId: req.familyId,
+      userId: req.user._id,
+      memberId: req.member._id,
+      amountPaise,
+      description: body.description || "Self contribution",
+      source: "member_self_contribution"
+    });
+
+    await writeAuditLog({
+      familyId: req.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: req.member._id,
+      action: "treasury.self_contribution_recorded",
+      entityType: "LedgerTransaction",
+      entityId: String(transaction._id),
+      summary: `Added INR ${paiseToRupees(amountPaise)} to own wallet`,
+      after: {
+        memberId: req.member._id,
         amountPaise,
         transactionId: transaction._id
       },

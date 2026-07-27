@@ -194,11 +194,13 @@ export function ProjectsPage() {
                 <div className="project-summary">
                   <span>Target {formatMoney(project.targetBudgetRupees)}</span>
                   <span>Allocated {formatMoney(project.allocatedRupees)}</span>
+                  <span>Funding {project.fundingPercent || 0}%</span>
+                  <span>{project.isFullyFunded ? "Ready to begin" : "Collecting contributions"}</span>
                   <span>Spent {formatMoney(project.spentRupees)}</span>
                   <span>Completion {project.completionPercent}%</span>
                 </div>
                 <div className="progress-track">
-                  <div style={{ width: `${project.completionPercent}%` }} />
+                  <div style={{ width: `${project.fundingPercent || 0}%` }} />
                 </div>
                 {canManageProjects ? (
                   <div className="row-actions">

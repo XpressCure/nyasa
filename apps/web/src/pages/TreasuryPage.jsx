@@ -20,6 +20,8 @@ export function TreasuryPage() {
   const [transactions, setTransactions] = useState([]);
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
+  const [selfContributionAmountRupees, setSelfContributionAmountRupees] = useState("5000");
+  const [selfContributionDescription, setSelfContributionDescription] = useState("Added to my Kosh wallet");
   const [amountRupees, setAmountRupees] = useState("5000");
   const [description, setDescription] = useState("Manual family contribution");
   const [contributionMemberId, setContributionMemberId] = useState("");
@@ -29,6 +31,7 @@ export function TreasuryPage() {
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
+  const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
 
   useEffect(() => {
@@ -114,6 +117,26 @@ export function TreasuryPage() {
     }
   }
 
+  async function addToMyWallet(event) {
+    event.preventDefault();
+    const familyId = getFamilyId();
+    if (!familyId) {
+      setMessage("Create or select a family first.");
+      return;
+    }
+
+    try {
+      await apiPost(`/treasury/family/${familyId}/my-contributions`, {
+        amountRupees: selfContributionAmountRupees,
+        description: selfContributionDescription
+      });
+      setMessage("Money added to your wallet.");
+      await loadTreasury();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   async function allocateToProject(event) {
     event.preventDefault();
     const familyId = getFamilyId();
@@ -164,7 +187,39 @@ export function TreasuryPage() {
       </div>
 
       <section className="content-band">
-        <h2>Manual Contribution</h2>
+        <h2>Add To My Wallet</h2>
+        <p className="section-note">Members add money here first. Then they allocate wallet balance to a specific mission.</p>
+        {canContribute ? (
+          <form className="form-grid" onSubmit={addToMyWallet}>
+            <label>
+              Amount
+              <input
+                value={selfContributionAmountRupees}
+                onChange={(event) => setSelfContributionAmountRupees(event.target.value)}
+                type="number"
+                min="1"
+              />
+            </label>
+            <label>
+              Description
+              <input value={selfContributionDescription} onChange={(event) => setSelfContributionDescription(event.target.value)} />
+            </label>
+            <button type="submit">Add To My Wallet</button>
+          </form>
+        ) : (
+          <p>Your current role cannot add money to a wallet.</p>
+        )}
+        <div className="button-row">
+          <button type="button" className="secondary-button" onClick={loadTreasury}>
+            Load Treasury
+          </button>
+        </div>
+        {message ? <p className="form-message">{message}</p> : null}
+      </section>
+
+      <section className="content-band spaced-band">
+        <h2>Admin Contribution Entry</h2>
+        <p className="section-note">Owner/admin tool for recording offline or corrected contributions for a selected member.</p>
         {canRecordManualContribution ? (
           <form className="form-grid" onSubmit={recordContribution}>
             <label>
@@ -189,19 +244,15 @@ export function TreasuryPage() {
             <button type="submit">Record Contribution</button>
           </form>
         ) : (
-          <p>Your current role can allocate wallet funds but cannot record manual contributions.</p>
+          <p>Your current role cannot record contributions for other members.</p>
         )}
         <div className="button-row">
-          <button type="button" className="secondary-button" onClick={loadTreasury}>
-            Load Treasury
-          </button>
           {canRecordManualContribution ? (
             <button type="button" className="secondary-button" onClick={loadMembers}>
               Load Members
             </button>
           ) : null}
         </div>
-        {message ? <p className="form-message">{message}</p> : null}
       </section>
 
       <section className="content-band spaced-band">

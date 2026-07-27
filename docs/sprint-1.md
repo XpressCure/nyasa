@@ -32,6 +32,7 @@ Create the technical foundation for Nyasa:
 - `POST /api/invitations/:invitationId/revoke`
 - `GET /api/treasury/family/:familyId/summary`
 - `GET /api/treasury/family/:familyId/transactions`
+- `POST /api/treasury/family/:familyId/my-contributions`
 - `POST /api/treasury/family/:familyId/manual-contributions`
 - `POST /api/treasury/family/:familyId/allocations`
 - `GET /api/projects/family/:familyId`
