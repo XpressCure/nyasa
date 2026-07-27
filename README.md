@@ -97,6 +97,14 @@ http://localhost:4000/api/health
 
 If you upgrade Node.js while VS Code or a terminal is open, restart VS Code and open a fresh terminal before running npm commands.
 
+## Deployment
+
+EC2 deployment files are in `deploy/`:
+
+- `deploy/ec2-deploy.md`
+- `deploy/nginx-nyasa.conf`
+- `ecosystem.config.cjs`
+
 ## MVP Build Order
 
 1. Auth, family workspace, roles, audit logs
