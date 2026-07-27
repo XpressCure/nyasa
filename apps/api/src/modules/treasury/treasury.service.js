@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
 import { TreasuryAccount } from "../../models/TreasuryAccount.js";
 import { Wallet } from "../../models/Wallet.js";
@@ -22,8 +23,9 @@ export async function getOrCreateWallet({ familyId, memberId }) {
 }
 
 export async function calculatePostedBalance(filter) {
+  const normalizedFilter = normalizeObjectIdFilter(filter);
   const rows = await LedgerTransaction.aggregate([
-    { $match: { ...filter, status: "posted" } },
+    { $match: { ...normalizedFilter, status: "posted" } },
     {
       $group: {
         _id: "$direction",
@@ -35,4 +37,17 @@ export async function calculatePostedBalance(filter) {
   return rows.reduce((total, row) => {
     return row._id === "credit" ? total + row.amountPaise : total - row.amountPaise;
   }, 0);
+}
+
+function normalizeObjectIdFilter(filter) {
+  const objectIdFields = ["familyId", "treasuryAccountId", "walletId", "memberId", "projectId", "expenseId"];
+  const normalized = { ...filter };
+
+  for (const field of objectIdFields) {
+    if (typeof normalized[field] === "string" && mongoose.Types.ObjectId.isValid(normalized[field])) {
+      normalized[field] = new mongoose.Types.ObjectId(normalized[field]);
+    }
+  }
+
+  return normalized;
 }

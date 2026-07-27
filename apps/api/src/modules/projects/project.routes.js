@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
@@ -83,10 +84,13 @@ function serializeProject(project, financials = {}) {
 }
 
 async function getProjectFinancials(familyId, projectIds) {
+  const normalizedFamilyId =
+    typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+
   const rows = await LedgerTransaction.aggregate([
     {
       $match: {
-        familyId,
+        familyId: normalizedFamilyId,
         projectId: { $in: projectIds },
         status: "posted"
       }
