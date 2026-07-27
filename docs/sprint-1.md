@@ -33,6 +33,12 @@ Create the technical foundation for Nyasa:
 - `GET /api/treasury/family/:familyId/summary`
 - `GET /api/treasury/family/:familyId/transactions`
 - `POST /api/treasury/family/:familyId/manual-contributions`
+- `GET /api/projects/family/:familyId`
+- `POST /api/projects/family/:familyId`
+- `GET /api/projects/family/:familyId/:projectId`
+- `PATCH /api/projects/family/:familyId/:projectId`
+- `POST /api/projects/family/:familyId/:projectId/milestones`
+- `POST /api/projects/family/:familyId/:projectId/updates`
 
 ## Next Engineering Tasks
 
@@ -40,9 +46,10 @@ Create the technical foundation for Nyasa:
 2. Add seed script for first family.
 3. Add automated tests for family creation, invitations, member management, and permission checks.
 4. Add ledger tests for manual contributions and balance calculations.
-5. Add allocation APIs for wallet-to-project funding.
-6. Replace manually copied invite links with email/WhatsApp delivery.
-7. Replace development login with OTP and Google login.
+5. Add project tests for creation, status changes, and family scoping.
+6. Add allocation APIs for wallet-to-project funding.
+7. Replace manually copied invite links with email/WhatsApp delivery.
+8. Replace development login with OTP and Google login.
 
 ## Local Verification
 
