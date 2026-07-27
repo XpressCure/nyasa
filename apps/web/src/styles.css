@@ -84,6 +84,32 @@ select {
   background: #26332b;
 }
 
+.api-status {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  margin-top: 28px;
+  padding: 10px;
+}
+
+.api-status span,
+.api-status small {
+  display: block;
+}
+
+.api-status small {
+  color: #c5cdbf;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.api-status.connected span {
+  color: #9ee0ac;
+}
+
+.api-status.offline span {
+  color: #ffb4a8;
+}
+
 .main-panel {
   padding: 36px;
 }

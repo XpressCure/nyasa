@@ -2,14 +2,20 @@ const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:4000/api";
 
 async function apiRequest(path, options = {}) {
   const token = localStorage.getItem("nyasa_token");
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers
-    }
-  });
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers
+      }
+    });
+  } catch (_error) {
+    throw new Error(`Cannot reach Nyasa API at ${API_BASE_URL}. Start the API with npm run dev:api.`);
+  }
 
   const payload = await response.json().catch(() => ({}));
 
@@ -37,3 +43,5 @@ export async function apiPatch(path, body) {
     body: JSON.stringify(body)
   });
 }
+
+export { API_BASE_URL };

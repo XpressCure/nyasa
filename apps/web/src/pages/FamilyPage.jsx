@@ -24,8 +24,15 @@ export function FamilyPage() {
   }
 
   async function loadFamilies() {
-    const response = await apiGet("/families");
-    setFamilies(response.data);
+    setMessage("");
+
+    try {
+      const response = await apiGet("/families");
+      setFamilies(response.data);
+      setMessage(response.data.length ? "Loaded family workspaces." : "No family workspaces found yet.");
+    } catch (error) {
+      setMessage(error.message);
+    }
   }
 
   function selectFamily(familyId) {
