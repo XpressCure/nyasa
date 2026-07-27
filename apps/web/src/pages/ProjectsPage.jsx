@@ -26,8 +26,19 @@ export function ProjectsPage() {
   const [projectLeadMemberId, setProjectLeadMemberId] = useState("");
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [expenses, setExpenses] = useState([]);
+  const [expenseAmountRupees, setExpenseAmountRupees] = useState("25000");
+  const [expenseCategory, setExpenseCategory] = useState("material");
+  const [expenseVendorName, setExpenseVendorName] = useState("Local vendor");
+  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [expenseDescription, setExpenseDescription] = useState("Mission implementation expense");
   const canCreateProjects = hasPermission(session, "projects.create");
   const canManageProjects = hasPermission(session, "projects.manage");
+  const canViewExpenses = hasPermission(session, "expenses.view");
+  const canSubmitExpenses = hasPermission(session, "expenses.submit");
+  const canApproveExpenses = hasPermission(session, "expenses.approve");
+  const selectedProject = projects.find((project) => project.id === selectedProjectId);
 
   useEffect(() => {
     loadCurrentSession()
@@ -107,6 +118,74 @@ export function ProjectsPage() {
       await apiPatch(`/projects/family/${familyId}/${projectId}`, patch);
       setMessage("Mission updated.");
       await loadProjects();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function loadExpenses(projectId = selectedProjectId) {
+    const familyId = getFamilyId();
+    if (!familyId || !projectId) {
+      setMessage("Select a mission first.");
+      return;
+    }
+
+    try {
+      const response = await apiGet(`/expenses/family/${familyId}/project/${projectId}`);
+      setSelectedProjectId(projectId);
+      setExpenses(response.data);
+      setMessage(response.data.length ? "Loaded expenses." : "No expenses recorded for this mission.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function submitExpense(event) {
+    event.preventDefault();
+    const familyId = getFamilyId();
+    if (!familyId || !selectedProjectId) {
+      setMessage("Select a mission first.");
+      return;
+    }
+
+    try {
+      await apiPost(`/expenses/family/${familyId}/project/${selectedProjectId}`, {
+        amountRupees: expenseAmountRupees,
+        category: expenseCategory,
+        vendorName: expenseVendorName,
+        expenseDate,
+        description: expenseDescription
+      });
+      setMessage("Expense submitted for approval.");
+      await loadExpenses(selectedProjectId);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function approveExpense(expenseId) {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    try {
+      await apiPost(`/expenses/family/${familyId}/${expenseId}/approve`, {});
+      setMessage("Expense approved and posted to mission spending.");
+      await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function rejectExpense(expenseId) {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    try {
+      await apiPost(`/expenses/family/${familyId}/${expenseId}/reject`, {
+        rejectionReason: "Rejected during review"
+      });
+      setMessage("Expense rejected.");
+      await loadExpenses(selectedProjectId);
     } catch (error) {
       setMessage(error.message);
     }
@@ -221,6 +300,13 @@ export function ProjectsPage() {
                     </button>
                   </div>
                 ) : null}
+                {canViewExpenses ? (
+                  <div className="button-row">
+                    <button type="button" className="secondary-button" onClick={() => loadExpenses(project.id)}>
+                      Load Expenses
+                    </button>
+                  </div>
+                ) : null}
               </article>
             ))}
           </div>
@@ -228,6 +314,88 @@ export function ProjectsPage() {
           <p>Load missions or create your first family mission.</p>
         )}
       </section>
+
+      {canViewExpenses ? (
+        <section className="content-band spaced-band">
+          <h2>Mission Expenses</h2>
+          {selectedProject ? (
+            <p>
+              Reviewing expenses for <strong>{selectedProject.title}</strong>.
+            </p>
+          ) : (
+            <p>Select a mission to load its expenses.</p>
+          )}
+
+          {canSubmitExpenses && selectedProject ? (
+            <form className="form-grid" onSubmit={submitExpense}>
+              <label>
+                Amount
+                <input
+                  value={expenseAmountRupees}
+                  onChange={(event) => setExpenseAmountRupees(event.target.value)}
+                  type="number"
+                  min="1"
+                />
+              </label>
+              <label>
+                Category
+                <select value={expenseCategory} onChange={(event) => setExpenseCategory(event.target.value)}>
+                  <option value="material">Material</option>
+                  <option value="labor">Labor</option>
+                  <option value="travel">Travel</option>
+                  <option value="professional_fee">Professional Fee</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="document">Document</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label>
+                Vendor
+                <input value={expenseVendorName} onChange={(event) => setExpenseVendorName(event.target.value)} />
+              </label>
+              <label>
+                Date
+                <input value={expenseDate} onChange={(event) => setExpenseDate(event.target.value)} type="date" />
+              </label>
+              <label>
+                Description
+                <input value={expenseDescription} onChange={(event) => setExpenseDescription(event.target.value)} />
+              </label>
+              <button type="submit">Submit Expense</button>
+            </form>
+          ) : null}
+
+          {expenses.length ? (
+            <div className="list-stack">
+              {expenses.map((expense) => (
+                <div className="ledger-row" key={expense.id}>
+                  <div>
+                    <strong>{formatMoney(expense.amountRupees)}</strong>
+                    <span>
+                      {formatLabel(expense.category)} - {expense.vendorName || "No vendor"} - {formatLabel(expense.status)}
+                    </span>
+                    <small>{expense.description || "No description added."}</small>
+                  </div>
+                  <div className="ledger-member">
+                    <strong>{expense.submittedBy?.displayName || "Member"}</strong>
+                    <span>{new Date(expense.expenseDate).toLocaleDateString("en-IN")}</span>
+                  </div>
+                  {canApproveExpenses && expense.status === "submitted" ? (
+                    <div className="row-actions">
+                      <button type="button" className="secondary-button" onClick={() => approveExpense(expense.id)}>
+                        Approve
+                      </button>
+                      <button type="button" className="secondary-button" onClick={() => rejectExpense(expense.id)}>
+                        Reject
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </section>
   );
 }

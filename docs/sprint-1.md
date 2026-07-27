@@ -41,6 +41,10 @@ Create the technical foundation for Nyasa:
 - `PATCH /api/projects/family/:familyId/:projectId`
 - `POST /api/projects/family/:familyId/:projectId/milestones`
 - `POST /api/projects/family/:familyId/:projectId/updates`
+- `GET /api/expenses/family/:familyId/project/:projectId`
+- `POST /api/expenses/family/:familyId/project/:projectId`
+- `POST /api/expenses/family/:familyId/:expenseId/approve`
+- `POST /api/expenses/family/:familyId/:expenseId/reject`
 
 ## Next Engineering Tasks
 
@@ -49,9 +53,10 @@ Create the technical foundation for Nyasa:
 3. Add automated tests for family creation, invitations, member management, and permission checks.
 4. Add ledger tests for manual contributions and balance calculations.
 5. Add project tests for creation, status changes, and family scoping.
-6. Add ledger reversal APIs for audited corrections.
-7. Replace manually copied invite links with email/WhatsApp delivery.
-8. Replace development login with OTP and Google login.
+6. Add bill/document uploads to expense submission.
+7. Add ledger reversal APIs for audited corrections.
+8. Replace manually copied invite links with email/WhatsApp delivery.
+9. Replace development login with OTP and Google login.
 
 ## Local Verification
 

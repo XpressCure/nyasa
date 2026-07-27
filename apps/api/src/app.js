@@ -7,6 +7,7 @@ import { errorHandler } from "./middleware/error-handler.js";
 import { notFound } from "./middleware/not-found.js";
 import { auditRoutes } from "./modules/audit/audit.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
+import { expenseRoutes } from "./modules/expenses/expense.routes.js";
 import { familyRoutes } from "./modules/families/family.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { invitationRoutes } from "./modules/invitations/invitation.routes.js";
@@ -30,6 +31,7 @@ export function createApp() {
   app.use("/api/members", memberRoutes);
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/projects", projectRoutes);
+  app.use("/api/expenses", expenseRoutes);
   app.use("/api/treasury", treasuryRoutes);
   app.use("/api/audit-logs", auditRoutes);
 

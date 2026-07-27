@@ -13,6 +13,9 @@ export const permissions = {
   projectsCreate: "projects.create",
   projectsManage: "projects.manage",
   projectsManageAssigned: "projects.manage_assigned",
+  expensesView: "expenses.view",
+  expensesSubmit: "expenses.submit",
+  expensesApprove: "expenses.approve",
   auditView: "reports.audit"
 };
 
@@ -31,6 +34,9 @@ export const rolePermissions = {
     permissions.projectsView,
     permissions.projectsCreate,
     permissions.projectsManage,
+    permissions.expensesView,
+    permissions.expensesSubmit,
+    permissions.expensesApprove,
     permissions.auditView
   ],
   project_lead: [
@@ -40,7 +46,9 @@ export const rolePermissions = {
     permissions.treasuryContribute,
     permissions.treasuryAllocateOwn,
     permissions.projectsView,
-    permissions.projectsManageAssigned
+    permissions.projectsManageAssigned,
+    permissions.expensesView,
+    permissions.expensesSubmit
   ],
   member: [
     permissions.workspaceView,
@@ -48,9 +56,10 @@ export const rolePermissions = {
     permissions.treasuryViewSummary,
     permissions.treasuryContribute,
     permissions.treasuryAllocateOwn,
-    permissions.projectsView
+    permissions.projectsView,
+    permissions.expensesView
   ],
-  viewer: [permissions.workspaceView, permissions.membersView, permissions.projectsView],
+  viewer: [permissions.workspaceView, permissions.membersView, permissions.projectsView, permissions.expensesView],
   external_advisor: [permissions.projectsView]
 };
 
