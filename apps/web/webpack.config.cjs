@@ -38,6 +38,13 @@ module.exports = (_env, argv) => {
       {
         test: /\.css$/,
         use: ["style-loader", "css-loader"]
+      },
+      {
+        test: /\.(png|jpe?g)$/i,
+        type: "asset/resource",
+        generator: {
+          filename: "assets/[name].[contenthash][ext]"
+        }
       }
     ]
   },

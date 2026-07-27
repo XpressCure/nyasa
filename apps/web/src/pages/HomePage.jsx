@@ -1,6 +1,8 @@
 import { ArrowRight, CheckCircle2, Landmark, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import familyPhoto from "../assets/family-photo.jpeg";
+import nyasaLogo from "../assets/nyasa-logo.png";
 
 const launchItems = [
   {
@@ -44,9 +46,9 @@ export function HomePage() {
     <main className="home-page">
       <nav className="home-nav">
         <div className="home-brand">
-          <span className="brand-mark">N</span>
+          <img className="home-brand-logo" src={nyasaLogo} alt="Nyasa Trust logo" />
           <div>
-            <strong>Nyasa</strong>
+            <strong>Nyasa Trust</strong>
             <small>Family OS</small>
           </div>
         </div>
@@ -60,14 +62,15 @@ export function HomePage() {
 
       <section className="home-hero">
         <div className="home-hero-copy">
+          <img className="home-hero-logo" src={nyasaLogo} alt="Nyasa Trust logo" />
           <span className="home-kicker">
             <Sparkles size={16} />
             Private family operating system
           </span>
-          <h1>One calm place for family funds, missions, members, and legacy.</h1>
+          <h1>Ek parivar. Ek vishwas. Ek virasat. Ek manch.</h1>
           <p>
-            Nyasa helps a family invite members, maintain profiles, pool money into Kosh, fund missions, approve expenses, and keep a shared record
-            of decisions.
+            Nyasa Trust brings family members together to maintain profiles, pool money into Kosh, fund missions, approve expenses, and preserve a
+            shared record of decisions and legacy.
           </p>
           <div className="home-actions">
             <Link className="home-cta" to="/login">
@@ -80,37 +83,40 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="portal-preview" aria-label="Nyasa portal preview">
-          <div className="preview-header">
+        <div className="family-hero-card" aria-label="Nyasa family photo and portal preview">
+          <img src={familyPhoto} alt="Nyasa family gathered together" />
+          <div className="family-hero-overlay">
             <span>The Singh Family Trust</span>
             <strong>Ready to begin</strong>
           </div>
-          <div className="preview-metrics">
-            <div>
-              <span>Members</span>
-              <strong>48</strong>
+          <div className="portal-preview">
+            <div className="preview-metrics">
+              <div>
+                <span>Members</span>
+                <strong>48</strong>
+              </div>
+              <div>
+                <span>Kosh</span>
+                <strong>INR 12.8L</strong>
+              </div>
+              <div>
+                <span>Missions</span>
+                <strong>6</strong>
+              </div>
             </div>
-            <div>
-              <span>Kosh</span>
-              <strong>INR 12.8L</strong>
+            <div className="preview-mission">
+              <div>
+                <strong>Ancestral House Renovation</strong>
+                <span>Funded by 14 members</span>
+              </div>
+              <div className="preview-progress">
+                <span style={{ width: "82%" }} />
+              </div>
             </div>
-            <div>
-              <span>Missions</span>
-              <strong>6</strong>
+            <div className="preview-row">
+              <CheckCircle2 size={18} />
+              Bill uploaded and waiting for owner review
             </div>
-          </div>
-          <div className="preview-mission">
-            <div>
-              <strong>Ancestral House Renovation</strong>
-              <span>Funded by 14 members</span>
-            </div>
-            <div className="preview-progress">
-              <span style={{ width: "82%" }} />
-            </div>
-          </div>
-          <div className="preview-row">
-            <CheckCircle2 size={18} />
-            Bill uploaded and waiting for owner review
           </div>
         </div>
       </section>
