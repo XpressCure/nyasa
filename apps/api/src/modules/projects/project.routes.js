@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
+import { Expense } from "../../models/Expense.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
 import { Milestone } from "../../models/Milestone.js";
 import { Project } from "../../models/Project.js";
@@ -87,23 +88,40 @@ async function getProjectFinancials(familyId, projectIds) {
   const normalizedFamilyId =
     typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
 
-  const rows = await LedgerTransaction.aggregate([
-    {
-      $match: {
-        familyId: normalizedFamilyId,
-        projectId: { $in: projectIds },
-        status: "posted"
+  const [ledgerRows, expenseRows] = await Promise.all([
+    LedgerTransaction.aggregate([
+      {
+        $match: {
+          familyId: normalizedFamilyId,
+          projectId: { $in: projectIds },
+          status: "posted"
+        }
+      },
+      {
+        $group: {
+          _id: { projectId: "$projectId", type: "$type", direction: "$direction" },
+          amountPaise: { $sum: "$amountPaise" }
+        }
       }
-    },
-    {
-      $group: {
-        _id: { projectId: "$projectId", type: "$type", direction: "$direction" },
-        amountPaise: { $sum: "$amountPaise" }
+    ]),
+    Expense.aggregate([
+      {
+        $match: {
+          familyId: normalizedFamilyId,
+          projectId: { $in: projectIds },
+          status: { $in: ["submitted", "approved"] }
+        }
+      },
+      {
+        $group: {
+          _id: "$projectId",
+          amountPaise: { $sum: "$amountPaise" }
+        }
       }
-    }
+    ])
   ]);
 
-  return rows.reduce((map, row) => {
+  const financials = ledgerRows.reduce((map, row) => {
     const projectId = String(row._id.projectId);
     const current = map.get(projectId) || { allocatedPaise: 0, spentPaise: 0 };
 
@@ -111,13 +129,18 @@ async function getProjectFinancials(familyId, projectIds) {
       current.allocatedPaise += row.amountPaise;
     }
 
-    if (row._id.type === "expense_debit" && row._id.direction === "debit") {
-      current.spentPaise += row.amountPaise;
-    }
-
     map.set(projectId, current);
     return map;
   }, new Map());
+
+  for (const row of expenseRows) {
+    const projectId = String(row._id);
+    const current = financials.get(projectId) || { allocatedPaise: 0, spentPaise: 0 };
+    current.spentPaise = row.amountPaise;
+    financials.set(projectId, current);
+  }
+
+  return financials;
 }
 
 projectRoutes.use(requireAuth);
