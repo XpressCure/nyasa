@@ -19,8 +19,10 @@ export function TreasuryPage() {
   const [summary, setSummary] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [members, setMembers] = useState([]);
   const [amountRupees, setAmountRupees] = useState("5000");
   const [description, setDescription] = useState("Manual family contribution");
+  const [contributionMemberId, setContributionMemberId] = useState("");
   const [allocationAmountRupees, setAllocationAmountRupees] = useState("1000");
   const [allocationProjectId, setAllocationProjectId] = useState("");
   const [allocationDescription, setAllocationDescription] = useState("Allocated from Kosh wallet");
@@ -75,6 +77,22 @@ export function TreasuryPage() {
     }
   }
 
+  async function loadMembers() {
+    const familyId = getFamilyId();
+    if (!familyId) {
+      setMessage("Create or select a family first.");
+      return;
+    }
+
+    try {
+      const response = await apiGet(`/members/family/${familyId}`);
+      setMembers(response.data);
+      setMessage("Loaded members for contribution entry.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   async function recordContribution(event) {
     event.preventDefault();
     const familyId = getFamilyId();
@@ -86,7 +104,8 @@ export function TreasuryPage() {
     try {
       await apiPost(`/treasury/family/${familyId}/manual-contributions`, {
         amountRupees,
-        description
+        description,
+        memberId: contributionMemberId || undefined
       });
       setMessage("Manual contribution recorded.");
       await loadTreasury();
@@ -131,7 +150,7 @@ export function TreasuryPage() {
       />
       <div className="metric-grid">
         <article className="metric-card">
-          <span>Wallet Balance</span>
+          <span>My Wallet Balance</span>
           <strong>{formatMoney(summary?.wallet.balanceRupees || 0)}</strong>
         </article>
         <article className="metric-card">
@@ -149,6 +168,17 @@ export function TreasuryPage() {
         {canRecordManualContribution ? (
           <form className="form-grid" onSubmit={recordContribution}>
             <label>
+              Credit Wallet
+              <select value={contributionMemberId} onChange={(event) => setContributionMemberId(event.target.value)}>
+                <option value="">Current signed-in member</option>
+                {members.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {member.displayName} ({formatRole(member.role)})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               Amount
               <input value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} type="number" min="1" />
             </label>
@@ -165,12 +195,18 @@ export function TreasuryPage() {
           <button type="button" className="secondary-button" onClick={loadTreasury}>
             Load Treasury
           </button>
+          {canRecordManualContribution ? (
+            <button type="button" className="secondary-button" onClick={loadMembers}>
+              Load Members
+            </button>
+          ) : null}
         </div>
         {message ? <p className="form-message">{message}</p> : null}
       </section>
 
       <section className="content-band spaced-band">
         <h2>Allocate To Mission</h2>
+        <p className="section-note">Allocations spend the wallet of the current signed-in member shown in the sidebar.</p>
         {canAllocateFunds ? (
           <form className="form-grid" onSubmit={allocateToProject}>
             <label>

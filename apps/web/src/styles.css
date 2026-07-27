@@ -376,6 +376,11 @@ select {
   margin-top: 16px;
 }
 
+.section-note {
+  color: #4e5b53;
+  margin: 8px 0 0;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
