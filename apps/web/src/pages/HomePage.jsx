@@ -1,6 +1,7 @@
-import { ArrowRight, CheckCircle2, Landmark, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { ArrowRight, BookOpenText, CheckCircle2, HeartHandshake, Images, Landmark, Network, Search, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import familyHouse from "../assets/family-house.jpeg";
 import familyPhoto from "../assets/family-photo.jpeg";
 import nyasaLogo from "../assets/nyasa-logo.png";
 
@@ -38,6 +39,39 @@ const walkthrough = {
   }
 };
 
+const futureSections = [
+  {
+    title: "Family Gallery",
+    text: "A shared album for gatherings, homes, ceremonies, documents, and memories.",
+    icon: Images
+  },
+  {
+    title: "Family Tree",
+    text: "A visual lineage map connecting generations, branches, spouses, and children.",
+    icon: Network
+  },
+  {
+    title: "Family Research",
+    text: "A place to preserve interviews, old records, migration stories, and ancestral notes.",
+    icon: Search
+  },
+  {
+    title: "Social Works",
+    text: "Community initiatives funded and tracked by the trust with transparent progress.",
+    icon: HeartHandshake
+  },
+  {
+    title: "Legacy Library",
+    text: "Minutes, values, rituals, recipes, stories, and decisions kept for future members.",
+    icon: BookOpenText
+  },
+  {
+    title: "Trust Governance",
+    text: "Roles, permissions, approvals, audits, and mission ownership as the family grows.",
+    icon: ShieldCheck
+  }
+];
+
 export function HomePage() {
   const [activeView, setActiveView] = useState("member");
   const active = walkthrough[activeView];
@@ -53,6 +87,9 @@ export function HomePage() {
           </div>
         </div>
         <div className="home-nav-actions">
+          <a href="#gallery">Gallery</a>
+          <a href="#future">Coming next</a>
+          <a href="#kosh">Kosh</a>
           <Link to="/login">Sign in</Link>
           <Link className="home-primary-link" to="/dashboard">
             Open portal
@@ -121,6 +158,29 @@ export function HomePage() {
         </div>
       </section>
 
+      <section className="home-section family-gallery-section" id="gallery">
+        <div className="home-section-heading">
+          <span>Family gallery</span>
+          <h2>Start with the people and places that make the trust real.</h2>
+        </div>
+        <div className="family-gallery-grid">
+          <figure>
+            <img src={familyPhoto} alt="Nyasa family gathered together" />
+            <figcaption>
+              <strong>Family gathering</strong>
+              <span>Shared memories, milestones, and celebrations.</span>
+            </figcaption>
+          </figure>
+          <figure>
+            <img src={familyHouse} alt="Family house at night" />
+            <figcaption>
+              <strong>Ancestral place</strong>
+              <span>Homes, assets, missions, renovation progress, and records.</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
       <section className="home-section">
         <div className="home-section-heading">
           <span>What can launch today</span>
@@ -137,7 +197,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="home-section interactive-section">
+      <section className="home-section interactive-section" id="kosh">
         <div>
           <span>Interactive family view</span>
           <h2>Show every relative what they can do.</h2>
@@ -160,6 +220,26 @@ export function HomePage() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      <section className="home-section" id="future">
+        <div className="home-section-heading">
+          <span>Coming next</span>
+          <h2>The menu can grow into a complete family knowledge and impact system.</h2>
+        </div>
+        <div className="future-grid">
+          {futureSections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <article key={section.title}>
+                <Icon size={22} />
+                <h3>{section.title}</h3>
+                <p>{section.text}</p>
+                <span>Planned</span>
+              </article>
+            );
+          })}
         </div>
       </section>
 
