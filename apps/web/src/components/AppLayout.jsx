@@ -1,11 +1,12 @@
-import { Archive, GitBranch, Home, Landmark, Users } from "lucide-react";
+import { Archive, GitBranch, Home, Landmark, UserCircle, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/family", label: "Family", icon: Users },
+  { to: "/profile", label: "Profile", icon: UserCircle },
   { to: "/treasury", label: "Kosh", icon: Landmark },
   { to: "/projects", label: "Missions", icon: GitBranch },
   { to: "/members", label: "Members", icon: Archive }

@@ -69,6 +69,14 @@ memberRoutes.get(
   })
 );
 
+memberRoutes.get(
+  "/family/:familyId/me",
+  requireFamilyPermission(permissions.workspaceView),
+  asyncHandler(async (req, res) => {
+    res.json({ data: req.member });
+  })
+);
+
 memberRoutes.patch(
   "/family/:familyId/me",
   requireFamilyPermission(permissions.workspaceView),

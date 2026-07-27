@@ -20,6 +20,7 @@ Create the technical foundation for Nyasa:
 - `GET /api/families`
 - `GET /api/families/:familyId/dashboard`
 - `GET /api/members/family/:familyId`
+- `GET /api/members/family/:familyId/me`
 - `PATCH /api/members/family/:familyId/me`
 - `PATCH /api/members/family/:familyId/:memberId/role`
 - `PATCH /api/members/family/:familyId/:memberId/status`
@@ -55,6 +56,8 @@ Project financial summaries expose target, allocated, spent, budget gap, and ava
 Expense bills can be stored locally in development or in AWS S3 with `STORAGE_DRIVER=s3`. The API streams S3 downloads through authenticated routes so the bucket can remain private.
 
 Member wallet top-ups use Razorpay Checkout. Wallet ledger credits are posted only after Razorpay signature verification succeeds.
+
+The web app includes a public family-facing homepage at `/`, an internal dashboard at `/dashboard`, and a self-service profile page at `/profile` where members can update their own bio, city, country, and profession.
 
 ## Next Engineering Tasks
 

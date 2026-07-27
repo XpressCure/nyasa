@@ -16,7 +16,7 @@ export function LoginPage() {
       const response = await apiPost("/auth/dev-login", { fullName, email });
       localStorage.setItem("nyasa_token", response.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(response.data.user));
-      navigate("/");
+      navigate("/dashboard");
     } catch (apiError) {
       setError(apiError.message);
     }
