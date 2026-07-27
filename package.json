@@ -11,6 +11,9 @@
     "dev": "npm run dev --workspaces",
     "dev:api": "npm run dev -w apps/api",
     "dev:web": "npm run dev -w apps/web",
+    "db:up": "docker compose up -d mongo",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f mongo",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
     "test": "npm run test --workspaces"

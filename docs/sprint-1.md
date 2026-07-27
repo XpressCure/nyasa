@@ -38,6 +38,7 @@ Run these from the repository root in a fresh VS Code terminal:
 
 ```bash
 npm install
+npm run db:up
 npm run build
 npm run lint
 npm run dev

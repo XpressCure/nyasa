@@ -36,6 +36,12 @@ Install dependencies:
 npm install
 ```
 
+Start MongoDB with Docker:
+
+```bash
+npm run db:up
+```
+
 Create environment files:
 
 ```bash
@@ -49,6 +55,16 @@ Run both apps:
 npm run dev
 ```
 
+For daily development, running API and web in separate terminals is clearer:
+
+```bash
+npm run dev:api
+```
+
+```bash
+npm run dev:web
+```
+
 Run only backend:
 
 ```bash
@@ -59,6 +75,24 @@ Run only frontend:
 
 ```bash
 npm run dev:web
+```
+
+Open the frontend at:
+
+```text
+http://localhost:5173
+```
+
+The API runs at:
+
+```text
+http://localhost:4000
+```
+
+Health check:
+
+```text
+http://localhost:4000/api/health
 ```
 
 If you upgrade Node.js while VS Code or a terminal is open, restart VS Code and open a fresh terminal before running npm commands.
