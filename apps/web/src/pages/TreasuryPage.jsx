@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
+import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 function formatMoney(amountRupees = 0) {
   return new Intl.NumberFormat("en-IN", {
@@ -23,7 +24,16 @@ export function TreasuryPage() {
   const [allocationAmountRupees, setAllocationAmountRupees] = useState("1000");
   const [allocationProjectId, setAllocationProjectId] = useState("");
   const [allocationDescription, setAllocationDescription] = useState("Allocated from Kosh wallet");
+  const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
+  const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
+  const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
+
+  useEffect(() => {
+    loadCurrentSession()
+      .then(setSession)
+      .catch((error) => setMessage(error.message));
+  }, []);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -136,55 +146,67 @@ export function TreasuryPage() {
 
       <section className="content-band">
         <h2>Manual Contribution</h2>
-        <form className="form-grid" onSubmit={recordContribution}>
-          <label>
-            Amount
-            <input value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} type="number" min="1" />
-          </label>
-          <label>
-            Description
-            <input value={description} onChange={(event) => setDescription(event.target.value)} />
-          </label>
-          <button type="submit">Record Contribution</button>
+        {canRecordManualContribution ? (
+          <form className="form-grid" onSubmit={recordContribution}>
+            <label>
+              Amount
+              <input value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} type="number" min="1" />
+            </label>
+            <label>
+              Description
+              <input value={description} onChange={(event) => setDescription(event.target.value)} />
+            </label>
+            <button type="submit">Record Contribution</button>
+          </form>
+        ) : (
+          <p>Your current role can allocate wallet funds but cannot record manual contributions.</p>
+        )}
+        <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadTreasury}>
             Load Treasury
           </button>
-        </form>
+        </div>
         {message ? <p className="form-message">{message}</p> : null}
       </section>
 
       <section className="content-band spaced-band">
         <h2>Allocate To Mission</h2>
-        <form className="form-grid" onSubmit={allocateToProject}>
-          <label>
-            Mission
-            <select value={allocationProjectId} onChange={(event) => setAllocationProjectId(event.target.value)}>
-              <option value="">Select mission</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.title} ({formatMoney(project.allocatedRupees)} allocated)
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Amount
-            <input
-              value={allocationAmountRupees}
-              onChange={(event) => setAllocationAmountRupees(event.target.value)}
-              type="number"
-              min="1"
-            />
-          </label>
-          <label>
-            Description
-            <input value={allocationDescription} onChange={(event) => setAllocationDescription(event.target.value)} />
-          </label>
-          <button type="submit">Allocate Funds</button>
+        {canAllocateFunds ? (
+          <form className="form-grid" onSubmit={allocateToProject}>
+            <label>
+              Mission
+              <select value={allocationProjectId} onChange={(event) => setAllocationProjectId(event.target.value)}>
+                <option value="">Select mission</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.title} ({formatMoney(project.allocatedRupees)} allocated)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Amount
+              <input
+                value={allocationAmountRupees}
+                onChange={(event) => setAllocationAmountRupees(event.target.value)}
+                type="number"
+                min="1"
+              />
+            </label>
+            <label>
+              Description
+              <input value={allocationDescription} onChange={(event) => setAllocationDescription(event.target.value)} />
+            </label>
+            <button type="submit">Allocate Funds</button>
+          </form>
+        ) : (
+          <p>Your current role cannot allocate funds.</p>
+        )}
+        <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadProjects}>
             Load Missions
           </button>
-        </form>
+        </div>
       </section>
 
       <section className="content-band spaced-band">

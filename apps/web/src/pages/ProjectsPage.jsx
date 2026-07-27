@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPatch, apiPost } from "../lib/api.js";
+import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 function formatMoney(amountRupees = 0) {
   return new Intl.NumberFormat("en-IN", {
@@ -23,7 +24,16 @@ export function ProjectsPage() {
   const [category, setCategory] = useState("renovation");
   const [targetBudgetRupees, setTargetBudgetRupees] = useState("800000");
   const [projectLeadMemberId, setProjectLeadMemberId] = useState("");
+  const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
+  const canCreateProjects = hasPermission(session, "projects.create");
+  const canManageProjects = hasPermission(session, "projects.manage");
+
+  useEffect(() => {
+    loadCurrentSession()
+      .then(setSession)
+      .catch((error) => setMessage(error.message));
+  }, []);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -111,54 +121,60 @@ export function ProjectsPage() {
       />
       <section className="content-band">
         <h2>Create Mission</h2>
-        <form className="form-grid" onSubmit={createProject}>
-          <label>
-            Title
-            <input value={title} onChange={(event) => setTitle(event.target.value)} />
-          </label>
-          <label>
-            Slug
-            <input value={slug} onChange={(event) => setSlug(event.target.value)} />
-          </label>
-          <label>
-            Category
-            <select value={category} onChange={(event) => setCategory(event.target.value)}>
-              <option value="renovation">Renovation</option>
-              <option value="education">Education</option>
-              <option value="health">Health</option>
-              <option value="event">Event</option>
-              <option value="asset_maintenance">Asset Maintenance</option>
-              <option value="community">Community</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label>
-            Target Budget
-            <input value={targetBudgetRupees} onChange={(event) => setTargetBudgetRupees(event.target.value)} type="number" min="0" />
-          </label>
-          <label>
-            Project Lead
-            <select value={projectLeadMemberId} onChange={(event) => setProjectLeadMemberId(event.target.value)}>
-              <option value="">Select lead</option>
-              {members.map((member) => (
-                <option key={member._id} value={member._id}>
-                  {member.displayName} ({formatLabel(member.role)})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Description
-            <input value={description} onChange={(event) => setDescription(event.target.value)} />
-          </label>
-          <button type="submit">Create Mission</button>
+        {canCreateProjects ? (
+          <form className="form-grid" onSubmit={createProject}>
+            <label>
+              Title
+              <input value={title} onChange={(event) => setTitle(event.target.value)} />
+            </label>
+            <label>
+              Slug
+              <input value={slug} onChange={(event) => setSlug(event.target.value)} />
+            </label>
+            <label>
+              Category
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="renovation">Renovation</option>
+                <option value="education">Education</option>
+                <option value="health">Health</option>
+                <option value="event">Event</option>
+                <option value="asset_maintenance">Asset Maintenance</option>
+                <option value="community">Community</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label>
+              Target Budget
+              <input value={targetBudgetRupees} onChange={(event) => setTargetBudgetRupees(event.target.value)} type="number" min="0" />
+            </label>
+            <label>
+              Project Lead
+              <select value={projectLeadMemberId} onChange={(event) => setProjectLeadMemberId(event.target.value)}>
+                <option value="">Select lead</option>
+                {members.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {member.displayName} ({formatLabel(member.role)})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Description
+              <input value={description} onChange={(event) => setDescription(event.target.value)} />
+            </label>
+            <button type="submit">Create Mission</button>
+          </form>
+        ) : (
+          <p>Your current role can view missions but cannot create them.</p>
+        )}
+        <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadProjects}>
             Load Missions
           </button>
           <button type="button" className="secondary-button" onClick={loadMembers}>
             Load Members
           </button>
-        </form>
+        </div>
         {message ? <p className="form-message">{message}</p> : null}
       </section>
 
@@ -184,23 +200,25 @@ export function ProjectsPage() {
                 <div className="progress-track">
                   <div style={{ width: `${project.completionPercent}%` }} />
                 </div>
-                <div className="row-actions">
-                  <select value={project.status} onChange={(event) => updateProject(project.id, { status: event.target.value })}>
-                    <option value="draft">Draft</option>
-                    <option value="proposed">Proposed</option>
-                    <option value="active">Active</option>
-                    <option value="paused">Paused</option>
-                    <option value="completed">Completed</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => updateProject(project.id, { completionPercent: Math.min(project.completionPercent + 10, 100) })}
-                  >
-                    +10%
-                  </button>
-                </div>
+                {canManageProjects ? (
+                  <div className="row-actions">
+                    <select value={project.status} onChange={(event) => updateProject(project.id, { status: event.target.value })}>
+                      <option value="draft">Draft</option>
+                      <option value="proposed">Proposed</option>
+                      <option value="active">Active</option>
+                      <option value="paused">Paused</option>
+                      <option value="completed">Completed</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => updateProject(project.id, { completionPercent: Math.min(project.completionPercent + 10, 100) })}
+                    >
+                      +10%
+                    </button>
+                  </div>
+                ) : null}
               </article>
             ))}
           </div>

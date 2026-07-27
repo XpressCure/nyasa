@@ -1,6 +1,7 @@
 import { Archive, GitBranch, Home, Landmark, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
+import { SessionPanel } from "./SessionPanel.jsx";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: Home },
@@ -32,6 +33,7 @@ export function AppLayout() {
             );
           })}
         </nav>
+        <SessionPanel />
         <ApiStatus />
       </aside>
       <main className="main-panel">
