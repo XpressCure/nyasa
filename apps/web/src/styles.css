@@ -682,6 +682,21 @@ select {
   margin-top: 28px;
 }
 
+.village-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.village-pill-row span {
+  background: #f0eadc;
+  border: 1px solid #e2ded3;
+  border-radius: 999px;
+  color: #34513f;
+  padding: 8px 12px;
+}
+
 .home-cta {
   align-items: center;
   display: inline-flex;
@@ -810,6 +825,56 @@ select {
   font-size: 36px;
   line-height: 1.1;
   margin: 8px 0 22px;
+}
+
+.village-section {
+  align-items: center;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.7fr);
+}
+
+.village-story > span {
+  align-items: center;
+  color: #34513f;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.village-story h2 {
+  max-width: 760px;
+}
+
+.village-story p {
+  color: #4e5b53;
+  font-size: 18px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 780px;
+}
+
+.village-focus-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.village-focus-grid div {
+  background: #ffffff;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(35, 32, 26, 0.06);
+  padding: 16px;
+}
+
+.village-focus-grid strong,
+.village-focus-grid span {
+  display: block;
+}
+
+.village-focus-grid span {
+  color: #4e5b53;
+  line-height: 1.5;
+  margin-top: 6px;
 }
 
 .family-gallery-grid {
@@ -994,6 +1059,7 @@ select {
 
   .home-hero,
   .interactive-section,
+  .village-section,
   .launch-grid,
   .home-band,
   .future-grid,

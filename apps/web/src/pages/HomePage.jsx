@@ -1,4 +1,17 @@
-import { ArrowRight, BookOpenText, CheckCircle2, HeartHandshake, Images, Landmark, Network, Search, ShieldCheck, Sparkles, Users } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpenText,
+  CheckCircle2,
+  HeartHandshake,
+  Home,
+  Images,
+  Landmark,
+  MapPin,
+  Network,
+  Search,
+  ShieldCheck,
+  Users
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import familyHouse from "../assets/family-house.jpeg";
@@ -7,67 +20,67 @@ import nyasaLogo from "../assets/nyasa-logo.png";
 
 const launchItems = [
   {
-    title: "Invite family",
-    text: "Owners can create invite links and bring members into the family workspace."
+    title: "Invite the extended family",
+    text: "Owners can bring relatives into one Alahdadpur-rooted family workspace with clear roles."
   },
   {
-    title: "Member profiles",
-    text: "Members can sign in with name and phone, accept invites, and update their own bio, city, profession, and story."
+    title: "Member profiles and stories",
+    text: "Members can sign in with name and phone, then add bio, city, profession, and their family connection."
   },
   {
-    title: "Kosh and missions",
-    text: "Members top up their wallet, allocate funds to missions, and track contribution progress."
+    title: "Village Kosh and missions",
+    text: "Members top up their wallet, allocate funds to Alahdadpur missions, and track contribution progress."
   },
   {
-    title: "Expenses with proof",
-    text: "Funded missions can collect expenses, attach bills, and route approvals through owner/admin review."
+    title: "Transparent work records",
+    text: "Funded village work can collect expenses, attach bills, and route approvals through owner/admin review."
   }
 ];
 
 const walkthrough = {
   member: {
     title: "For family members",
-    points: ["Sign in with name and phone", "Accept family invite", "Update profile and bio", "Allocate to missions"]
+    points: ["Sign in with name and phone", "Accept family invite", "Update profile and bio", "Contribute to Alahdadpur missions"]
   },
   owner: {
     title: "For owners",
-    points: ["Create family workspace", "Invite members", "Create missions", "Approve expenses"]
+    points: ["Create family workspace", "Invite members", "Create village missions", "Approve expenses"]
   },
   launch: {
     title: "Launch today",
-    points: ["Family intro homepage", "Invite-only onboarding", "Profile updates", "Mission funding demo"]
+    points: ["Alahdadpur intro homepage", "Invite-only onboarding", "Profile updates", "Village mission funding demo"]
   }
 };
 
 const futureSections = [
   {
     title: "Family Gallery",
-    text: "A shared album for gatherings, homes, ceremonies, documents, and memories.",
+    text: "A shared album for Alahdadpur gatherings, homes, ceremonies, documents, and memories.",
     icon: Images
   },
   {
     title: "Family Tree",
-    text: "A visual lineage map connecting generations, branches, spouses, and children.",
+    text: "A visual lineage map connecting generations, branches, spouses, and children back to village roots.",
     icon: Network
   },
   {
     title: "Family Research",
-    text: "A place to preserve interviews, old records, migration stories, and ancestral notes.",
+    text: "A place to preserve interviews, old records, migration stories, land notes, and ancestral memories.",
     icon: Search
   },
   {
     title: "Social Works",
-    text: "Community initiatives funded and tracked by the trust with transparent progress.",
+    text: "Village initiatives funded and tracked by the trust with transparent progress.",
     icon: HeartHandshake
   },
   {
     title: "Legacy Library",
-    text: "Minutes, values, rituals, recipes, stories, and decisions kept for future members.",
+    text: "Minutes, values, rituals, recipes, stories, and decisions kept for future generations.",
     icon: BookOpenText
   },
   {
     title: "Trust Governance",
-    text: "Roles, permissions, approvals, audits, and mission ownership as the family grows.",
+    text: "Roles, permissions, approvals, audits, and mission ownership as village work grows.",
     icon: ShieldCheck
   }
 ];
@@ -88,6 +101,7 @@ export function HomePage() {
         </div>
         <div className="home-nav-actions">
           <a href="#gallery">Gallery</a>
+          <a href="#village">Alahdadpur</a>
           <a href="#future">Coming next</a>
           <a href="#kosh">Kosh</a>
           <Link to="/login">Sign in</Link>
@@ -101,14 +115,19 @@ export function HomePage() {
         <div className="home-hero-copy">
           <img className="home-hero-logo" src={nyasaLogo} alt="Nyasa Trust logo" />
           <span className="home-kicker">
-            <Sparkles size={16} />
-            Private family operating system
+            <MapPin size={16} />
+            Rooted in Alahdadpur
           </span>
-          <h1>Ek parivar. Ek vishwas. Ek virasat. Ek manch.</h1>
+          <h1>Ek gaon. Ek parivar. Ek vishwas. Ek virasat.</h1>
           <p>
-            Nyasa Trust brings family members together to maintain profiles, pool money into Kosh, fund missions, approve expenses, and preserve a
-            shared record of decisions and legacy.
+            Nyasa Trust is being built around Alahdadpur: a shared family platform to preserve our roots, coordinate village missions, pool money
+            into Kosh, and keep a transparent record of work, decisions, and legacy.
           </p>
+          <div className="village-pill-row">
+            <span>Alahdadpur</span>
+            <span>Family trust</span>
+            <span>Village missions</span>
+          </div>
           <div className="home-actions">
             <Link className="home-cta" to="/login">
               Sign in and fill bio
@@ -123,7 +142,7 @@ export function HomePage() {
         <div className="family-hero-card" aria-label="Nyasa family photo and portal preview">
           <img src={familyPhoto} alt="Nyasa family gathered together" />
           <div className="family-hero-overlay">
-            <span>The Singh Family Trust</span>
+            <span>Alahdadpur Family Trust</span>
             <strong>Ready to begin</strong>
           </div>
           <div className="portal-preview">
@@ -143,8 +162,8 @@ export function HomePage() {
             </div>
             <div className="preview-mission">
               <div>
-                <strong>Ancestral House Renovation</strong>
-                <span>Funded by 14 members</span>
+                <strong>Alahdadpur Ancestral House Mission</strong>
+                <span>Funded by 14 family members</span>
               </div>
               <div className="preview-progress">
                 <span style={{ width: "82%" }} />
@@ -158,9 +177,37 @@ export function HomePage() {
         </div>
       </section>
 
+      <section className="home-section village-section" id="village">
+        <div className="village-story">
+          <span>
+            <Home size={18} />
+            Alahdadpur first
+          </span>
+          <h2>A portal for the village we come from and the work we want to do there.</h2>
+          <p>
+            The first version can introduce the family, gather member bios, show the Alahdadpur gallery, and demonstrate how missions like renovation,
+            social work, research, and village documentation will be funded and governed.
+          </p>
+        </div>
+        <div className="village-focus-grid">
+          <div>
+            <strong>Preserve</strong>
+            <span>Family stories, old records, photos, and village memory.</span>
+          </div>
+          <div>
+            <strong>Contribute</strong>
+            <span>Members add to wallet and allocate funds to specific village missions.</span>
+          </div>
+          <div>
+            <strong>Implement</strong>
+            <span>Owners create missions, track budgets, review bills, and show progress.</span>
+          </div>
+        </div>
+      </section>
+
       <section className="home-section family-gallery-section" id="gallery">
         <div className="home-section-heading">
-          <span>Family gallery</span>
+          <span>Alahdadpur gallery</span>
           <h2>Start with the people and places that make the trust real.</h2>
         </div>
         <div className="family-gallery-grid">
@@ -174,8 +221,8 @@ export function HomePage() {
           <figure>
             <img src={familyHouse} alt="Family house at night" />
             <figcaption>
-              <strong>Ancestral place</strong>
-              <span>Homes, assets, missions, renovation progress, and records.</span>
+              <strong>Alahdadpur ancestral place</strong>
+              <span>Homes, assets, missions, renovation progress, and village records.</span>
             </figcaption>
           </figure>
         </div>
@@ -184,7 +231,7 @@ export function HomePage() {
       <section className="home-section">
         <div className="home-section-heading">
           <span>What can launch today</span>
-          <h2>A useful first release, not just a brochure.</h2>
+          <h2>A useful first release for the Alahdadpur family circle.</h2>
         </div>
         <div className="launch-grid">
           {launchItems.map((item) => (
@@ -201,7 +248,7 @@ export function HomePage() {
         <div>
           <span>Interactive family view</span>
           <h2>Show every relative what they can do.</h2>
-          <p>Use these modes during a family demo to explain the portal without opening every admin page.</p>
+          <p>Use these modes during a family demo to explain how Alahdadpur missions, member profiles, and Kosh contributions will work.</p>
           <div className="segmented-control">
             {Object.keys(walkthrough).map((key) => (
               <button className={activeView === key ? "active" : ""} key={key} type="button" onClick={() => setActiveView(key)}>
@@ -226,7 +273,7 @@ export function HomePage() {
       <section className="home-section" id="future">
         <div className="home-section-heading">
           <span>Coming next</span>
-          <h2>The menu can grow into a complete family knowledge and impact system.</h2>
+          <h2>The menu can grow into a complete Alahdadpur knowledge and impact system.</h2>
         </div>
         <div className="future-grid">
           {futureSections.map((section) => {
@@ -257,7 +304,7 @@ export function HomePage() {
         <div>
           <Landmark size={24} />
           <strong>Can money flow be demoed?</strong>
-          <p>Yes. Wallet top-up, mission allocation, expenses, bills, and approvals are ready for a controlled demo.</p>
+          <p>Yes. Wallet top-up, mission allocation, expenses, bills, and approvals are ready for a controlled Alahdadpur mission demo.</p>
         </div>
       </section>
     </main>
