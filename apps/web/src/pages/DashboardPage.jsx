@@ -61,7 +61,7 @@ export function DashboardPage() {
     try {
       const familyId = await getSelectedFamilyId();
       if (!familyId) {
-        setMessage("Join or create the Alahdadpur family workspace first.");
+        setMessage("Join or create the Alahdadpur Kul workspace first.");
         return;
       }
 
@@ -85,7 +85,7 @@ export function DashboardPage() {
       await apiPost(`/family-hub/family/${familyId}/calendar-events`, calendarForm);
       setCalendarForm({ title: "", eventType: "puja", startsAt: "", location: "", description: "" });
       await loadDashboard();
-      setMessage("Family calendar event added.");
+      setMessage("Kul Panchang event added.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -113,10 +113,10 @@ export function DashboardPage() {
   const metrics = dashboard?.metrics;
   const ageGroups = metrics?.ageGroups?.groups || [];
   const stats = [
-    ["Family Members", metrics?.memberCount ?? 0],
-    ["Active Missions", metrics?.activeProjects ?? 0],
-    ["Completed Missions", metrics?.completedProjects ?? 0],
-    ["Family Kosh", formatMoney(metrics?.treasuryBalance)],
+    ["Kul Sadasya", metrics?.memberCount ?? 0],
+    ["Active Sankalp", metrics?.activeProjects ?? 0],
+    ["Completed Sankalp", metrics?.completedProjects ?? 0],
+    ["Kul Kosh", formatMoney(metrics?.treasuryBalance)],
     ["This Year", formatMoney(metrics?.contributionThisYear)]
   ];
 
@@ -124,8 +124,8 @@ export function DashboardPage() {
     <section>
       <PageHeader
         eyebrow={dashboard?.family?.name || "Nyasa Trust - Alahdadpur"}
-        title="Dashboard"
-        description="A live overview of the Alahdadpur family workspace, Kosh, missions, decisions, and legacy."
+        title="Darshan"
+        description="A live overview of the Alahdadpur Kul workspace, Kosh, Sankalp, decisions, and legacy."
       />
       <div className="metric-grid">
         {stats.map(([label, value]) => (
@@ -138,8 +138,8 @@ export function DashboardPage() {
       <section className="content-band age-band">
         <div className="tree-register-header">
           <div>
-            <h2>Age Groups</h2>
-            <p className="section-note">Living members grouped by date of birth. Members without DOB are shown separately.</p>
+            <h2>Age Groups / आयु वर्ग</h2>
+            <p className="section-note">Living Sadasya grouped by date of birth. Sadasya without DOB are shown separately.</p>
           </div>
           <span>{metrics?.ageGroups?.unknownDateOfBirth ?? 0} DOB pending</span>
         </div>
@@ -160,7 +160,7 @@ export function DashboardPage() {
       <section className="dashboard-grid">
         <article className="content-band">
           <h2>Celebrations</h2>
-          <p className="section-note">Birthdays and anniversaries appear one week in advance. Multiple family events can share the same date.</p>
+          <p className="section-note">Birthdays and anniversaries appear one week in advance. Multiple Kul events can share the same date.</p>
           <div className="stack-list">
             {hub?.celebrations?.length ? (
               hub.celebrations.map((item) => (
@@ -176,10 +176,10 @@ export function DashboardPage() {
         </article>
 
         <article className="content-band">
-          <h2>Family Snapshot</h2>
+          <h2>Kul Snapshot</h2>
           <div className="snapshot-grid">
             <div>
-              <span>Profiles</span>
+              <span>Parichay</span>
               <strong>{hub?.snapshot?.memberCount ?? metrics?.memberCount ?? 0}</strong>
             </div>
             <div>
@@ -219,7 +219,7 @@ export function DashboardPage() {
               ) : null}
             </div>
           ) : (
-            <p className="empty-copy">Add one article, speech, memory, or video for the family this week.</p>
+            <p className="empty-copy">Add one article, speech, memory, or video for the Kul this week.</p>
           )}
           <form className="form-grid compact-form" onSubmit={saveWeeklyFeature}>
             <label>
@@ -248,11 +248,11 @@ export function DashboardPage() {
         <article className="content-band">
           <div className="tree-register-header">
             <div>
-              <h2>Event Calendar</h2>
-              <p className="section-note">Any member can add upcoming puja, fast, gathering, or family date.</p>
+              <h2>Panchang</h2>
+              <p className="section-note">Any Sadasya can add upcoming puja, fast, gathering, or Kul date.</p>
             </div>
             <Link className="secondary-button" to="/calendar">
-              Open Calendar
+              Open Panchang
             </Link>
           </div>
           <div className="stack-list">
@@ -264,7 +264,7 @@ export function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="empty-copy">No upcoming family calendar events yet.</p>
+              <p className="empty-copy">No upcoming Kul Panchang events yet.</p>
             )}
           </div>
           <form className="form-grid compact-form" onSubmit={saveCalendarEvent}>
@@ -295,25 +295,25 @@ export function DashboardPage() {
               Notes
               <textarea value={calendarForm.description} onChange={(event) => setCalendarForm((current) => ({ ...current, description: event.target.value }))} rows="3" />
             </label>
-            <button type="submit">Add Calendar Event</button>
+            <button type="submit">Add Panchang Event</button>
           </form>
         </article>
       </section>
       <section className="content-band">
         <h2>Launch Workspace</h2>
         <p>
-          The live database is prepared with Alahdadpur family profile, Kosh, and launch missions. Invite family members and ask them to complete
-          their profile first.
+          The live database is prepared with Alahdadpur Kul Parichay, Kosh, and launch Sankalp. Invite family members and ask them to complete
+          their Parichay first.
         </p>
         <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadDashboard}>
-            Refresh Dashboard
+            Refresh Darshan
           </button>
           <Link className="secondary-button" to="/profile">
-            Complete Profile
+            Complete Parichay
           </Link>
           <Link className="secondary-button" to="/projects">
-            View Missions
+            View Sankalp
           </Link>
         </div>
         {message ? <p className="form-message">{message}</p> : null}

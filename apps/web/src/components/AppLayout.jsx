@@ -5,24 +5,24 @@ import { SessionPanel } from "./SessionPanel.jsx";
 
 const navSections = [
   {
-    title: "Workspace",
+    title: "कार्यस्थल",
     items: [
-      { to: "/dashboard", label: "Dashboard", icon: Home },
-      { to: "/calendar", label: "Calendar", icon: CalendarDays },
-      { to: "/family", label: "Family", icon: Users },
-      { to: "/profile", label: "Profile", icon: UserCircle },
+      { to: "/dashboard", label: "Darshan", icon: Home },
+      { to: "/calendar", label: "Panchang", icon: CalendarDays },
+      { to: "/family", label: "Kul", icon: Users },
+      { to: "/profile", label: "Parichay", icon: UserCircle },
       { to: "/treasury", label: "Kosh", icon: Landmark },
-      { to: "/projects", label: "Missions", icon: GitBranch },
-      { to: "/members", label: "Members", icon: Archive }
+      { to: "/projects", label: "Sankalp", icon: GitBranch },
+      { to: "/members", label: "Sadasya", icon: Archive }
     ]
   },
   {
-    title: "Coming Next",
+    title: "आगे आने वाला",
     items: [
-      { label: "Family Gallery", icon: Images, planned: true },
-      { label: "Family Research", icon: Search, planned: true },
-      { label: "Social Works", icon: HeartHandshake, planned: true },
-      { label: "Legacy Library", icon: BookOpenText, planned: true }
+      { label: "Kul Gallery", icon: Images, planned: true },
+      { label: "Kul Research", icon: Search, planned: true },
+      { label: "Seva Works", icon: HeartHandshake, planned: true },
+      { label: "Virasat Library", icon: BookOpenText, planned: true }
     ]
   }
 ];
@@ -35,7 +35,7 @@ export function AppLayout() {
           <span className="brand-mark">N</span>
           <div>
             <strong>Nyasa</strong>
-            <small>Family OS</small>
+            <small>Kul OS</small>
           </div>
         </div>
         <nav className="nav-list">

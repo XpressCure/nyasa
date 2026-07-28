@@ -38,7 +38,7 @@ export function TreasuryPage() {
   const [selfContributionAmountRupees, setSelfContributionAmountRupees] = useState("5000");
   const [selfContributionDescription, setSelfContributionDescription] = useState("Added to my Kosh wallet");
   const [amountRupees, setAmountRupees] = useState("5000");
-  const [description, setDescription] = useState("Manual family contribution");
+  const [description, setDescription] = useState("Manual Kul contribution");
   const [contributionMemberId, setContributionMemberId] = useState("");
   const [allocationAmountRupees, setAllocationAmountRupees] = useState("1000");
   const [allocationProjectId, setAllocationProjectId] = useState("");
@@ -62,7 +62,7 @@ export function TreasuryPage() {
   async function loadTreasury() {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -73,7 +73,7 @@ export function TreasuryPage() {
       ]);
       setSummary(summaryResponse.data);
       setTransactions(transactionResponse.data);
-      setMessage("Treasury loaded.");
+      setMessage("Kosh loaded.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -82,14 +82,14 @@ export function TreasuryPage() {
   async function loadProjects() {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
     try {
       const response = await apiGet(`/projects/family/${familyId}`);
       setProjects(response.data);
-      setMessage(response.data.length ? "Loaded missions for allocation." : "Create a mission before allocating funds.");
+      setMessage(response.data.length ? "Loaded Sankalp for allocation." : "Create a Sankalp before allocating funds.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -98,7 +98,7 @@ export function TreasuryPage() {
   async function loadMembers() {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -115,7 +115,7 @@ export function TreasuryPage() {
     event.preventDefault();
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -136,7 +136,7 @@ export function TreasuryPage() {
     event.preventDefault();
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -201,7 +201,7 @@ export function TreasuryPage() {
     }
 
     if (!allocationProjectId) {
-      setMessage("Choose a mission to allocate funds.");
+      setMessage("Choose a Sankalp to allocate funds.");
       return;
     }
 
@@ -211,7 +211,7 @@ export function TreasuryPage() {
         amountRupees: allocationAmountRupees,
         description: allocationDescription
       });
-      setMessage("Funds allocated to mission.");
+      setMessage("Funds allocated to Sankalp.");
       await loadTreasury();
       await loadProjects();
     } catch (error) {
@@ -223,8 +223,8 @@ export function TreasuryPage() {
     <section>
       <PageHeader
         eyebrow="Kosh"
-        title="Treasury"
-        description="Contribute once, then allocate funds across family missions."
+        title="Kosh"
+        description="Contribute once, then allocate funds across Kul Sankalp."
       />
       <div className="metric-grid">
         <article className="metric-card">
@@ -232,7 +232,7 @@ export function TreasuryPage() {
           <strong>{formatMoney(summary?.wallet.balanceRupees || 0)}</strong>
         </article>
         <article className="metric-card">
-          <span>Available Treasury</span>
+          <span>Available Kosh</span>
           <strong>{formatMoney(summary?.treasury.balanceRupees || 0)}</strong>
         </article>
         <article className="metric-card">
@@ -243,7 +243,7 @@ export function TreasuryPage() {
 
       <section className="content-band">
         <h2>Add To My Wallet</h2>
-        <p className="section-note">Members add money through Razorpay first. After verification, wallet balance can be allocated to a mission.</p>
+        <p className="section-note">Sadasya add money through Razorpay first. After verification, wallet balance can be allocated to a Sankalp.</p>
         {canContribute ? (
           <form className="form-grid" onSubmit={addToMyWallet}>
             <label>
@@ -266,7 +266,7 @@ export function TreasuryPage() {
         )}
         <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadTreasury}>
-            Load Treasury
+            Load Kosh
           </button>
         </div>
         {message ? <p className="form-message">{message}</p> : null}
@@ -304,21 +304,21 @@ export function TreasuryPage() {
         <div className="button-row">
           {canRecordManualContribution ? (
             <button type="button" className="secondary-button" onClick={loadMembers}>
-              Load Members
+              Load Sadasya
             </button>
           ) : null}
         </div>
       </section>
 
       <section className="content-band spaced-band">
-        <h2>Allocate To Mission</h2>
+        <h2>Allocate To Sankalp</h2>
         <p className="section-note">Allocations spend the wallet of the current signed-in member shown in the sidebar.</p>
         {canAllocateFunds ? (
           <form className="form-grid" onSubmit={allocateToProject}>
             <label>
-              Mission
+              Sankalp
               <select value={allocationProjectId} onChange={(event) => setAllocationProjectId(event.target.value)}>
-                <option value="">Select mission</option>
+                <option value="">Select Sankalp</option>
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.title} ({formatMoney(project.allocatedRupees)} allocated)
@@ -346,7 +346,7 @@ export function TreasuryPage() {
         )}
         <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadProjects}>
-            Load Missions
+            Load Sankalp
           </button>
         </div>
       </section>
@@ -365,14 +365,14 @@ export function TreasuryPage() {
                   {transaction.description ? <small>{transaction.description}</small> : null}
                 </div>
                 <div className="ledger-member">
-                  <strong>{transaction.member?.displayName || "Family"}</strong>
+                  <strong>{transaction.member?.displayName || "Kul"}</strong>
                   <span>{formatRole(transaction.member?.role || "")}</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p>Load treasury to see ledger transactions.</p>
+          <p>Load Kosh to see ledger transactions.</p>
         )}
       </section>
     </section>

@@ -20,7 +20,7 @@ export function ProjectsPage() {
   const [members, setMembers] = useState([]);
   const [title, setTitle] = useState("Ancestral House Renovation");
   const [slug, setSlug] = useState("ancestral-house-renovation");
-  const [description, setDescription] = useState("Repair and modernize the family ancestral house.");
+  const [description, setDescription] = useState("Repair and modernize the Kul ancestral house.");
   const [category, setCategory] = useState("renovation");
   const [targetBudgetRupees, setTargetBudgetRupees] = useState("800000");
   const [projectLeadMemberId, setProjectLeadMemberId] = useState("");
@@ -32,7 +32,7 @@ export function ProjectsPage() {
   const [expenseCategory, setExpenseCategory] = useState("material");
   const [expenseVendorName, setExpenseVendorName] = useState("Local vendor");
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [expenseDescription, setExpenseDescription] = useState("Mission implementation expense");
+  const [expenseDescription, setExpenseDescription] = useState("Sankalp implementation expense");
   const [billFile, setBillFile] = useState(null);
   const [billInputKey, setBillInputKey] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("Needs more detail before approval");
@@ -58,14 +58,14 @@ export function ProjectsPage() {
   async function loadProjects() {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
     try {
       const response = await apiGet(`/projects/family/${familyId}`);
       setProjects(response.data);
-      setMessage(response.data.length ? "Loaded missions." : "No missions yet.");
+      setMessage(response.data.length ? "Loaded Sankalp." : "No Sankalp yet.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -74,14 +74,14 @@ export function ProjectsPage() {
   async function loadMembers() {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
     try {
       const response = await apiGet(`/members/family/${familyId}`);
       setMembers(response.data);
-      setMessage("Loaded members for project lead selection.");
+      setMessage("Loaded members for Sankalp lead selection.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -91,7 +91,7 @@ export function ProjectsPage() {
     event.preventDefault();
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -105,7 +105,7 @@ export function ProjectsPage() {
         targetBudgetRupees,
         projectLeadMemberId: projectLeadMemberId || undefined
       });
-      setMessage("Mission created.");
+      setMessage("Sankalp created.");
       await loadProjects();
     } catch (error) {
       setMessage(error.message);
@@ -115,13 +115,13 @@ export function ProjectsPage() {
   async function updateProject(projectId, patch) {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
     try {
       await apiPatch(`/projects/family/${familyId}/${projectId}`, patch);
-      setMessage("Mission updated.");
+      setMessage("Sankalp updated.");
       await loadProjects();
     } catch (error) {
       setMessage(error.message);
@@ -131,7 +131,7 @@ export function ProjectsPage() {
   async function loadExpenses(projectId = selectedProjectId) {
     const familyId = getFamilyId();
     if (!familyId || !projectId) {
-      setMessage("Select a mission first.");
+      setMessage("Select a Sankalp first.");
       return;
     }
 
@@ -139,7 +139,7 @@ export function ProjectsPage() {
       const response = await apiGet(`/expenses/family/${familyId}/project/${projectId}`);
       setSelectedProjectId(projectId);
       setExpenses(response.data);
-      setMessage(response.data.length ? "Loaded expenses." : "No expenses recorded for this mission.");
+      setMessage(response.data.length ? "Loaded expenses." : "No expenses recorded for this Sankalp.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -149,7 +149,7 @@ export function ProjectsPage() {
     event.preventDefault();
     const familyId = getFamilyId();
     if (!familyId || !selectedProjectId) {
-      setMessage("Select a mission first.");
+      setMessage("Select a Sankalp first.");
       return;
     }
 
@@ -247,7 +247,7 @@ export function ProjectsPage() {
 
     try {
       await apiPost(`/expenses/family/${familyId}/${expenseId}/approve`, {});
-      setMessage("Expense approved and posted to mission spending.");
+      setMessage("Expense approved and posted to Sankalp spending.");
       await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
     } catch (error) {
       setMessage(error.message);
@@ -272,12 +272,12 @@ export function ProjectsPage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Missions"
-        title="Projects"
-        description="Every project records purpose, funds, progress, expenses, documents, photos, and decisions."
+        eyebrow="Sankalp"
+        title="Sankalp"
+        description="Every Sankalp records purpose, funds, progress, expenses, documents, photos, and decisions."
       />
       <section className="content-band">
-        <h2>Create Mission</h2>
+        <h2>Create Sankalp</h2>
         {canCreateProjects ? (
           <form className="form-grid" onSubmit={createProject}>
             <label>
@@ -305,7 +305,7 @@ export function ProjectsPage() {
               <input value={targetBudgetRupees} onChange={(event) => setTargetBudgetRupees(event.target.value)} type="number" min="0" />
             </label>
             <label>
-              Project Lead
+              Sankalp Lead
               <select value={projectLeadMemberId} onChange={(event) => setProjectLeadMemberId(event.target.value)}>
                 <option value="">Select lead</option>
                 {members.map((member) => (
@@ -319,24 +319,24 @@ export function ProjectsPage() {
               Description
               <input value={description} onChange={(event) => setDescription(event.target.value)} />
             </label>
-            <button type="submit">Create Mission</button>
+            <button type="submit">Create Sankalp</button>
           </form>
         ) : (
-          <p>Your current role can view missions but cannot create them.</p>
+          <p>Your current role can view Sankalp but cannot create them.</p>
         )}
         <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadProjects}>
-            Load Missions
+            Load Sankalp
           </button>
           <button type="button" className="secondary-button" onClick={loadMembers}>
-            Load Members
+            Load Sadasya
           </button>
         </div>
         {message ? <p className="form-message">{message}</p> : null}
       </section>
 
       <section className="content-band spaced-band">
-        <h2>Missions</h2>
+        <h2>Sankalp</h2>
         {projects.length ? (
           <div className="project-list">
             {projects.map((project) => (
@@ -392,19 +392,19 @@ export function ProjectsPage() {
             ))}
           </div>
         ) : (
-          <p>Load missions or create your first family mission.</p>
+          <p>Load Sankalp or create your first Kul Sankalp.</p>
         )}
       </section>
 
       {canViewExpenses ? (
         <section className="content-band spaced-band">
-          <h2>Mission Expenses</h2>
+          <h2>Sankalp Expenses</h2>
           {selectedProject ? (
             <p>
               Reviewing expenses for <strong>{selectedProject.title}</strong>.
             </p>
           ) : (
-            <p>Select a mission to load its expenses.</p>
+            <p>Select a Sankalp to load its expenses.</p>
           )}
 
           {selectedProject ? (
@@ -434,7 +434,7 @@ export function ProjectsPage() {
 
           {selectedProject && !selectedProject.isFullyFunded ? (
             <p className="section-note">
-              This mission is still collecting contributions. Expenses can be submitted after the target budget is fully allocated.
+              This Sankalp is still collecting contributions. Expenses can be submitted after the target budget is fully allocated.
             </p>
           ) : null}
 
@@ -487,7 +487,7 @@ export function ProjectsPage() {
           ) : null}
 
           {selectedProject && canSubmitForSelectedProject ? (
-            <p className="section-note">Submitted expenses appear in mission spent totals and wait for owner/admin approval.</p>
+            <p className="section-note">Submitted expenses appear in Sankalp spent totals and wait for owner/admin approval.</p>
           ) : null}
 
           {canApproveExpenses && selectedProject ? (

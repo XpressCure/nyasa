@@ -51,13 +51,13 @@ export function CalendarPage() {
     try {
       const familyId = await getSelectedFamilyId();
       if (!familyId) {
-        setMessage("Join the Alahdadpur family workspace first.");
+        setMessage("Join the Alahdadpur Kul workspace first.");
         return;
       }
 
       const response = await apiGet(`/family-hub/family/${familyId}/calendar-events`);
       setEvents(response.data || []);
-      setMessage(response.data?.length ? "Calendar loaded." : "No upcoming family events yet.");
+      setMessage(response.data?.length ? "Panchang loaded." : "No upcoming Kul events yet.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -72,7 +72,7 @@ export function CalendarPage() {
       await apiPost(`/family-hub/family/${familyId}/calendar-events`, form);
       setForm({ title: "", eventType: "puja", startsAt: "", location: "", description: "" });
       await loadCalendar();
-      setMessage("Family calendar event added.");
+      setMessage("Kul Panchang event added.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -85,16 +85,16 @@ export function CalendarPage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Family Calendar"
-        title="Calendar"
-        description="Upcoming puja, fasts, family gatherings, meetings, and shared dates added by members."
+        eyebrow="Kul Panchang"
+        title="Panchang"
+        description="Upcoming puja, fasts, Kul gatherings, meetings, and shared dates added by Sadasya."
       />
 
       <section className="content-band">
         <div className="tree-register-header">
           <div>
             <h2>Upcoming Events</h2>
-            <p>Any member can add a family event. The newest entries appear here for everyone.</p>
+            <p>Any Sadasya can add a Kul event. The newest entries appear here for everyone.</p>
           </div>
           <button type="button" className="secondary-button" onClick={loadCalendar}>
             Refresh
@@ -126,12 +126,12 @@ export function CalendarPage() {
             ))}
           </div>
         ) : (
-          <p className="empty-copy">No upcoming events yet. Add the first puja, fast, gathering, or family date.</p>
+          <p className="empty-copy">No upcoming events yet. Add the first puja, fast, gathering, or Kul date.</p>
         )}
       </section>
 
       <section className="content-band spaced-band">
-        <h2>Add Calendar Event</h2>
+        <h2>Add Panchang Event</h2>
         <form className="form-grid compact-form" onSubmit={saveEvent}>
           <label>
             Event

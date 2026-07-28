@@ -21,7 +21,7 @@ export function MembersPage() {
   async function loadMembers() {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -37,7 +37,7 @@ export function MembersPage() {
   async function loadInvitations() {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -57,7 +57,7 @@ export function MembersPage() {
     setInviteUrl("");
 
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -101,7 +101,7 @@ export function MembersPage() {
   async function updateMemberRole(memberId, role) {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -117,7 +117,7 @@ export function MembersPage() {
   async function updateMemberStatus(memberId, status) {
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Create or select a Kul first.");
       return;
     }
 
@@ -143,12 +143,12 @@ export function MembersPage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Directory"
-        title="Members"
-        description="Profiles, relationships, professions, cities, skills, and contribution history."
+        eyebrow="Sadasya Directory"
+        title="Sadasya"
+        description="Parichay, relationships, professions, cities, skills, and contribution history."
       />
       <section className="content-band">
-        <h2>Invite Member</h2>
+        <h2>Invite Sadasya</h2>
         <form className="form-grid" onSubmit={createInvitation}>
           <label>
             Name
@@ -166,15 +166,15 @@ export function MembersPage() {
             Role
             <select value={intendedRole} onChange={(event) => setIntendedRole(event.target.value)}>
               <option value="admin">Admin</option>
-              <option value="project_lead">Project Lead</option>
-              <option value="member">Member</option>
+              <option value="project_lead">Sankalp Lead</option>
+              <option value="member">Sadasya</option>
               <option value="viewer">Viewer</option>
               <option value="external_advisor">External Advisor</option>
             </select>
           </label>
           <button type="submit">Create Invite</button>
           <button type="button" className="secondary-button" onClick={loadMembers}>
-            Load Members
+            Load Sadasya
           </button>
           <button type="button" className="secondary-button" onClick={loadInvitations}>
             Load Invites
@@ -191,7 +191,7 @@ export function MembersPage() {
         ) : null}
       </section>
       <section className="content-band spaced-band">
-        <h2>Members</h2>
+        <h2>Sadasya</h2>
         {members.length ? (
           <div className="list-stack">
             {members.map((member) => (
@@ -203,15 +203,15 @@ export function MembersPage() {
                     <span>
                       {formatRole(member.role)} - {member.status} - {member.livingStatus || "living"}
                     </span>
-                    <span>{member.placeOfResidence || member.city || member.profession || "Profile details pending"}</span>
+                    <span>{member.placeOfResidence || member.city || member.profession || "Parichay details pending"}</span>
                   </div>
                 </div>
                 <div className="row-actions">
                   <select value={member.role} onChange={(event) => updateMemberRole(member._id, event.target.value)}>
                     <option value="owner">Owner</option>
                     <option value="admin">Admin</option>
-                    <option value="project_lead">Project Lead</option>
-                    <option value="member">Member</option>
+                    <option value="project_lead">Sankalp Lead</option>
+                    <option value="member">Sadasya</option>
                     <option value="viewer">Viewer</option>
                     <option value="external_advisor">External Advisor</option>
                   </select>
@@ -232,7 +232,7 @@ export function MembersPage() {
             ))}
           </div>
         ) : (
-          <p>Load members after creating or selecting a family.</p>
+          <p>Load Sadasya after creating or selecting a Kul.</p>
         )}
       </section>
       <section className="content-band spaced-band">

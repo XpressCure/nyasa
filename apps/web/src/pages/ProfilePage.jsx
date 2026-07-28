@@ -256,7 +256,7 @@ export function ProfilePage() {
     }
 
     if (!familyId) {
-      setMessage("Join the Alahdadpur family workspace first, then complete your profile.");
+      setMessage("Join the Alahdadpur Kul workspace first, then complete your Parichay.");
       return;
     }
 
@@ -265,7 +265,7 @@ export function ProfilePage() {
       setProfile(response.data);
       setForm(hydrateForm(response.data));
       await loadImmediateFamily(familyId);
-      setMessage("Profile loaded.");
+      setMessage("Parichay loaded.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -290,7 +290,7 @@ export function ProfilePage() {
     const familyId = getFamilyId();
 
     if (!familyId) {
-      setMessage("Join the Alahdadpur family workspace first.");
+      setMessage("Join the Alahdadpur Kul workspace first.");
       return;
     }
 
@@ -315,7 +315,7 @@ export function ProfilePage() {
         setProfile(response.data);
         setForm(hydrateForm(response.data));
       }
-      setMessage("Profile updated.");
+      setMessage("Parichay updated.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -326,7 +326,7 @@ export function ProfilePage() {
     const familyId = getFamilyId();
 
     if (!familyId) {
-      setMessage("Join the Alahdadpur family workspace first.");
+      setMessage("Join the Alahdadpur Kul workspace first.");
       return;
     }
 
@@ -359,7 +359,7 @@ export function ProfilePage() {
       setForm(hydrateForm(response.data.member));
       await loadImmediateFamily(familyId);
       setRelativePhotoFiles({});
-      setMessage("Immediate family saved. These profiles can be completed later from their own accounts.");
+      setMessage("Immediate Kul saved. These Parichay records can be completed later from their own accounts.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -369,7 +369,7 @@ export function ProfilePage() {
     const familyId = getFamilyId();
 
     if (!familyId) {
-      setMessage("Join the Alahdadpur family workspace first.");
+      setMessage("Join the Alahdadpur Kul workspace first.");
       return;
     }
 
@@ -377,7 +377,7 @@ export function ProfilePage() {
     const payload = relativePayload(relative);
 
     if (!payload) {
-      setMessage("Add a name before saving this family member.");
+      setMessage("Add a name before saving this Kul member.");
       return;
     }
 
@@ -426,21 +426,21 @@ export function ProfilePage() {
     <section>
       <PageHeader
         eyebrow="My Account"
-        title="Profile"
-        description="Fill what you know today. Nyasa will keep improving each profile as the family adds more details."
+        title="Parichay"
+        description="Fill what you know today. Nyasa will keep improving each Parichay as the Kul adds more details."
       />
       <section className="content-band">
-        <h2>My Profile</h2>
+        <h2>My Parichay</h2>
         {profile ? (
           <p className="section-note">
             Signed in as <strong>{profile.displayName}</strong>. Your role is <strong>{profile.role?.replaceAll("_", " ")}</strong>.
           </p>
         ) : (
           <div className="empty-state">
-            <h3>Start with the Alahdadpur family workspace</h3>
-            <p>Your profile becomes part of the family record, family tree, and future health tree.</p>
+            <h3>Start with the Alahdadpur Kul workspace</h3>
+            <p>Your Parichay becomes part of the Kul record, Kul tree, and future health tree.</p>
             <Link className="secondary-button" to="/family">
-              Open Family Workspace
+              Open Kul Workspace
             </Link>
           </div>
         )}
@@ -485,7 +485,7 @@ export function ProfilePage() {
             </>
           ) : null}
           <label>
-            Profile photo
+            Parichay photo
             <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => setProfilePhotoFile(event.target.files[0] || null)} />
             {profilePhotoFile ? <small>{profilePhotoFile.name} selected</small> : form.photoUrl || form.photoDocumentId ? <small>Photo saved</small> : null}
           </label>
@@ -494,7 +494,7 @@ export function ProfilePage() {
             <input value={form.relationLabel} onChange={(event) => updateField("relationLabel", event.target.value)} placeholder="Son of, daughter of, bua, chacha..." />
           </label>
 
-          <h3 className="form-section-title">Family Links</h3>
+          <h3 className="form-section-title">Kul Links</h3>
           <label>
             Marital status
             <select value={form.maritalStatus} onChange={(event) => updateField("maritalStatus", event.target.value)}>
@@ -611,7 +611,7 @@ export function ProfilePage() {
             />
           </label>
           <label className="wide-field">
-            Genetic or recurring family health notes
+            Genetic or recurring Kul health notes
             <textarea value={form.health.geneticNotes} onChange={(event) => updateNested("health", "geneticNotes", event.target.value)} rows="3" />
           </label>
 
@@ -621,20 +621,20 @@ export function ProfilePage() {
             <textarea value={form.bio} onChange={(event) => updateField("bio", event.target.value)} rows="5" />
           </label>
           <button type="submit" disabled={!getFamilyId()}>
-            Save Profile
+            Save Parichay
           </button>
         </form>
         <div className="button-row">
           <button type="button" className="secondary-button" onClick={loadProfile}>
-            Reload Profile
+            Reload Parichay
           </button>
         </div>
         {message ? <p className="form-message">{message}</p> : null}
       </section>
       <section className="content-band spaced-band">
-        <h2>Immediate Family</h2>
+        <h2>Immediate Kul</h2>
         <p className="section-note">
-          Add father, mother, and children here. They can later sign in and complete their own education, work, health, and family details.
+          Add father, mother, and children here. They can later sign in and complete their own education, work, health, and Kul details.
         </p>
         <form className="form-grid profile-form" onSubmit={saveImmediateFamily}>
           <h3 className="form-section-title">Father</h3>
@@ -689,7 +689,7 @@ export function ProfilePage() {
             Add Another Child
           </button>
           <button type="submit" disabled={!getFamilyId()}>
-            Save Immediate Family
+            Save Immediate Kul
           </button>
         </form>
       </section>
@@ -766,7 +766,7 @@ function RelativeFields({ label, relative, onChange, onPhoto, onSave, photoFile 
         <textarea value={relative.bio} onChange={(event) => onChange("bio", event.target.value)} rows="3" />
       </label>
       <div className="relative-actions wide-field">
-        <span>{relative._id ? "Existing profile" : "New profile"}</span>
+        <span>{relative._id ? "Existing Parichay" : "New Parichay"}</span>
         <button type="button" className="secondary-button" onClick={onSave}>
           {relative._id ? `Update ${label}` : `Create ${label}`}
         </button>

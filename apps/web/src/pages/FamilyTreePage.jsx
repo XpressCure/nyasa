@@ -11,10 +11,10 @@ const treeModes = [
 ];
 
 const familyTabs = [
-  { id: "immediate", label: "My Family" },
-  { id: "map", label: "Full Map" },
-  { id: "register", label: "Register" },
-  { id: "history", label: "History" }
+  { id: "immediate", label: "My Kul" },
+  { id: "map", label: "Kul Map" },
+  { id: "register", label: "Kul Register" },
+  { id: "history", label: "Virasat" }
 ];
 
 function formatDate(value) {
@@ -382,7 +382,7 @@ export function FamilyTreePage() {
         setMembers([]);
         setLinks([]);
         setSelfMemberId("");
-        setMessage("Join the Alahdadpur family workspace first.");
+        setMessage("Join the Alahdadpur Kul workspace first.");
         return;
       }
 
@@ -394,7 +394,7 @@ export function FamilyTreePage() {
       setLinks(treeData.links || []);
       setHistoryEvents(historyResponse.data || []);
       setSelfMemberId(String(treeData.selfMemberId || ""));
-      setMessage(nextMembers.length ? "Tree data loaded." : "No family members found yet.");
+      setMessage(nextMembers.length ? "Tree data loaded." : "No Kul members found yet.");
     } catch (error) {
       setMembers([]);
       setLinks([]);
@@ -441,7 +441,7 @@ export function FamilyTreePage() {
         sourceNote: ""
       });
       await loadTree(mode);
-      setMessage("Family history event added.");
+      setMessage("Kul Virasat event added.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -454,9 +454,9 @@ export function FamilyTreePage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Family Page"
-        title="Family"
-        description="One place for the immediate family view, complete family map, register, and family history."
+        eyebrow="Kul Page"
+        title="Kul"
+        description="One place for the immediate Kul view, complete Kul map, register, and Virasat."
       />
       <section className="content-band">
         <div className="family-tabs">
@@ -487,31 +487,31 @@ export function FamilyTreePage() {
 
         {activeTab === "immediate" && isLoading ? (
           <div className="empty-state">
-            <h3>Loading family tree</h3>
-            <p>Fetching the latest family links.</p>
+            <h3>Loading Kul tree</h3>
+            <p>Fetching the latest Kul links.</p>
           </div>
         ) : null}
 
         {activeTab === "immediate" && !isLoading && selfMember ? (
           <div className="family-tree-board">
-            <TreeLevel label="Parents" members={treeFamily.parents} secondaryLine={secondaryLine} emptyText="Add father and mother from Profile." />
+            <TreeLevel label="Parents" members={treeFamily.parents} secondaryLine={secondaryLine} emptyText="Add father and mother from Parichay." />
             <div className="tree-connector" />
             <TreeLevel label="You and spouse" members={treeFamily.couple} secondaryLine={secondaryLine} featuredMemberId={selfMember._id} />
             <div className="tree-connector" />
-            <TreeLevel label="Children" members={treeFamily.children} secondaryLine={secondaryLine} emptyText="Add children from Profile." />
+            <TreeLevel label="Children" members={treeFamily.children} secondaryLine={secondaryLine} emptyText="Add children from Parichay." />
           </div>
         ) : null}
 
         {activeTab === "immediate" && !isLoading && !selfMember ? (
           <div className="empty-state">
             <h3>Tree is not available yet</h3>
-            <p>{message || "Open Profile and add father, mother, spouse, or children to start the tree."}</p>
+            <p>{message || "Open Parichay and add father, mother, spouse, or children to start the tree."}</p>
             <div className="button-row">
               <button type="button" className="secondary-button" onClick={() => loadTree(mode)}>
                 Retry
               </button>
               <Link className="secondary-button" to="/profile">
-                Open Profile
+                Open Parichay
               </Link>
             </div>
           </div>
@@ -521,8 +521,8 @@ export function FamilyTreePage() {
           <>
             <div className="tree-register-header">
               <div>
-                <h2>Whole Family Map</h2>
-                <p>One connected map. Solid gold lines show parent-child links; dashed brown lines show spouse or co-parent couples.</p>
+                <h2>Whole Kul Map</h2>
+                <p>One connected Kul map. Solid gold lines show parent-child links; dashed brown lines show spouse or co-parent couples.</p>
               </div>
               <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
             </div>
@@ -530,7 +530,7 @@ export function FamilyTreePage() {
               {relationshipGraph.nodes.length ? (
                 <RelationshipGraph graph={relationshipGraph} secondaryLine={secondaryLine} selfMemberId={selfMember?._id} />
               ) : (
-                <div className="tree-empty-node">Add relatives from Profile to begin the full structure.</div>
+                <div className="tree-empty-node">Add relatives from Parichay to begin the full structure.</div>
               )}
             </div>
           </>
@@ -539,7 +539,7 @@ export function FamilyTreePage() {
         {activeTab === "register" ? (
           <>
             <div className="tree-register-header">
-              <h2>Family Register</h2>
+              <h2>Kul Register</h2>
               <span>{members.length} profile{members.length === 1 ? "" : "s"}</span>
             </div>
             <div className="tree-grid">
@@ -561,7 +561,7 @@ export function FamilyTreePage() {
           <div className="family-history-panel">
             <div className="tree-register-header">
               <div>
-                <h2>Family History</h2>
+                <h2>Kul Virasat</h2>
                 <p>Chronological memories, milestones, migration notes, village events, and family achievements.</p>
               </div>
               <span>{historyEvents.length} event{historyEvents.length === 1 ? "" : "s"}</span>
@@ -574,7 +574,7 @@ export function FamilyTreePage() {
                     <div>
                       <strong>{event.title}</strong>
                       <span>
-                        {event.source === "profile" ? "Profile event" : event.category}
+                        {event.source === "profile" ? "Parichay event" : event.category}
                         {event.location ? ` - ${event.location}` : ""}
                       </span>
                       {event.description ? <p>{event.description}</p> : null}
@@ -583,7 +583,7 @@ export function FamilyTreePage() {
                   </article>
                 ))
               ) : (
-                <p className="empty-copy">No family history events yet. Add the first remembered year or date.</p>
+                <p className="empty-copy">No Kul Virasat events yet. Add the first remembered year or date.</p>
               )}
             </div>
             <form className="form-grid compact-form" onSubmit={saveHistoryEvent}>
@@ -602,7 +602,7 @@ export function FamilyTreePage() {
               <label>
                 Category
                 <select value={historyForm.category} onChange={(event) => setHistoryForm((current) => ({ ...current, category: event.target.value }))}>
-                  <option value="family">Family</option>
+                  <option value="family">Kul</option>
                   <option value="village">Village</option>
                   <option value="education">Education</option>
                   <option value="migration">Migration</option>

@@ -21,16 +21,16 @@ import { apiGet } from "../lib/api.js";
 
 const launchItems = [
   {
-    title: "Invite the extended family",
-    text: "Owners can bring relatives into one Alahdadpur-rooted family workspace with clear roles."
+    title: "Invite the extended Kul",
+    text: "Owners can bring relatives into one Alahdadpur-rooted Kul workspace with clear roles."
   },
   {
-    title: "Member profiles and stories",
-    text: "Members can sign in with name and phone, then add bio, city, profession, and their family connection."
+    title: "Sadasya Parichay and stories",
+    text: "Sadasya can sign in with name and phone, then add bio, city, profession, and their Kul connection."
   },
   {
-    title: "Village Kosh and missions",
-    text: "Members top up their wallet, allocate funds to Alahdadpur missions, and track contribution progress."
+    title: "Village Kosh and Sankalp",
+    text: "Sadasya top up their wallet, allocate funds to Alahdadpur Sankalp, and track contribution progress."
   },
   {
     title: "Transparent work records",
@@ -40,32 +40,32 @@ const launchItems = [
 
 const walkthrough = {
   member: {
-    title: "For family members",
-    points: ["Sign in with name and phone", "Accept family invite", "Update profile and bio", "Contribute to Alahdadpur missions"]
+    title: "For Kul Sadasya",
+    points: ["Sign in with name and phone", "Accept Kul invite", "Update Parichay and bio", "Contribute to Alahdadpur Sankalp"]
   },
   owner: {
     title: "For owners",
-    points: ["Create family workspace", "Invite members", "Create village missions", "Approve expenses"]
+    points: ["Create Kul workspace", "Invite Sadasya", "Create village Sankalp", "Approve expenses"]
   },
   launch: {
     title: "Launch today",
-    points: ["Alahdadpur intro homepage", "Invite-only onboarding", "Profile updates", "Village mission funding demo"]
+    points: ["Alahdadpur intro homepage", "Invite-only onboarding", "Parichay updates", "Village Sankalp funding demo"]
   }
 };
 
 const futureSections = [
   {
-    title: "Family Gallery",
+    title: "Kul Gallery",
     text: "A shared album for Alahdadpur gatherings, homes, ceremonies, documents, and memories.",
     icon: Images
   },
   {
-    title: "Family Tree",
+    title: "Kul Tree",
     text: "A visual lineage map connecting generations, branches, spouses, and children back to village roots.",
     icon: Network
   },
   {
-    title: "Family Research",
+    title: "Kul Research",
     text: "A place to preserve interviews, old records, migration stories, land notes, and ancestral memories.",
     icon: Search
   },
@@ -111,7 +111,7 @@ export function HomePage() {
           <img className="home-brand-logo" src={nyasaLogo} alt="Nyasa Trust logo" />
           <div>
             <strong>Nyasa Trust</strong>
-            <small>Family OS</small>
+            <small>Kul OS</small>
           </div>
         </div>
         <div className="home-nav-actions">
@@ -135,14 +135,14 @@ export function HomePage() {
           </span>
           <h1>Ek gaon. Ek parivar. Ek vishwas. Ek virasat.</h1>
           <p>
-            Nyasa Trust is being built around Alahdadpur: a shared family platform to preserve our roots, coordinate village missions, pool money
+            Nyasa Trust is being built around Alahdadpur: a shared Kul platform to preserve our roots, coordinate village Sankalp, pool money
             into Kosh, and keep a transparent record of work, decisions, and legacy.
           </p>
           <p className="home-blessing-line">परिवार के सभी बड़े-बुजुर्गों, भाइयों, बहनों और बच्चों को सादर प्रणाम।</p>
           <div className="village-pill-row">
             <span>Alahdadpur</span>
-            <span>Family trust</span>
-            <span>Village missions</span>
+            <span>Kul trust</span>
+            <span>Village Sankalp</span>
           </div>
           <div className="home-actions">
             <Link className="home-cta" to="/login">
@@ -158,13 +158,13 @@ export function HomePage() {
         <div className="family-hero-card" aria-label="Nyasa family photo and portal preview">
           <img src={familyPhoto} alt="Nyasa family gathered together" />
           <div className="family-hero-overlay">
-            <span>Alahdadpur Family Trust</span>
+            <span>Alahdadpur Kul Trust</span>
             <strong>Ready to begin</strong>
           </div>
           <div className="portal-preview">
             <div className="preview-metrics">
               <div>
-                <span>Profiles</span>
+                <span>Parichay</span>
                 <strong>Live</strong>
               </div>
               <div>
@@ -172,14 +172,14 @@ export function HomePage() {
                 <strong>Ready</strong>
               </div>
               <div>
-                <span>Launch Missions</span>
+                <span>Launch Sankalp</span>
                 <strong>3</strong>
               </div>
             </div>
             <div className="preview-mission">
               <div>
-                <strong>Alahdadpur Ancestral House Mission</strong>
-                <span>Prepared for transparent family contributions</span>
+                <strong>Alahdadpur Ancestral House Sankalp</strong>
+                <span>Prepared for transparent Kul contributions</span>
               </div>
               <div className="preview-progress">
                 <span style={{ width: "8%" }} />
@@ -237,7 +237,7 @@ export function HomePage() {
           </div>
           <div>
             <strong>Contribute</strong>
-            <span>Members add to wallet and allocate funds to specific village missions.</span>
+            <span>Sadasya add to wallet and allocate funds to specific village Sankalp.</span>
           </div>
           <div>
             <strong>Implement</strong>
