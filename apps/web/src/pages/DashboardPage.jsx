@@ -111,6 +111,7 @@ export function DashboardPage() {
   }, []);
 
   const metrics = dashboard?.metrics;
+  const ageGroups = metrics?.ageGroups?.groups || [];
   const stats = [
     ["Family Members", metrics?.memberCount ?? 0],
     ["Active Missions", metrics?.activeProjects ?? 0],
@@ -134,6 +135,28 @@ export function DashboardPage() {
           </article>
         ))}
       </div>
+      <section className="content-band age-band">
+        <div className="tree-register-header">
+          <div>
+            <h2>Age Groups</h2>
+            <p className="section-note">Living members grouped by date of birth. Members without DOB are shown separately.</p>
+          </div>
+          <span>{metrics?.ageGroups?.unknownDateOfBirth ?? 0} DOB pending</span>
+        </div>
+        <div className="age-group-grid">
+          {ageGroups.length ? (
+            ageGroups.map((group) => (
+              <article className="age-group-card" key={group.id}>
+                <span>{group.label}</span>
+                <strong>{group.count}</strong>
+                <small>{group.englishLabel} - {group.rangeLabel}</small>
+              </article>
+            ))
+          ) : (
+            <p className="empty-copy">Age groups will appear after the dashboard loads.</p>
+          )}
+        </div>
+      </section>
       <section className="dashboard-grid">
         <article className="content-band">
           <h2>Celebrations</h2>

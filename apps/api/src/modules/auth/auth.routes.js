@@ -103,8 +103,6 @@ function copyMissingMemberFields(sourceMember, targetMember) {
     "fatherMemberId",
     "motherMemberId",
     "spouseMemberId",
-    "grandfatherName",
-    "grandmotherName",
     "childrenCount",
     "city",
     "state",

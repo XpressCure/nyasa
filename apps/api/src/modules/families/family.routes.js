@@ -22,6 +22,47 @@ const createFamilySchema = z.object({
   primaryLocation: z.string().optional()
 });
 
+const ageGroups = [
+  { id: "kids", label: "बच्चे", englishLabel: "Kids", rangeLabel: "0-10 years", min: 0, max: 10 },
+  { id: "teenagers", label: "किशोर", englishLabel: "Teenagers", rangeLabel: "11-21 years", min: 11, max: 21 },
+  { id: "youngAdults", label: "युवा", englishLabel: "New Adults", rangeLabel: "22-35 years", min: 22, max: 35 },
+  { id: "adults", label: "वयस्क", englishLabel: "Adults", rangeLabel: "36-64 years", min: 36, max: 64 },
+  { id: "seniors", label: "वरिष्ठ", englishLabel: "Seniors", rangeLabel: "65+ years", min: 65, max: Infinity }
+];
+
+function calculateAge(dateOfBirth, today = new Date()) {
+  if (!dateOfBirth) return null;
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) return null;
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+}
+
+function buildAgeGroupMetrics(members) {
+  const today = new Date();
+  const groups = ageGroups.map(({ id, label, englishLabel, rangeLabel }) => ({ id, label, englishLabel, rangeLabel, count: 0 }));
+  let unknownDateOfBirth = 0;
+
+  members.forEach((member) => {
+    const age = calculateAge(member.dateOfBirth, today);
+    if (age === null) {
+      unknownDateOfBirth += 1;
+      return;
+    }
+
+    const groupIndex = ageGroups.findIndex((ageGroup) => age >= ageGroup.min && age <= ageGroup.max);
+    if (groupIndex >= 0) groups[groupIndex].count += 1;
+  });
+
+  return { groups, unknownDateOfBirth };
+}
+
 familyRoutes.get(
   "/public/nyasa-summary",
   asyncHandler(async (_req, res) => {
@@ -128,9 +169,14 @@ familyRoutes.get(
     const normalizedFamilyId = new mongoose.Types.ObjectId(req.familyId);
     const treasury = await getOrCreateMainTreasury({ familyId: req.familyId, userId: req.user._id });
 
-    const [family, memberCount, activeProjects, completedProjects, treasuryBalancePaise, contributionRows] = await Promise.all([
+    const [family, memberCount, livingMembersForAgeGroups, activeProjects, completedProjects, treasuryBalancePaise, contributionRows] = await Promise.all([
       Family.findById(req.familyId),
       FamilyMember.countDocuments({ familyId: req.familyId, status: "active" }),
+      FamilyMember.find({
+        familyId: req.familyId,
+        status: "active",
+        livingStatus: { $ne: "deceased" }
+      }).select("dateOfBirth"),
       Project.countDocuments({ familyId: req.familyId, status: { $in: ["proposed", "active", "implementation"] } }),
       Project.countDocuments({ familyId: req.familyId, status: "completed" }),
       calculatePostedBalance({ familyId: req.familyId, treasuryAccountId: treasury._id }),
@@ -153,6 +199,7 @@ familyRoutes.get(
         family,
         metrics: {
           memberCount,
+          ageGroups: buildAgeGroupMetrics(livingMembersForAgeGroups),
           activeProjects,
           completedProjects,
           treasuryBalance: treasuryBalancePaise / 100,

@@ -15,8 +15,6 @@ const initialForm = {
   maritalStatus: "unknown",
   anniversaryDate: "",
   relationLabel: "",
-  grandfatherName: "",
-  grandmotherName: "",
   childrenCount: "",
   placeOfResidence: "",
   city: "",
@@ -97,8 +95,6 @@ function hydrateForm(member) {
     maritalStatus: member.maritalStatus || "unknown",
     anniversaryDate: toInputDate(member.anniversaryDate),
     relationLabel: member.relationLabel || "",
-    grandfatherName: member.grandfatherName || "",
-    grandmotherName: member.grandmotherName || "",
     childrenCount: member.childrenCount ?? "",
     placeOfResidence: member.placeOfResidence || "",
     city: member.city || "",
@@ -518,15 +514,6 @@ export function ProfilePage() {
             Number of children
             <input type="number" min="0" value={form.childrenCount} onChange={(event) => updateField("childrenCount", event.target.value)} />
           </label>
-          <label>
-            Grandfather's name
-            <input value={form.grandfatherName} onChange={(event) => updateField("grandfatherName", event.target.value)} />
-          </label>
-          <label>
-            Grandmother's name
-            <input value={form.grandmotherName} onChange={(event) => updateField("grandmotherName", event.target.value)} />
-          </label>
-
           <h3 className="form-section-title">Residence</h3>
           <label>
             Place of residence

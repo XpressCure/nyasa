@@ -226,6 +226,36 @@ select {
   margin-bottom: 18px;
 }
 
+.age-band {
+  margin-bottom: 18px;
+}
+
+.age-group-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.age-group-card {
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.age-group-card span,
+.age-group-card small {
+  color: #4e5b53;
+  display: block;
+}
+
+.age-group-card strong {
+  display: block;
+  font-size: 28px;
+  margin: 8px 0 4px;
+}
+
 .stack-list {
   display: grid;
   gap: 10px;
@@ -1855,6 +1885,7 @@ button:disabled {
 
   .dashboard-grid,
   .snapshot-grid,
+  .age-group-grid,
   .history-event,
   .home-snapshot-grid {
     grid-template-columns: 1fr;

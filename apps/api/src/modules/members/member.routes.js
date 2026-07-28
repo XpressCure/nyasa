@@ -54,8 +54,6 @@ const updateProfileSchema = z.object({
   fatherMemberId: z.string().optional(),
   motherMemberId: z.string().optional(),
   spouseMemberId: z.string().optional(),
-  grandfatherName: z.string().optional(),
-  grandmotherName: z.string().optional(),
   childrenCount: optionalNumber(z.coerce.number().int().min(0)),
   city: z.string().optional(),
   state: z.string().optional(),
