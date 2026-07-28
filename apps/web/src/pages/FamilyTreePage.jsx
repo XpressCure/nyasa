@@ -42,8 +42,23 @@ export function FamilyTreePage() {
     return localStorage.getItem("nyasa_family_id");
   }
 
+  async function ensureFamilyId() {
+    let familyId = getFamilyId();
+
+    if (familyId) return familyId;
+
+    const familiesResponse = await apiGet("/families");
+    const firstMembership = familiesResponse.data[0];
+    if (firstMembership?.familyId?._id) {
+      familyId = firstMembership.familyId._id;
+      localStorage.setItem("nyasa_family_id", familyId);
+    }
+
+    return familyId;
+  }
+
   async function loadTree(nextMode = mode) {
-    const familyId = getFamilyId();
+    const familyId = await ensureFamilyId();
     if (!familyId) {
       setMessage("Join the Alahdadpur family workspace first.");
       return;

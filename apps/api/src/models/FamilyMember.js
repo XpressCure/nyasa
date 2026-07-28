@@ -64,6 +64,7 @@ const familyMemberSchema = new mongoose.Schema(
     fatherMemberId: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember", index: true },
     motherMemberId: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember", index: true },
     spouseMemberId: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember", index: true },
+    childMemberIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember" }],
     grandfatherName: { type: String, trim: true },
     grandmotherName: { type: String, trim: true },
     childrenCount: Number,

@@ -116,6 +116,24 @@ function hydrateForm(member) {
   };
 }
 
+function hydrateRelative(member, fallback = emptyRelative) {
+  if (!member) return { ...fallback };
+
+  return {
+    ...fallback,
+    displayName: member.displayName || "",
+    gender: member.gender || fallback.gender || "prefer_not_to_say",
+    dateOfBirth: toInputDate(member.dateOfBirth),
+    livingStatus: member.livingStatus || "living",
+    dateOfDeath: toInputDate(member.dateOfDeath),
+    yearOfDeath: member.yearOfDeath ?? "",
+    maritalStatus: member.maritalStatus || "unknown",
+    placeOfResidence: member.placeOfResidence || "",
+    profession: member.profession || "",
+    bio: member.bio || ""
+  };
+}
+
 function relativePayload(relative) {
   if (!relative.displayName.trim()) return null;
   return {
@@ -238,10 +256,25 @@ export function ProfilePage() {
       const response = await apiGet(`/members/family/${familyId}/me`);
       setProfile(response.data);
       setForm(hydrateForm(response.data));
+      await loadImmediateFamily(familyId);
       setMessage("Profile loaded.");
     } catch (error) {
       setMessage(error.message);
     }
+  }
+
+  async function loadImmediateFamily(familyId = getFamilyId()) {
+    if (!familyId) return;
+
+    const response = await apiGet(`/members/family/${familyId}/immediate-family`);
+    setImmediateFamily({
+      father: hydrateRelative(response.data.father, initialImmediateFamily.father),
+      mother: hydrateRelative(response.data.mother, initialImmediateFamily.mother),
+      spouse: hydrateRelative(response.data.spouse, initialImmediateFamily.spouse),
+      children: response.data.children.length
+        ? response.data.children.map((child) => hydrateRelative(child))
+        : [{ ...emptyRelative }]
+    });
   }
 
   async function saveProfile(event) {
@@ -316,7 +349,7 @@ export function ProfilePage() {
       await Promise.all(uploadTasks);
       setProfile(response.data.member);
       setForm(hydrateForm(response.data.member));
-      setImmediateFamily(initialImmediateFamily);
+      await loadImmediateFamily(familyId);
       setRelativePhotoFiles({});
       setMessage("Immediate family saved. These profiles can be completed later from their own accounts.");
     } catch (error) {

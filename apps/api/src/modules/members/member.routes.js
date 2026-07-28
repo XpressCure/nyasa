@@ -155,6 +155,16 @@ function buildTreeLinks(members) {
         });
       }
     });
+
+    (member.childMemberIds || []).forEach((childMemberId) => {
+      if (childMemberId && memberIds.has(String(childMemberId))) {
+        links.push({
+          fromMemberId: String(member._id),
+          toMemberId: String(childMemberId),
+          relationship: "child"
+        });
+      }
+    });
   });
 
   return links;
@@ -319,6 +329,36 @@ memberRoutes.patch(
   })
 );
 
+memberRoutes.get(
+  "/family/:familyId/immediate-family",
+  requireFamilyPermission(permissions.workspaceView),
+  asyncHandler(async (req, res) => {
+    const [father, mother, spouse, children] = await Promise.all([
+      req.member.fatherMemberId ? FamilyMember.findOne({ _id: req.member.fatherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
+      req.member.motherMemberId ? FamilyMember.findOne({ _id: req.member.motherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
+      req.member.spouseMemberId ? FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
+      FamilyMember.find({
+        familyId: req.familyId,
+        status: { $ne: "removed" },
+        $or: [
+          { _id: { $in: req.member.childMemberIds || [] } },
+          { fatherMemberId: req.member._id },
+          { motherMemberId: req.member._id }
+        ]
+      }).sort({ dateOfBirth: 1, displayName: 1 })
+    ]);
+
+    res.json({
+      data: {
+        father: father ? serializeMember(father) : null,
+        mother: mother ? serializeMember(mother) : null,
+        spouse: spouse ? serializeMember(spouse) : null,
+        children: children.map((child) => serializeMember(child))
+      }
+    });
+  })
+);
+
 memberRoutes.post(
   "/family/:familyId/immediate-family",
   requireFamilyPermission(permissions.workspaceView),
@@ -376,9 +416,16 @@ memberRoutes.post(
     }
 
     if (Object.keys(memberUpdates).length || created.children.length) {
+      const existingChildIds = (req.member.childMemberIds || []).map((childMemberId) => String(childMemberId));
+      const nextChildIds = [
+        ...existingChildIds,
+        ...created.children.map((child) => String(child._id))
+      ].filter((childMemberId, index, allChildIds) => allChildIds.indexOf(childMemberId) === index);
+
       req.member.set({
         ...memberUpdates,
-        childrenCount: created.children.length || req.member.childrenCount
+        childMemberIds: nextChildIds,
+        childrenCount: nextChildIds.length || req.member.childrenCount
       });
       await req.member.save();
     }
@@ -435,7 +482,9 @@ memberRoutes.post(
       String(targetMember.spouseMemberId || "") === String(req.member._id) ||
       String(req.member.fatherMemberId || "") === String(targetMember._id) ||
       String(req.member.motherMemberId || "") === String(targetMember._id) ||
-      String(req.member.spouseMemberId || "") === String(targetMember._id);
+      String(req.member.spouseMemberId || "") === String(targetMember._id) ||
+      (req.member.childMemberIds || []).some((childMemberId) => String(childMemberId) === String(targetMember._id)) ||
+      (targetMember.childMemberIds || []).some((childMemberId) => String(childMemberId) === String(req.member._id));
 
     if (!isSelf && !canManageMembers && !canAttachFamilyCircle) {
       throw httpError(403, "You can upload photos only for yourself or your immediate family.", "PHOTO_UPLOAD_NOT_ALLOWED");
