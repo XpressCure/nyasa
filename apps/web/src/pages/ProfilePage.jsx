@@ -7,6 +7,7 @@ const initialForm = {
   displayName: "",
   gender: "prefer_not_to_say",
   photoUrl: "",
+  photoDocumentId: "",
   dateOfBirth: "",
   livingStatus: "living",
   dateOfDeath: "",
@@ -45,6 +46,8 @@ const initialForm = {
 
 const emptyRelative = {
   _id: "",
+  photoUrl: "",
+  photoDocumentId: "",
   displayName: "",
   gender: "prefer_not_to_say",
   dateOfBirth: "",
@@ -86,6 +89,7 @@ function hydrateForm(member) {
     displayName: member.displayName || "",
     gender: member.gender || "prefer_not_to_say",
     photoUrl: member.photoUrl || "",
+    photoDocumentId: member.photoDocumentId || "",
     dateOfBirth: toInputDate(member.dateOfBirth),
     livingStatus: member.livingStatus || "living",
     dateOfDeath: toInputDate(member.dateOfDeath),
@@ -123,6 +127,8 @@ function hydrateRelative(member, fallback = emptyRelative) {
   return {
     ...fallback,
     _id: member._id || "",
+    photoUrl: member.photoUrl || "",
+    photoDocumentId: member.photoDocumentId || "",
     displayName: member.displayName || "",
     gender: member.gender || fallback.gender || "prefer_not_to_say",
     dateOfBirth: toInputDate(member.dateOfBirth),
@@ -485,6 +491,7 @@ export function ProfilePage() {
           <label>
             Profile photo
             <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => setProfilePhotoFile(event.target.files[0] || null)} />
+            {profilePhotoFile ? <small>{profilePhotoFile.name} selected</small> : form.photoUrl || form.photoDocumentId ? <small>Photo saved</small> : null}
           </label>
           <label>
             Relationship note
@@ -757,7 +764,7 @@ function RelativeFields({ label, relative, onChange, onPhoto, onSave, photoFile 
       <label>
         Photo
         <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => onPhoto(event.target.files[0] || null)} />
-        {photoFile ? <small>{photoFile.name} selected</small> : null}
+        {photoFile ? <small>{photoFile.name} selected</small> : relative.photoUrl || relative.photoDocumentId ? <small>Photo saved</small> : null}
       </label>
       <label>
         Place of residence

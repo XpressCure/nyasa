@@ -22,11 +22,19 @@ function memberIcon(member) {
 }
 
 function avatarClassName(member) {
-  return `member-avatar ${member?.gender || "unknown"}${member?.photoUrl ? " has-photo" : ""}`;
+  return `member-avatar ${member?.gender || "unknown"}${memberPhotoUrl(member) ? " has-photo" : ""}`;
 }
 
 function memberPhotoUrl(member) {
-  return member?.photoUrl?.replace(/\/download$/, "/member-photo") || "";
+  if (member?.photoUrl) {
+    return member.photoUrl.replace(/\/download$/, "/member-photo");
+  }
+
+  if (member?.familyId && member?.photoDocumentId) {
+    return `/api/documents/family/${member.familyId}/${member.photoDocumentId}/member-photo`;
+  }
+
+  return "";
 }
 
 function educationLine(member) {
@@ -398,7 +406,7 @@ function MemberAvatar({ member }) {
       isActive = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [member?._id, member?.photoUrl]);
+  }, [member?._id, member?.photoUrl, member?.photoDocumentId]);
 
   return (
     <span className={avatarClassName(member)}>
