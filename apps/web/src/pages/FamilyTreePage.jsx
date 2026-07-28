@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BookOpenText, CircleUserRound, HeartPulse, Mars, Network, Venus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet } from "../lib/api.js";
 
@@ -55,6 +56,7 @@ export function FamilyTreePage() {
   const [links, setLinks] = useState([]);
   const [selfMemberId, setSelfMemberId] = useState("");
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const memberById = useMemo(() => new Map(members.map((member) => [member._id, member])), [members]);
   const selfMember = memberById.get(selfMemberId) || members[0] || null;
@@ -100,20 +102,29 @@ export function FamilyTreePage() {
   }
 
   async function loadTree(nextMode = mode) {
-    const familyId = await ensureFamilyId();
-    if (!familyId) {
-      setMessage("Join the Alahdadpur family workspace first.");
-      return;
-    }
-
+    setIsLoading(true);
     try {
+      const familyId = await ensureFamilyId();
+      if (!familyId) {
+        setMembers([]);
+        setLinks([]);
+        setSelfMemberId("");
+        setMessage("Join the Alahdadpur family workspace first.");
+        return;
+      }
+
       const response = await apiGet(`/members/family/${familyId}/tree?mode=${nextMode}`);
       setMembers(response.data.members || []);
       setLinks(response.data.links || []);
       setSelfMemberId(String(response.data.selfMemberId || ""));
       setMessage(response.data.members?.length ? "Tree data loaded." : "No family members found yet.");
     } catch (error) {
+      setMembers([]);
+      setLinks([]);
+      setSelfMemberId("");
       setMessage(error.message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -161,7 +172,12 @@ export function FamilyTreePage() {
           })}
         </div>
 
-        {selfMember ? (
+        {isLoading ? (
+          <div className="empty-state">
+            <h3>Loading family tree</h3>
+            <p>Fetching the latest family links.</p>
+          </div>
+        ) : selfMember ? (
           <div className="family-tree-board">
             <TreeLevel label="Parents" members={treeFamily.parents} secondaryLine={secondaryLine} emptyText="Add father and mother from Profile." />
             <div className="tree-connector" />
@@ -171,8 +187,16 @@ export function FamilyTreePage() {
           </div>
         ) : (
           <div className="empty-state">
-            <h3>No tree data yet</h3>
-            <p>Open Profile and add father, mother, spouse, or children to start the tree.</p>
+            <h3>Tree is not available yet</h3>
+            <p>{message || "Open Profile and add father, mother, spouse, or children to start the tree."}</p>
+            <div className="button-row">
+              <button type="button" className="secondary-button" onClick={() => loadTree(mode)}>
+                Retry
+              </button>
+              <Link className="secondary-button" to="/profile">
+                Open Profile
+              </Link>
+            </div>
           </div>
         )}
 

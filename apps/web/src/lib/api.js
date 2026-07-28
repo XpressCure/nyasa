@@ -14,7 +14,8 @@ async function apiRequest(path, options = {}) {
       }
     });
   } catch (_error) {
-    throw new Error(`Cannot reach Nyasa API at ${API_BASE_URL}. Start the API with npm run dev:api.`);
+    const localHint = API_BASE_URL.includes("localhost") ? " Start the API with npm run dev:api." : " Please try again in a moment.";
+    throw new Error(`Cannot reach Nyasa API at ${API_BASE_URL}.${localHint}`);
   }
 
   const payload = await response.json().catch(() => ({}));
