@@ -53,6 +53,25 @@ const walkthrough = {
   }
 };
 
+const todaySteps = [
+  {
+    title: "1. Sign in",
+    text: "Use your name and phone number. If your name is already in the Kul tree, Nyasa will try to connect you to that profile."
+  },
+  {
+    title: "2. Complete Parichay",
+    text: "Add your photo, date of birth, location, education, work details, health notes, and whatever you know today."
+  },
+  {
+    title: "3. Add immediate family",
+    text: "Add or correct father, mother, spouse, and children. Photos are optional, but they make the tree easier for everyone."
+  },
+  {
+    title: "4. Check Kul Map",
+    text: "Open the family tree and check if parents, spouse, children, and grandparents are linked correctly. Missing details can be filled later."
+  }
+];
+
 const futureSections = [
   {
     title: "Kul Gallery",
@@ -115,6 +134,7 @@ export function HomePage() {
           </div>
         </div>
         <div className="home-nav-actions">
+          <a href="#start">Start here</a>
           <a href="#gallery">Gallery</a>
           <a href="#village">Alahdadpur</a>
           <a href="#future">Coming next</a>
@@ -146,11 +166,11 @@ export function HomePage() {
           </div>
           <div className="home-actions">
             <Link className="home-cta" to="/login">
-              Sign in and fill bio
+              Start profile today
               <ArrowRight size={18} />
             </Link>
             <Link className="home-secondary" to="/dashboard">
-              View dashboard
+              Open dashboard
             </Link>
           </div>
         </div>
@@ -189,6 +209,44 @@ export function HomePage() {
               <CheckCircle2 size={18} />
               Live database prepared with Alahdadpur workspace
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section today-start-section" id="start">
+        <div className="home-section-heading">
+          <span>For every family member today</span>
+          <h2>Join Nyasa, fill your Parichay, and check the Kul tree.</h2>
+          <p>
+            This first launch is about collecting correct family data. Do not worry if you do not know every date or detail. Add what you know,
+            and the tree will become stronger as parents, siblings, spouses, and children update their own profiles.
+          </p>
+        </div>
+        <div className="today-step-grid">
+          {todaySteps.map((step) => (
+            <article key={step.title}>
+              <CheckCircle2 size={20} />
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
+        </div>
+        <div className="today-action-panel">
+          <div>
+            <strong>What should you tell relatives?</strong>
+            <span>
+              "Please open Nyasa, sign in with your name and phone number, complete your Parichay, add immediate family, upload photos if
+              available, and then check the Kul Map."
+            </span>
+          </div>
+          <div className="home-actions">
+            <Link className="home-cta" to="/login">
+              Sign in / Join
+              <ArrowRight size={18} />
+            </Link>
+            <Link className="home-secondary" to="/family-tree">
+              Check Kul Map
+            </Link>
           </div>
         </div>
       </section>

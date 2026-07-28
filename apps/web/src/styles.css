@@ -1133,6 +1133,71 @@ button:disabled {
   margin: 8px 0 22px;
 }
 
+.today-start-section {
+  padding-top: 24px;
+}
+
+.today-start-section .home-section-heading p {
+  color: #4e5b53;
+  font-size: 18px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.today-step-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.today-step-grid article,
+.today-action-panel {
+  background: #ffffff;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(35, 32, 26, 0.06);
+}
+
+.today-step-grid article {
+  padding: 18px;
+}
+
+.today-step-grid svg {
+  color: #34513f;
+}
+
+.today-step-grid h3 {
+  margin: 12px 0 8px;
+}
+
+.today-step-grid p {
+  color: #4e5b53;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.today-action-panel {
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 20px;
+}
+
+.today-action-panel strong,
+.today-action-panel span {
+  display: block;
+}
+
+.today-action-panel span {
+  color: #4e5b53;
+  line-height: 1.5;
+  margin-top: 6px;
+  max-width: 780px;
+}
+
 .launch-message-section {
   align-items: stretch;
   display: grid;
@@ -2024,6 +2089,7 @@ button:disabled {
 
   .home-hero,
   .launch-message-section,
+  .today-step-grid,
   .interactive-section,
   .village-section,
   .launch-grid,
@@ -2048,6 +2114,11 @@ button:disabled {
 
   .preview-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .today-action-panel {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
