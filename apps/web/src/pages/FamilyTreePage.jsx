@@ -70,31 +70,155 @@ function uniqueMembers(members) {
   });
 }
 
-function buildWholeFamilyTree(members, links, memberById) {
-  const childrenByParent = new Map();
+function parentIdsFor(member) {
+  return [member?.fatherMemberId, member?.motherMemberId].filter(Boolean).map(String);
+}
+
+function coupleKeyFor(firstId, secondId = "") {
+  return [String(firstId || ""), String(secondId || "")].filter(Boolean).sort().join(":");
+}
+
+function buildRelationshipMap(members, memberById) {
+  const validMemberList = validMembers(members);
+  const spousesByMember = new Map();
+  const childrenByParentSet = new Map();
   const childIds = new Set();
 
-  links.forEach((link) => {
-    if (!["father", "mother", "child"].includes(link.relationship)) return;
-
-    const parent = memberById.get(String(link.fromMemberId || ""));
-    const child = memberById.get(String(link.toMemberId || ""));
-
-    if (!parent || !child) return;
-
-    childIds.add(child._id);
-    const existingChildren = childrenByParent.get(parent._id) || [];
-    if (!existingChildren.some((existingChild) => existingChild._id === child._id)) {
-      childrenByParent.set(parent._id, [...existingChildren, child]);
+  validMemberList.forEach((member) => {
+    if (member.spouseMemberId && memberById.has(String(member.spouseMemberId))) {
+      spousesByMember.set(member._id, memberById.get(String(member.spouseMemberId)));
     }
   });
 
-  const roots = validMembers(members).filter((member) => !childIds.has(member._id));
+  validMemberList.forEach((member) => {
+    const spouse = spousesByMember.get(member._id);
+    if (spouse && !spousesByMember.has(spouse._id)) {
+      spousesByMember.set(spouse._id, member);
+    }
 
-  return {
-    childrenByParent,
-    roots: roots.length ? roots : validMembers(members).slice(0, 1)
-  };
+    parentIdsFor(member).forEach((parentId) => {
+      const parentChildren = childrenByParentSet.get(parentId) || new Set();
+      parentChildren.add(member._id);
+      childrenByParentSet.set(parentId, parentChildren);
+      childIds.add(member._id);
+    });
+
+    (member.childMemberIds || []).forEach((childMemberId) => {
+      const child = memberById.get(String(childMemberId));
+      if (!child) return;
+      const parentChildren = childrenByParentSet.get(member._id) || new Set();
+      parentChildren.add(child._id);
+      childrenByParentSet.set(member._id, parentChildren);
+      childIds.add(child._id);
+    });
+  });
+
+  const childrenByParent = new Map(
+    [...childrenByParentSet.entries()].map(([parentId, childIdSet]) => [
+      parentId,
+      [...childIdSet].map((childId) => memberById.get(childId)).filter(Boolean)
+    ])
+  );
+
+  return { childIds, childrenByParent, spousesByMember };
+}
+
+function buildExpandedFamilyMap(members, memberById) {
+  const validMemberList = validMembers(members);
+  const relationships = buildRelationshipMap(validMemberList, memberById);
+  const generationByMember = new Map(validMemberList.map((member) => [member._id, relationships.childIds.has(member._id) ? 1 : 0]));
+
+  for (let index = 0; index < validMemberList.length + 4; index += 1) {
+    let changed = false;
+
+    validMemberList.forEach((member) => {
+      const parentGenerations = parentIdsFor(member)
+        .map((parentId) => generationByMember.get(parentId))
+        .filter((generation) => generation !== undefined);
+
+      if (parentGenerations.length) {
+        const nextGeneration = Math.max(...parentGenerations) + 1;
+        if ((generationByMember.get(member._id) || 0) < nextGeneration) {
+          generationByMember.set(member._id, nextGeneration);
+          changed = true;
+        }
+      }
+
+      const spouse = relationships.spousesByMember.get(member._id);
+      if (spouse) {
+        const sharedGeneration = Math.max(generationByMember.get(member._id) || 0, generationByMember.get(spouse._id) || 0);
+        if (generationByMember.get(member._id) !== sharedGeneration || generationByMember.get(spouse._id) !== sharedGeneration) {
+          generationByMember.set(member._id, sharedGeneration);
+          generationByMember.set(spouse._id, sharedGeneration);
+          changed = true;
+        }
+      }
+    });
+
+    if (!changed) break;
+  }
+
+  const unitMap = new Map();
+
+  validMemberList.forEach((member) => {
+    const father = member.fatherMemberId ? memberById.get(String(member.fatherMemberId)) : null;
+    const mother = member.motherMemberId ? memberById.get(String(member.motherMemberId)) : null;
+    const parentIds = [father?._id, mother?._id].filter(Boolean);
+
+    if (parentIds.length) {
+      const key = `parents:${coupleKeyFor(parentIds[0], parentIds[1])}`;
+      const existingUnit = unitMap.get(key) || {
+        id: key,
+        generation: Math.min(...parentIds.map((parentId) => generationByMember.get(parentId) || 0)),
+        partners: uniqueMembers([father, mother]),
+        children: []
+      };
+      existingUnit.children = uniqueMembers([...existingUnit.children, member]);
+      unitMap.set(key, existingUnit);
+    }
+
+    const spouse = relationships.spousesByMember.get(member._id);
+    const hasKnownChildren = Boolean(relationships.childrenByParent.get(member._id)?.length || relationships.childrenByParent.get(spouse?._id)?.length);
+    if (spouse && !hasKnownChildren) {
+      const key = `couple:${coupleKeyFor(member._id, spouse._id)}`;
+      if (!unitMap.has(key)) {
+        unitMap.set(key, {
+          id: key,
+          generation: generationByMember.get(member._id) || 0,
+          partners: uniqueMembers([member, spouse]),
+          children: []
+        });
+      }
+    }
+  });
+
+  validMemberList.forEach((member) => {
+    const hasParentUnit = parentIdsFor(member).length;
+    const spouse = relationships.spousesByMember.get(member._id);
+    const appearsAsPartner = [...unitMap.values()].some((unit) => unit.partners.some((partner) => partner._id === member._id));
+    const appearsAsChild = [...unitMap.values()].some((unit) => unit.children.some((child) => child._id === member._id));
+
+    if (!hasParentUnit && !spouse && !appearsAsPartner && !appearsAsChild) {
+      unitMap.set(`solo:${member._id}`, {
+        id: `solo:${member._id}`,
+        generation: generationByMember.get(member._id) || 0,
+        partners: [member],
+        children: []
+      });
+    }
+  });
+
+  const generations = [...unitMap.values()].reduce((groups, unit) => {
+    const generation = unit.generation || 0;
+    return { ...groups, [generation]: [...(groups[generation] || []), unit] };
+  }, {});
+
+  return Object.entries(generations)
+    .sort(([left], [right]) => Number(left) - Number(right))
+    .map(([generation, units]) => ({
+      generation: Number(generation),
+      units: units.sort((left, right) => (left.partners[0]?.displayName || "").localeCompare(right.partners[0]?.displayName || ""))
+    }));
 }
 
 export function FamilyTreePage() {
@@ -144,7 +268,7 @@ export function FamilyTreePage() {
     return { parents, couple, children, linkedIds };
   }, [memberById, members, selfMember]);
 
-  const wholeFamilyTree = useMemo(() => buildWholeFamilyTree(members, links, memberById), [memberById, members, links]);
+  const expandedFamilyMap = useMemo(() => buildExpandedFamilyMap(members, memberById), [memberById, members]);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -247,7 +371,7 @@ export function FamilyTreePage() {
       <PageHeader
         eyebrow="Family Map"
         title="Family Tree"
-        description="A first live tree around your immediate family. Each member can keep extending it by adding their parents, spouse, and children."
+        description="A growing family map that connects parents, spouses, siblings, children, and in-law branches as members add what they know."
       />
       <section className="content-band">
         <div className="tree-toolbar">
@@ -297,19 +421,20 @@ export function FamilyTreePage() {
 
         <div className="tree-register-header">
           <div>
-            <h2>Whole Family Structure</h2>
-            <p>Each new parent-child link extends this tree across the complete family.</p>
+            <h2>Whole Family Map</h2>
+            <p>Parents, spouses, siblings, children, and in-law branches are grouped into connected family units.</p>
           </div>
-          <span>{links.length} saved link{links.length === 1 ? "" : "s"}</span>
+          <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
         </div>
-        <div className="whole-tree">
-          {wholeFamilyTree.roots.length ? (
-            wholeFamilyTree.roots.map((member) => (
-              <FamilyBranch
-                childrenByParent={wholeFamilyTree.childrenByParent}
-                key={member._id}
-                member={member}
+        <div className="expanded-family-map">
+          {expandedFamilyMap.length ? (
+            expandedFamilyMap.map((generation) => (
+              <GenerationRow
+                generation={generation.generation}
+                key={generation.generation}
                 secondaryLine={secondaryLine}
+                selfMemberId={selfMember?._id}
+                units={generation.units}
               />
             ))
           ) : (
@@ -410,31 +535,46 @@ export function FamilyTreePage() {
   );
 }
 
-function FamilyBranch({ member, childrenByParent, secondaryLine, visited = new Set(), depth = 0 }) {
-  if (!member || visited.has(member._id) || depth > 8) return null;
-
-  const nextVisited = new Set(visited);
-  nextVisited.add(member._id);
-  const children = (childrenByParent.get(member._id) || []).filter((child) => !nextVisited.has(child._id));
-
+function GenerationRow({ generation, units, secondaryLine, selfMemberId }) {
   return (
-    <div className="family-branch">
-      <TreeCard member={member} relationCount={children.length} secondaryLine={secondaryLine} compact />
-      {children.length ? (
-        <div className="family-branch-children">
-          {children.map((child) => (
-            <FamilyBranch
-              childrenByParent={childrenByParent}
-              depth={depth + 1}
-              key={child._id}
-              member={child}
-              secondaryLine={secondaryLine}
-              visited={nextVisited}
-            />
-          ))}
-        </div>
-      ) : null}
+    <div className="generation-row">
+      <div className="generation-label">
+        <strong>Generation {generation + 1}</strong>
+        <span>{units.length} family unit{units.length === 1 ? "" : "s"}</span>
+      </div>
+      <div className="generation-units">
+        {units.map((unit) => (
+          <FamilyUnit key={unit.id} secondaryLine={secondaryLine} selfMemberId={selfMemberId} unit={unit} />
+        ))}
+      </div>
     </div>
+  );
+}
+
+function FamilyUnit({ unit, secondaryLine, selfMemberId }) {
+  return (
+    <article className="family-unit">
+      <div className="couple-row">
+        {unit.partners.map((partner, index) => (
+          <div className="couple-partner" key={partner._id}>
+            <TreeCard isSelf={partner._id === selfMemberId} member={partner} relationCount={unit.children.length} secondaryLine={secondaryLine} compact />
+            {index === 0 && unit.partners.length > 1 ? <span className="marriage-link">spouse</span> : null}
+          </div>
+        ))}
+      </div>
+      {unit.children.length ? (
+        <div className="sibling-strip">
+          <span className="sibling-label">Children / siblings</span>
+          <div className="sibling-list">
+            {unit.children.map((child) => (
+              <TreeCard isSelf={child._id === selfMemberId} key={child._id} member={child} relationCount={0} secondaryLine={secondaryLine} compact />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="unit-note">No children linked yet.</p>
+      )}
+    </article>
   );
 }
 
