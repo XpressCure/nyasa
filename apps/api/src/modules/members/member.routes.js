@@ -300,6 +300,7 @@ memberRoutes.get(
     res.json({
       data: {
         mode,
+        selfMemberId: req.member._id,
         members: members.map((member) => serializeTreeMember(member, mode)),
         links: buildTreeLinks(members)
       }
