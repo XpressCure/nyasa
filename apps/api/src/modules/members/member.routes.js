@@ -592,7 +592,7 @@ memberRoutes.post(
     });
 
     targetMember.photoDocumentId = document._id;
-    targetMember.photoUrl = `/api/documents/family/${req.familyId}/${document._id}/download`;
+    targetMember.photoUrl = `/api/documents/family/${req.familyId}/${document._id}/member-photo`;
     await targetMember.save();
 
     res.status(201).json({

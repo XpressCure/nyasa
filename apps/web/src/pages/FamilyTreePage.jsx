@@ -25,6 +25,10 @@ function avatarClassName(member) {
   return `member-avatar ${member?.gender || "unknown"}${member?.photoUrl ? " has-photo" : ""}`;
 }
 
+function memberPhotoUrl(member) {
+  return member?.photoUrl?.replace(/\/download$/, "/member-photo") || "";
+}
+
 function educationLine(member) {
   const graduation = member?.education?.graduation?.degree || member?.education?.graduation?.institution;
   const postGraduation = member?.education?.postGraduation?.degree || member?.education?.postGraduation?.institution;
@@ -364,14 +368,15 @@ function MemberAvatar({ member }) {
     let isActive = true;
 
     async function loadPhoto() {
-      if (!member?.photoUrl) {
+      const photoUrl = memberPhotoUrl(member);
+      if (!photoUrl) {
         setPhotoSrc("");
         return;
       }
 
       try {
         const token = localStorage.getItem("nyasa_token");
-        const response = await fetch(member.photoUrl, {
+        const response = await fetch(photoUrl, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
