@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
-import { apiGet, apiPatch } from "../lib/api.js";
+import { apiGet, apiPatch, apiPost } from "../lib/api.js";
 
 const initialForm = {
   displayName: "",
@@ -9,6 +9,8 @@ const initialForm = {
   photoUrl: "",
   dateOfBirth: "",
   livingStatus: "living",
+  dateOfDeath: "",
+  yearOfDeath: "",
   maritalStatus: "unknown",
   anniversaryDate: "",
   relationLabel: "",
@@ -41,6 +43,26 @@ const initialForm = {
   }
 };
 
+const emptyRelative = {
+  displayName: "",
+  gender: "prefer_not_to_say",
+  dateOfBirth: "",
+  livingStatus: "living",
+  dateOfDeath: "",
+  yearOfDeath: "",
+  maritalStatus: "unknown",
+  placeOfResidence: "",
+  profession: "",
+  bio: ""
+};
+
+const initialImmediateFamily = {
+  father: { ...emptyRelative, gender: "male" },
+  mother: { ...emptyRelative, gender: "female" },
+  spouse: { ...emptyRelative, maritalStatus: "married" },
+  children: [{ ...emptyRelative }]
+};
+
 function toInputDate(value) {
   if (!value) return "";
   return new Date(value).toISOString().slice(0, 10);
@@ -65,6 +87,8 @@ function hydrateForm(member) {
     photoUrl: member.photoUrl || "",
     dateOfBirth: toInputDate(member.dateOfBirth),
     livingStatus: member.livingStatus || "living",
+    dateOfDeath: toInputDate(member.dateOfDeath),
+    yearOfDeath: member.yearOfDeath ?? "",
     maritalStatus: member.maritalStatus || "unknown",
     anniversaryDate: toInputDate(member.anniversaryDate),
     relationLabel: member.relationLabel || "",
@@ -92,9 +116,44 @@ function hydrateForm(member) {
   };
 }
 
+function relativePayload(relative) {
+  if (!relative.displayName.trim()) return null;
+  return {
+    displayName: relative.displayName,
+    gender: relative.gender,
+    dateOfBirth: relative.dateOfBirth,
+    livingStatus: relative.livingStatus,
+    dateOfDeath: relative.dateOfDeath,
+    yearOfDeath: relative.yearOfDeath === "" ? undefined : Number(relative.yearOfDeath),
+    maritalStatus: relative.maritalStatus,
+    placeOfResidence: relative.placeOfResidence,
+    profession: relative.profession,
+    bio: relative.bio
+  };
+}
+
+async function fileToUploadPayload(file) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read selected photo."));
+    reader.readAsDataURL(file);
+  });
+
+  return {
+    originalName: file.name,
+    mimeType: file.type,
+    sizeBytes: file.size,
+    dataBase64: String(dataUrl).split(",")[1]
+  };
+}
+
 export function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState(initialForm);
+  const [profilePhotoFile, setProfilePhotoFile] = useState(null);
+  const [immediateFamily, setImmediateFamily] = useState(initialImmediateFamily);
+  const [relativePhotoFiles, setRelativePhotoFiles] = useState({});
   const [message, setMessage] = useState("");
 
   function getFamilyId() {
@@ -120,6 +179,37 @@ export function ProfilePage() {
       ...current,
       [section]: { ...current[section], [field]: value }
     }));
+  }
+
+  function updateRelative(group, field, value, index = null) {
+    setImmediateFamily((current) => {
+      if (group === "children") {
+        const children = current.children.map((child, childIndex) => (childIndex === index ? { ...child, [field]: value } : child));
+        return { ...current, children };
+      }
+
+      return { ...current, [group]: { ...current[group], [field]: value } };
+    });
+  }
+
+  function addChildRow() {
+    setImmediateFamily((current) => ({ ...current, children: [...current.children, { ...emptyRelative }] }));
+  }
+
+  function removeChildRow(index) {
+    setImmediateFamily((current) => ({ ...current, children: current.children.filter((_, childIndex) => childIndex !== index) }));
+    setRelativePhotoFiles((current) => {
+      const next = { ...current };
+      delete next[`child-${index}`];
+      return next;
+    });
+  }
+
+  async function uploadMemberPhoto(memberId, file) {
+    if (!file) return null;
+    const familyId = getFamilyId();
+    const payload = await fileToUploadPayload(file);
+    return apiPost(`/members/family/${familyId}/${memberId}/photo`, payload);
   }
 
   async function loadProfile() {
@@ -167,6 +257,7 @@ export function ProfilePage() {
       const response = await apiPatch(`/members/family/${familyId}/me`, {
         ...form,
         childrenCount: form.childrenCount === "" ? undefined : Number(form.childrenCount),
+        yearOfDeath: form.yearOfDeath === "" ? undefined : Number(form.yearOfDeath),
         health: {
           bloodGroup: form.health.bloodGroup,
           knownConditions: listFromText(form.health.knownConditionsText),
@@ -174,9 +265,60 @@ export function ProfilePage() {
           geneticNotes: form.health.geneticNotes
         }
       });
-      setProfile(response.data);
-      setForm(hydrateForm(response.data));
+      if (profilePhotoFile) {
+        const photoResponse = await uploadMemberPhoto(response.data._id, profilePhotoFile);
+        setProfile(photoResponse.data.member);
+        setForm(hydrateForm(photoResponse.data.member));
+        setProfilePhotoFile(null);
+      } else {
+        setProfile(response.data);
+        setForm(hydrateForm(response.data));
+      }
       setMessage("Profile updated.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function saveImmediateFamily(event) {
+    event.preventDefault();
+    const familyId = getFamilyId();
+
+    if (!familyId) {
+      setMessage("Join the Alahdadpur family workspace first.");
+      return;
+    }
+
+    try {
+      const payload = {
+        father: relativePayload(immediateFamily.father) || undefined,
+        mother: relativePayload(immediateFamily.mother) || undefined,
+        spouse: relativePayload(immediateFamily.spouse) || undefined,
+        children: immediateFamily.children.map(relativePayload).filter(Boolean)
+      };
+      const response = await apiPost(`/members/family/${familyId}/immediate-family`, payload);
+      const uploadTasks = [];
+
+      if (response.data.father && relativePhotoFiles.father) {
+        uploadTasks.push(uploadMemberPhoto(response.data.father._id, relativePhotoFiles.father));
+      }
+      if (response.data.mother && relativePhotoFiles.mother) {
+        uploadTasks.push(uploadMemberPhoto(response.data.mother._id, relativePhotoFiles.mother));
+      }
+      if (response.data.spouse && relativePhotoFiles.spouse) {
+        uploadTasks.push(uploadMemberPhoto(response.data.spouse._id, relativePhotoFiles.spouse));
+      }
+      response.data.children.forEach((child, index) => {
+        const file = relativePhotoFiles[`child-${index}`];
+        if (file) uploadTasks.push(uploadMemberPhoto(child._id, file));
+      });
+
+      await Promise.all(uploadTasks);
+      setProfile(response.data.member);
+      setForm(hydrateForm(response.data.member));
+      setImmediateFamily(initialImmediateFamily);
+      setRelativePhotoFiles({});
+      setMessage("Immediate family saved. These profiles can be completed later from their own accounts.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -236,9 +378,21 @@ export function ProfilePage() {
             Date of birth
             <input type="date" value={form.dateOfBirth} onChange={(event) => updateField("dateOfBirth", event.target.value)} />
           </label>
+          {form.livingStatus === "deceased" ? (
+            <>
+              <label>
+                Date of death if known
+                <input type="date" value={form.dateOfDeath} onChange={(event) => updateField("dateOfDeath", event.target.value)} />
+              </label>
+              <label>
+                Year of death if date is unknown
+                <input type="number" min="1800" max="2100" value={form.yearOfDeath} onChange={(event) => updateField("yearOfDeath", event.target.value)} />
+              </label>
+            </>
+          ) : null}
           <label>
-            Photo URL
-            <input value={form.photoUrl} onChange={(event) => updateField("photoUrl", event.target.value)} placeholder="Upload support coming next" />
+            Profile photo
+            <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => setProfilePhotoFile(event.target.files[0] || null)} />
           </label>
           <label>
             Relationship note
@@ -391,6 +545,127 @@ export function ProfilePage() {
         </div>
         {message ? <p className="form-message">{message}</p> : null}
       </section>
+      <section className="content-band spaced-band">
+        <h2>Immediate Family</h2>
+        <p className="section-note">
+          Add father, mother, and children here. They can later sign in and complete their own education, work, health, and family details.
+        </p>
+        <form className="form-grid profile-form" onSubmit={saveImmediateFamily}>
+          <h3 className="form-section-title">Father</h3>
+          <RelativeFields
+            relative={immediateFamily.father}
+            onChange={(field, value) => updateRelative("father", field, value)}
+            onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, father: file }))}
+          />
+
+          <h3 className="form-section-title">Mother</h3>
+          <RelativeFields
+            relative={immediateFamily.mother}
+            onChange={(field, value) => updateRelative("mother", field, value)}
+            onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, mother: file }))}
+          />
+
+          <h3 className="form-section-title">Spouse</h3>
+          <RelativeFields
+            relative={immediateFamily.spouse}
+            onChange={(field, value) => updateRelative("spouse", field, value)}
+            onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, spouse: file }))}
+          />
+
+          <h3 className="form-section-title">Children</h3>
+          {immediateFamily.children.map((child, index) => (
+            <div className="relative-card" key={`child-${index}`}>
+              <RelativeFields
+                relative={child}
+                onChange={(field, value) => updateRelative("children", field, value, index)}
+                onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, [`child-${index}`]: file }))}
+              />
+              {immediateFamily.children.length > 1 ? (
+                <button type="button" className="secondary-button" onClick={() => removeChildRow(index)}>
+                  Remove Child
+                </button>
+              ) : null}
+            </div>
+          ))}
+          <button type="button" className="secondary-button" onClick={addChildRow}>
+            Add Another Child
+          </button>
+          <button type="submit" disabled={!getFamilyId()}>
+            Save Immediate Family
+          </button>
+        </form>
+      </section>
     </section>
+  );
+}
+
+function RelativeFields({ relative, onChange, onPhoto }) {
+  return (
+    <>
+      <label>
+        Full name
+        <input value={relative.displayName} onChange={(event) => onChange("displayName", event.target.value)} />
+      </label>
+      <label>
+        Gender
+        <select value={relative.gender} onChange={(event) => onChange("gender", event.target.value)}>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+          <option value="prefer_not_to_say">Prefer not to say</option>
+        </select>
+      </label>
+      <label>
+        Living status
+        <select value={relative.livingStatus} onChange={(event) => onChange("livingStatus", event.target.value)}>
+          <option value="living">Living</option>
+          <option value="deceased">No longer in this world</option>
+          <option value="unknown">Unknown</option>
+        </select>
+      </label>
+      <label>
+        Date of birth
+        <input type="date" value={relative.dateOfBirth} onChange={(event) => onChange("dateOfBirth", event.target.value)} />
+      </label>
+      {relative.livingStatus === "deceased" ? (
+        <>
+          <label>
+            Date of death if known
+            <input type="date" value={relative.dateOfDeath} onChange={(event) => onChange("dateOfDeath", event.target.value)} />
+          </label>
+          <label>
+            Year of death if date is unknown
+            <input type="number" min="1800" max="2100" value={relative.yearOfDeath} onChange={(event) => onChange("yearOfDeath", event.target.value)} />
+          </label>
+        </>
+      ) : null}
+      <label>
+        Marital status
+        <select value={relative.maritalStatus} onChange={(event) => onChange("maritalStatus", event.target.value)}>
+          <option value="unknown">Unknown</option>
+          <option value="single">Single</option>
+          <option value="married">Married</option>
+          <option value="widowed">Widowed</option>
+          <option value="divorced">Divorced</option>
+          <option value="separated">Separated</option>
+        </select>
+      </label>
+      <label>
+        Photo
+        <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => onPhoto(event.target.files[0] || null)} />
+      </label>
+      <label>
+        Place of residence
+        <input value={relative.placeOfResidence} onChange={(event) => onChange("placeOfResidence", event.target.value)} />
+      </label>
+      <label>
+        Profession
+        <input value={relative.profession} onChange={(event) => onChange("profession", event.target.value)} />
+      </label>
+      <label className="wide-field">
+        Notes
+        <textarea value={relative.bio} onChange={(event) => onChange("bio", event.target.value)} rows="3" />
+      </label>
+    </>
   );
 }

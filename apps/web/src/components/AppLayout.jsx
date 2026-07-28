@@ -10,6 +10,7 @@ const navSections = [
       { to: "/dashboard", label: "Dashboard", icon: Home },
       { to: "/family", label: "Family", icon: Users },
       { to: "/profile", label: "Profile", icon: UserCircle },
+      { to: "/family-tree", label: "Family Tree", icon: Network },
       { to: "/treasury", label: "Kosh", icon: Landmark },
       { to: "/projects", label: "Missions", icon: GitBranch },
       { to: "/members", label: "Members", icon: Archive }
@@ -19,7 +20,6 @@ const navSections = [
     title: "Coming Next",
     items: [
       { label: "Family Gallery", icon: Images, planned: true },
-      { label: "Family Tree", icon: Network, planned: true },
       { label: "Family Research", icon: Search, planned: true },
       { label: "Social Works", icon: HeartHandshake, planned: true },
       { label: "Legacy Library", icon: BookOpenText, planned: true }

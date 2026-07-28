@@ -2,13 +2,18 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
+import { Document } from "../../models/Document.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { saveDocumentFile } from "../documents/document-storage.service.js";
 import { permissions } from "../permissions/permissions.js";
 
 export const memberRoutes = Router();
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const allowedPhotoMimeTypes = ["image/jpeg", "image/png", "image/webp"];
 
 const optionalNumber = (schema) =>
   z.preprocess((value) => (value === "" || value === null ? undefined : value), schema.optional());
@@ -42,6 +47,8 @@ const updateProfileSchema = z.object({
   photoUrl: z.string().optional(),
   dateOfBirth: z.string().optional(),
   livingStatus: z.enum(["living", "deceased", "unknown"]).optional(),
+  dateOfDeath: z.string().optional(),
+  yearOfDeath: optionalNumber(z.coerce.number().int().min(1800).max(2100)),
   maritalStatus: z.enum(["single", "married", "widowed", "divorced", "separated", "unknown"]).optional(),
   anniversaryDate: z.string().optional(),
   fatherMemberId: z.string().optional(),
@@ -65,6 +72,24 @@ const updateProfileSchema = z.object({
   work: workHistorySchema.optional(),
   health: healthProfileSchema.optional(),
   bio: z.string().optional()
+});
+
+const relativeProfileSchema = updateProfileSchema.extend({
+  displayName: z.string().min(2)
+});
+
+const immediateFamilySchema = z.object({
+  father: relativeProfileSchema.optional(),
+  mother: relativeProfileSchema.optional(),
+  spouse: relativeProfileSchema.optional(),
+  children: z.array(relativeProfileSchema).default([])
+});
+
+const photoUploadSchema = z.object({
+  originalName: z.string().min(1).max(180),
+  mimeType: z.enum(allowedPhotoMimeTypes),
+  sizeBytes: z.coerce.number().positive().max(MAX_PHOTO_BYTES),
+  dataBase64: z.string().min(1)
 });
 
 const updateRoleSchema = z.object({
@@ -97,11 +122,19 @@ function normalizeProfileUpdate(body) {
   return {
     ...body,
     dateOfBirth: toOptionalDate(body.dateOfBirth),
+    dateOfDeath: toOptionalDate(body.dateOfDeath),
     anniversaryDate: toOptionalDate(body.anniversaryDate),
     fatherMemberId: toOptionalObjectId(body.fatherMemberId),
     motherMemberId: toOptionalObjectId(body.motherMemberId),
     spouseMemberId: toOptionalObjectId(body.spouseMemberId)
   };
+}
+
+function normalizeRelativeProfile(body) {
+  return normalizeProfileUpdate({
+    ...body,
+    childrenCount: body.childrenCount === "" ? undefined : body.childrenCount
+  });
 }
 
 function buildTreeLinks(members) {
@@ -125,6 +158,81 @@ function buildTreeLinks(members) {
   });
 
   return links;
+}
+
+function memberHasHealthSignal(member) {
+  return Boolean(
+    member.health?.bloodGroup ||
+      member.health?.geneticNotes ||
+      member.health?.knownConditions?.length ||
+      member.health?.allergies?.length
+  );
+}
+
+function memberHasEducationSignal(member) {
+  return Boolean(
+    member.education?.intermediate?.institution ||
+      member.education?.intermediate?.degree ||
+      member.education?.graduation?.institution ||
+      member.education?.graduation?.degree ||
+      member.education?.postGraduation?.institution ||
+      member.education?.postGraduation?.degree
+  );
+}
+
+function serializeTreeMember(member, mode) {
+  const data = serializeMember(member, { includeSensitive: mode === "health" });
+
+  if (mode === "health") {
+    data.treeSignal = memberHasHealthSignal(member) ? "health_data_available" : "health_data_pending";
+  }
+
+  if (mode === "education") {
+    data.treeSignal = memberHasEducationSignal(member) ? "education_data_available" : "education_data_pending";
+  }
+
+  return data;
+}
+
+async function findExistingRelative({ familyId, displayName, dateOfBirth }) {
+  const query = {
+    familyId,
+    displayName: new RegExp(`^${displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+    status: { $ne: "removed" }
+  };
+
+  if (dateOfBirth) {
+    query.dateOfBirth = dateOfBirth;
+  }
+
+  return FamilyMember.findOne(query);
+}
+
+async function upsertRelative({ familyId, profile, defaults = {} }) {
+  const normalized = normalizeRelativeProfile({ ...profile, ...defaults });
+  const existing = await findExistingRelative({
+    familyId,
+    displayName: normalized.displayName,
+    dateOfBirth: normalized.dateOfBirth
+  });
+
+  if (existing) {
+    Object.entries(normalized).forEach(([key, value]) => {
+      if (value !== undefined && value !== "" && existing[key] === undefined) {
+        existing[key] = value;
+      }
+    });
+    await existing.save();
+    return existing;
+  }
+
+  return FamilyMember.create({
+    ...normalized,
+    familyId,
+    role: "member",
+    status: "active",
+    joinedAt: new Date()
+  });
 }
 
 async function assertCanChangeMember({ actorMember, targetMember, nextRole, nextStatus }) {
@@ -173,6 +281,7 @@ memberRoutes.get(
   "/family/:familyId/tree",
   requireFamilyPermission(permissions.membersView),
   asyncHandler(async (req, res) => {
+    const mode = ["general", "education", "health"].includes(req.query.mode) ? req.query.mode : "general";
     const members = await FamilyMember.find({
       familyId: req.familyId,
       status: { $ne: "removed" }
@@ -180,7 +289,8 @@ memberRoutes.get(
 
     res.json({
       data: {
-        members: members.map((member) => serializeMember(member)),
+        mode,
+        members: members.map((member) => serializeTreeMember(member, mode)),
         links: buildTreeLinks(members)
       }
     });
@@ -206,6 +316,172 @@ memberRoutes.patch(
     });
 
     res.json({ data: serializeMember(member, { includeSensitive: true }) });
+  })
+);
+
+memberRoutes.post(
+  "/family/:familyId/immediate-family",
+  requireFamilyPermission(permissions.workspaceView),
+  asyncHandler(async (req, res) => {
+    const body = immediateFamilySchema.parse(req.body);
+    const created = {};
+    const memberUpdates = {};
+
+    if (body.father?.displayName) {
+      const father = await upsertRelative({
+        familyId: req.familyId,
+        profile: body.father,
+        defaults: { gender: body.father.gender || "male", relationLabel: "Father" }
+      });
+      memberUpdates.fatherMemberId = father._id;
+      created.father = father;
+    }
+
+    if (body.mother?.displayName) {
+      const mother = await upsertRelative({
+        familyId: req.familyId,
+        profile: body.mother,
+        defaults: { gender: body.mother.gender || "female", relationLabel: "Mother" }
+      });
+      memberUpdates.motherMemberId = mother._id;
+      created.mother = mother;
+    }
+
+    if (body.spouse?.displayName) {
+      const spouse = await upsertRelative({
+        familyId: req.familyId,
+        profile: body.spouse,
+        defaults: { relationLabel: "Spouse", maritalStatus: body.spouse.maritalStatus || "married" }
+      });
+      memberUpdates.spouseMemberId = spouse._id;
+      spouse.spouseMemberId = req.member._id;
+      if (!spouse.anniversaryDate && req.member.anniversaryDate) {
+        spouse.anniversaryDate = req.member.anniversaryDate;
+      }
+      await spouse.save();
+      created.spouse = spouse;
+    }
+
+    created.children = [];
+    for (const childProfile of body.children) {
+      if (!childProfile.displayName) continue;
+      const parentLink =
+        req.member.gender === "female" ? { motherMemberId: req.member._id } : req.member.gender === "male" ? { fatherMemberId: req.member._id } : {};
+      const child = await upsertRelative({
+        familyId: req.familyId,
+        profile: childProfile,
+        defaults: { relationLabel: childProfile.relationLabel || "Child", ...parentLink }
+      });
+      created.children.push(child);
+    }
+
+    if (Object.keys(memberUpdates).length || created.children.length) {
+      req.member.set({
+        ...memberUpdates,
+        childrenCount: created.children.length || req.member.childrenCount
+      });
+      await req.member.save();
+    }
+
+    await writeAuditLog({
+      familyId: req.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: req.member._id,
+      action: "member.immediate_family_saved",
+      entityType: "FamilyMember",
+      entityId: String(req.member._id),
+      summary: `Updated immediate family for ${req.member.displayName}`,
+      after: {
+        fatherMemberId: memberUpdates.fatherMemberId,
+        motherMemberId: memberUpdates.motherMemberId,
+        spouseMemberId: memberUpdates.spouseMemberId,
+        childCount: created.children.length
+      },
+      req
+    });
+
+    res.status(201).json({
+      data: {
+        member: serializeMember(req.member, { includeSensitive: true }),
+        father: created.father ? serializeMember(created.father) : null,
+        mother: created.mother ? serializeMember(created.mother) : null,
+        spouse: created.spouse ? serializeMember(created.spouse) : null,
+        children: created.children.map((child) => serializeMember(child))
+      }
+    });
+  })
+);
+
+memberRoutes.post(
+  "/family/:familyId/:memberId/photo",
+  requireFamilyPermission(permissions.workspaceView),
+  asyncHandler(async (req, res) => {
+    const body = photoUploadSchema.parse(req.body);
+    const targetMember = await FamilyMember.findOne({
+      _id: req.params.memberId,
+      familyId: req.familyId,
+      status: { $ne: "removed" }
+    });
+
+    if (!targetMember) {
+      throw httpError(404, "Member not found.", "MEMBER_NOT_FOUND");
+    }
+
+    const isSelf = String(targetMember._id) === String(req.member._id);
+    const canManageMembers = ["owner", "admin"].includes(req.member.role);
+    const canAttachFamilyCircle =
+      String(targetMember.fatherMemberId || "") === String(req.member._id) ||
+      String(targetMember.motherMemberId || "") === String(req.member._id) ||
+      String(targetMember.spouseMemberId || "") === String(req.member._id) ||
+      String(req.member.fatherMemberId || "") === String(targetMember._id) ||
+      String(req.member.motherMemberId || "") === String(targetMember._id) ||
+      String(req.member.spouseMemberId || "") === String(targetMember._id);
+
+    if (!isSelf && !canManageMembers && !canAttachFamilyCircle) {
+      throw httpError(403, "You can upload photos only for yourself or your immediate family.", "PHOTO_UPLOAD_NOT_ALLOWED");
+    }
+
+    const fileBuffer = Buffer.from(body.dataBase64, "base64");
+
+    if (fileBuffer.length !== body.sizeBytes || fileBuffer.length > MAX_PHOTO_BYTES) {
+      throw httpError(400, "Uploaded photo size is invalid.", "INVALID_UPLOAD_SIZE");
+    }
+
+    const storedFile = await saveDocumentFile({
+      familyId: req.familyId,
+      memberId: targetMember._id,
+      originalName: body.originalName,
+      mimeType: body.mimeType,
+      fileBuffer
+    });
+
+    const document = await Document.create({
+      familyId: req.familyId,
+      memberId: targetMember._id,
+      originalName: body.originalName,
+      storedName: storedFile.storedName,
+      mimeType: body.mimeType,
+      sizeBytes: body.sizeBytes,
+      storageDriver: storedFile.storageDriver,
+      storagePath: storedFile.storagePath,
+      storageKey: storedFile.storageKey,
+      bucketName: storedFile.bucketName,
+      region: storedFile.region,
+      category: "member_photo",
+      uploadedBy: req.member._id
+    });
+
+    targetMember.photoDocumentId = document._id;
+    targetMember.photoUrl = `/api/documents/family/${req.familyId}/${document._id}/download`;
+    await targetMember.save();
+
+    res.status(201).json({
+      data: {
+        member: serializeMember(targetMember, { includeSensitive: isSelf }),
+        documentId: document._id,
+        photoUrl: targetMember.photoUrl
+      }
+    });
   })
 );
 

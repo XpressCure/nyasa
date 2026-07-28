@@ -49,9 +49,12 @@ const familyMemberSchema = new mongoose.Schema(
     relationLabel: String,
     gender: { type: String, enum: ["male", "female", "other", "prefer_not_to_say"] },
     photoUrl: { type: String, trim: true },
+    photoDocumentId: { type: mongoose.Schema.Types.ObjectId, ref: "Document" },
     dateOfBirth: Date,
     isMinor: { type: Boolean, default: false },
     livingStatus: { type: String, enum: ["living", "deceased", "unknown"], default: "living" },
+    dateOfDeath: Date,
+    yearOfDeath: Number,
     maritalStatus: {
       type: String,
       enum: ["single", "married", "widowed", "divorced", "separated", "unknown"],

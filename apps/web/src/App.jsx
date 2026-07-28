@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { FamilyPage } from "./pages/FamilyPage.jsx";
+import { FamilyTreePage } from "./pages/FamilyTreePage.jsx";
 import { InviteAcceptPage } from "./pages/InviteAcceptPage.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
@@ -19,6 +20,7 @@ export function App() {
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/family" element={<FamilyPage />} />
+        <Route path="/family-tree" element={<FamilyTreePage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/members" element={<MembersPage />} />
         <Route path="/treasury" element={<TreasuryPage />} />

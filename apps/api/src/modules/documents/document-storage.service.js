@@ -42,11 +42,12 @@ function getS3Client() {
   });
 }
 
-export async function saveDocumentFile({ familyId, expenseId, originalName, mimeType, fileBuffer }) {
+export async function saveDocumentFile({ familyId, expenseId, memberId, folder = "documents", originalName, mimeType, fileBuffer }) {
   const storedName = createStoredName(originalName, mimeType);
+  const ownerFolder = expenseId ? `expenses/${expenseId}` : memberId ? `members/${memberId}` : folder;
 
   if (env.STORAGE_DRIVER === "s3") {
-    const storageKey = `nyasa/${familyId}/expenses/${expenseId}/${storedName}`;
+    const storageKey = `nyasa/${familyId}/${ownerFolder}/${storedName}`;
     const client = getS3Client();
 
     await client.send(
@@ -70,7 +71,7 @@ export async function saveDocumentFile({ familyId, expenseId, originalName, mime
     };
   }
 
-  const uploadDir = path.resolve("uploads", String(familyId), "expenses", String(expenseId));
+  const uploadDir = path.resolve("uploads", String(familyId), ownerFolder);
   const storagePath = path.join(uploadDir, storedName);
   await mkdir(uploadDir, { recursive: true });
   await writeFile(storagePath, fileBuffer);
