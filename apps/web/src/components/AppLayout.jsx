@@ -1,4 +1,4 @@
-import { Archive, BookOpenText, CalendarDays, GitBranch, HeartHandshake, Home, Images, Landmark, Network, Search, UserCircle, Users } from "lucide-react";
+import { Archive, BookOpenText, CalendarDays, GitBranch, HeartHandshake, Home, Images, Landmark, Search, UserCircle, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
@@ -11,7 +11,6 @@ const navSections = [
       { to: "/calendar", label: "Calendar", icon: CalendarDays },
       { to: "/family", label: "Family", icon: Users },
       { to: "/profile", label: "Profile", icon: UserCircle },
-      { to: "/family-tree", label: "Family Tree", icon: Network },
       { to: "/treasury", label: "Kosh", icon: Landmark },
       { to: "/projects", label: "Missions", icon: GitBranch },
       { to: "/members", label: "Members", icon: Archive }

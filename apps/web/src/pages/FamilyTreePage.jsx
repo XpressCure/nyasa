@@ -10,6 +10,13 @@ const treeModes = [
   { id: "health", label: "Health", icon: HeartPulse }
 ];
 
+const familyTabs = [
+  { id: "immediate", label: "My Family" },
+  { id: "map", label: "Full Map" },
+  { id: "register", label: "Register" },
+  { id: "history", label: "History" }
+];
+
 function formatDate(value) {
   if (!value) return "";
   return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -76,6 +83,15 @@ function parentIdsFor(member) {
 
 function coupleKeyFor(firstId, secondId = "") {
   return [String(firstId || ""), String(secondId || "")].filter(Boolean).sort().join(":");
+}
+
+function spouseForMember(member, memberById) {
+  if (!member) return null;
+  if (member.spouseMemberId && memberById.has(String(member.spouseMemberId))) {
+    return memberById.get(String(member.spouseMemberId));
+  }
+
+  return [...memberById.values()].find((possibleSpouse) => String(possibleSpouse.spouseMemberId || "") === member._id) || null;
 }
 
 function buildRelationshipMap(members, memberById) {
@@ -222,6 +238,7 @@ function buildExpandedFamilyMap(members, memberById) {
 }
 
 export function FamilyTreePage() {
+  const [activeTab, setActiveTab] = useState("immediate");
   const [mode, setMode] = useState("general");
   const [members, setMembers] = useState([]);
   const [links, setLinks] = useState([]);
@@ -369,34 +386,45 @@ export function FamilyTreePage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Family Map"
-        title="Family Tree"
-        description="A growing family map that connects parents, spouses, siblings, children, and in-law branches as members add what they know."
+        eyebrow="Family Page"
+        title="Family"
+        description="One place for the immediate family view, complete family map, register, and family history."
       />
       <section className="content-band">
-        <div className="tree-toolbar">
-          {treeModes.map((treeMode) => {
-            const Icon = treeMode.icon;
-            return (
-              <button
-                className={mode === treeMode.id ? "active" : ""}
-                key={treeMode.id}
-                type="button"
-                onClick={() => changeMode(treeMode.id)}
-              >
-                <Icon size={18} />
-                {treeMode.label}
-              </button>
-            );
-          })}
+        <div className="family-tabs">
+          {familyTabs.map((tab) => (
+            <button className={activeTab === tab.id ? "active" : ""} key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}>
+              {tab.label}
+            </button>
+          ))}
         </div>
+        {activeTab !== "history" ? (
+          <div className="tree-toolbar">
+            {treeModes.map((treeMode) => {
+              const Icon = treeMode.icon;
+              return (
+                <button
+                  className={mode === treeMode.id ? "active" : ""}
+                  key={treeMode.id}
+                  type="button"
+                  onClick={() => changeMode(treeMode.id)}
+                >
+                  <Icon size={18} />
+                  {treeMode.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
-        {isLoading ? (
+        {activeTab === "immediate" && isLoading ? (
           <div className="empty-state">
             <h3>Loading family tree</h3>
             <p>Fetching the latest family links.</p>
           </div>
-        ) : selfMember ? (
+        ) : null}
+
+        {activeTab === "immediate" && !isLoading && selfMember ? (
           <div className="family-tree-board">
             <TreeLevel label="Parents" members={treeFamily.parents} secondaryLine={secondaryLine} emptyText="Add father and mother from Profile." />
             <div className="tree-connector" />
@@ -404,7 +432,9 @@ export function FamilyTreePage() {
             <div className="tree-connector" />
             <TreeLevel label="Children" members={treeFamily.children} secondaryLine={secondaryLine} emptyText="Add children from Profile." />
           </div>
-        ) : (
+        ) : null}
+
+        {activeTab === "immediate" && !isLoading && !selfMember ? (
           <div className="empty-state">
             <h3>Tree is not available yet</h3>
             <p>{message || "Open Profile and add father, mother, spouse, or children to start the tree."}</p>
@@ -417,125 +447,136 @@ export function FamilyTreePage() {
               </Link>
             </div>
           </div>
-        )}
+        ) : null}
 
-        <div className="tree-register-header">
-          <div>
-            <h2>Whole Family Map</h2>
-            <p>Parents, spouses, siblings, children, and in-law branches are grouped into connected family units.</p>
-          </div>
-          <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
-        </div>
-        <div className="expanded-family-map">
-          {expandedFamilyMap.length ? (
-            expandedFamilyMap.map((generation) => (
-              <GenerationRow
+        {activeTab === "map" ? (
+          <>
+            <div className="tree-register-header">
+              <div>
+                <h2>Whole Family Map</h2>
+                <p>Parents, spouses, siblings, children, and in-law branches are grouped into connected family units.</p>
+              </div>
+              <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
+            </div>
+            <div className="expanded-family-map">
+              {expandedFamilyMap.length ? (
+                expandedFamilyMap.map((generation) => (
+                  <GenerationRow
                 generation={generation.generation}
                 key={generation.generation}
+                memberById={memberById}
                 secondaryLine={secondaryLine}
                 selfMemberId={selfMember?._id}
                 units={generation.units}
-              />
-            ))
-          ) : (
-            <div className="tree-empty-node">Add relatives from Profile to begin the full structure.</div>
-          )}
-        </div>
+                  />
+                ))
+              ) : (
+                <div className="tree-empty-node">Add relatives from Profile to begin the full structure.</div>
+              )}
+            </div>
+          </>
+        ) : null}
 
-        <div className="tree-register-header">
-          <h2>Family Register</h2>
-          <span>{members.length} profile{members.length === 1 ? "" : "s"}</span>
-        </div>
-        <div className="tree-grid">
-          {validMembers(members).map((member) => (
-            <TreeCard
-              isMuted={!treeFamily.linkedIds.has(member._id)}
-              isSelf={member._id === selfMember?._id}
-              key={member._id}
-              member={member}
-              relationCount={relationCount(member._id)}
-              secondaryLine={secondaryLine}
-            />
-          ))}
-        </div>
-        {message ? <p className="form-message">{message}</p> : null}
-      </section>
+        {activeTab === "register" ? (
+          <>
+            <div className="tree-register-header">
+              <h2>Family Register</h2>
+              <span>{members.length} profile{members.length === 1 ? "" : "s"}</span>
+            </div>
+            <div className="tree-grid">
+              {validMembers(members).map((member) => (
+                <TreeCard
+                  isMuted={!treeFamily.linkedIds.has(member._id)}
+                  isSelf={member._id === selfMember?._id}
+                  key={member._id}
+                  member={member}
+                  relationCount={relationCount(member._id)}
+                  secondaryLine={secondaryLine}
+                />
+              ))}
+            </div>
+          </>
+        ) : null}
 
-      <section className="content-band spaced-band">
-        <div className="tree-register-header">
-          <div>
-            <h2>Family History</h2>
-            <p>Chronological memories, milestones, migration notes, village events, and family achievements.</p>
+        {activeTab === "history" ? (
+          <div className="family-history-panel">
+            <div className="tree-register-header">
+              <div>
+                <h2>Family History</h2>
+                <p>Chronological memories, milestones, migration notes, village events, and family achievements.</p>
+              </div>
+              <span>{historyEvents.length} event{historyEvents.length === 1 ? "" : "s"}</span>
+            </div>
+            <div className="history-timeline">
+              {historyEvents.length ? (
+                historyEvents.map((event) => (
+                  <article className="history-event" key={event.id}>
+                    <time>{event.eventDate ? formatDate(event.eventDate) : event.eventYear}</time>
+                    <div>
+                      <strong>{event.title}</strong>
+                      <span>
+                        {event.source === "profile" ? "Profile event" : event.category}
+                        {event.location ? ` - ${event.location}` : ""}
+                      </span>
+                      {event.description ? <p>{event.description}</p> : null}
+                      {event.sourceNote ? <small>{event.sourceNote}</small> : null}
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="empty-copy">No family history events yet. Add the first remembered year or date.</p>
+              )}
+            </div>
+            <form className="form-grid compact-form" onSubmit={saveHistoryEvent}>
+              <label>
+                Event title
+                <input value={historyForm.title} onChange={(event) => setHistoryForm((current) => ({ ...current, title: event.target.value }))} />
+              </label>
+              <label>
+                Exact date if known
+                <input type="date" value={historyForm.eventDate} onChange={(event) => setHistoryForm((current) => ({ ...current, eventDate: event.target.value }))} />
+              </label>
+              <label>
+                Year if exact date is unknown
+                <input type="number" min="1600" max="2200" value={historyForm.eventYear} onChange={(event) => setHistoryForm((current) => ({ ...current, eventYear: event.target.value }))} />
+              </label>
+              <label>
+                Category
+                <select value={historyForm.category} onChange={(event) => setHistoryForm((current) => ({ ...current, category: event.target.value }))}>
+                  <option value="family">Family</option>
+                  <option value="village">Village</option>
+                  <option value="education">Education</option>
+                  <option value="migration">Migration</option>
+                  <option value="property">Property</option>
+                  <option value="spiritual">Spiritual</option>
+                  <option value="achievement">Achievement</option>
+                  <option value="memory">Memory</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label>
+                Location
+                <input value={historyForm.location} onChange={(event) => setHistoryForm((current) => ({ ...current, location: event.target.value }))} />
+              </label>
+              <label className="wide-field">
+                Description
+                <textarea value={historyForm.description} onChange={(event) => setHistoryForm((current) => ({ ...current, description: event.target.value }))} rows="3" />
+              </label>
+              <label className="wide-field">
+                Source or memory note
+                <input value={historyForm.sourceNote} onChange={(event) => setHistoryForm((current) => ({ ...current, sourceNote: event.target.value }))} />
+              </label>
+              <button type="submit">Add History Event</button>
+            </form>
           </div>
-          <span>{historyEvents.length} event{historyEvents.length === 1 ? "" : "s"}</span>
-        </div>
-        <div className="history-timeline">
-          {historyEvents.length ? (
-            historyEvents.map((event) => (
-              <article className="history-event" key={event.id}>
-                <time>{event.eventDate ? formatDate(event.eventDate) : event.eventYear}</time>
-                <div>
-                  <strong>{event.title}</strong>
-                  <span>
-                    {event.source === "profile" ? "Profile event" : event.category}
-                    {event.location ? ` - ${event.location}` : ""}
-                  </span>
-                  {event.description ? <p>{event.description}</p> : null}
-                  {event.sourceNote ? <small>{event.sourceNote}</small> : null}
-                </div>
-              </article>
-            ))
-          ) : (
-            <p className="empty-copy">No family history events yet. Add the first remembered year or date.</p>
-          )}
-        </div>
-        <form className="form-grid compact-form" onSubmit={saveHistoryEvent}>
-          <label>
-            Event title
-            <input value={historyForm.title} onChange={(event) => setHistoryForm((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            Exact date if known
-            <input type="date" value={historyForm.eventDate} onChange={(event) => setHistoryForm((current) => ({ ...current, eventDate: event.target.value }))} />
-          </label>
-          <label>
-            Year if exact date is unknown
-            <input type="number" min="1600" max="2200" value={historyForm.eventYear} onChange={(event) => setHistoryForm((current) => ({ ...current, eventYear: event.target.value }))} />
-          </label>
-          <label>
-            Category
-            <select value={historyForm.category} onChange={(event) => setHistoryForm((current) => ({ ...current, category: event.target.value }))}>
-              <option value="family">Family</option>
-              <option value="village">Village</option>
-              <option value="education">Education</option>
-              <option value="migration">Migration</option>
-              <option value="property">Property</option>
-              <option value="spiritual">Spiritual</option>
-              <option value="achievement">Achievement</option>
-              <option value="memory">Memory</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label>
-            Location
-            <input value={historyForm.location} onChange={(event) => setHistoryForm((current) => ({ ...current, location: event.target.value }))} />
-          </label>
-          <label className="wide-field">
-            Description
-            <textarea value={historyForm.description} onChange={(event) => setHistoryForm((current) => ({ ...current, description: event.target.value }))} rows="3" />
-          </label>
-          <label className="wide-field">
-            Source or memory note
-            <input value={historyForm.sourceNote} onChange={(event) => setHistoryForm((current) => ({ ...current, sourceNote: event.target.value }))} />
-          </label>
-          <button type="submit">Add History Event</button>
-        </form>
+        ) : null}
+        {message ? <p className="form-message">{message}</p> : null}
       </section>
     </section>
   );
 }
 
-function GenerationRow({ generation, units, secondaryLine, selfMemberId }) {
+function GenerationRow({ generation, units, memberById, secondaryLine, selfMemberId }) {
   return (
     <div className="generation-row">
       <div className="generation-label">
@@ -544,14 +585,14 @@ function GenerationRow({ generation, units, secondaryLine, selfMemberId }) {
       </div>
       <div className="generation-units">
         {units.map((unit) => (
-          <FamilyUnit key={unit.id} secondaryLine={secondaryLine} selfMemberId={selfMemberId} unit={unit} />
+          <FamilyUnit key={unit.id} memberById={memberById} secondaryLine={secondaryLine} selfMemberId={selfMemberId} unit={unit} />
         ))}
       </div>
     </div>
   );
 }
 
-function FamilyUnit({ unit, secondaryLine, selfMemberId }) {
+function FamilyUnit({ unit, memberById, secondaryLine, selfMemberId }) {
   return (
     <article className="family-unit">
       <div className="couple-row">
@@ -567,7 +608,13 @@ function FamilyUnit({ unit, secondaryLine, selfMemberId }) {
           <span className="sibling-label">Children / siblings</span>
           <div className="sibling-list">
             {unit.children.map((child) => (
-              <TreeCard isSelf={child._id === selfMemberId} key={child._id} member={child} relationCount={0} secondaryLine={secondaryLine} compact />
+              <ChildBridge
+                child={child}
+                key={child._id}
+                memberById={memberById}
+                secondaryLine={secondaryLine}
+                selfMemberId={selfMemberId}
+              />
             ))}
           </div>
         </div>
@@ -575,6 +622,22 @@ function FamilyUnit({ unit, secondaryLine, selfMemberId }) {
         <p className="unit-note">No children linked yet.</p>
       )}
     </article>
+  );
+}
+
+function ChildBridge({ child, memberById, secondaryLine, selfMemberId }) {
+  const spouse = spouseForMember(child, memberById);
+
+  if (!spouse) {
+    return <TreeCard isSelf={child._id === selfMemberId} member={child} relationCount={0} secondaryLine={secondaryLine} compact />;
+  }
+
+  return (
+    <div className="child-bridge">
+      <TreeCard isSelf={child._id === selfMemberId} member={child} relationCount={0} secondaryLine={secondaryLine} compact />
+      <span className="marriage-link">spouse</span>
+      <TreeCard isSelf={spouse._id === selfMemberId} member={spouse} relationCount={0} secondaryLine={secondaryLine} compact />
+    </div>
   );
 }
 
