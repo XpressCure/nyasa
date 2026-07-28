@@ -726,6 +726,12 @@ button:disabled {
   width: 42px;
 }
 
+.member-avatar.deceased {
+  background: #ece7dc;
+  border: 2px solid #b8ad9b;
+  color: #615849;
+}
+
 .member-avatar.female {
   background: #f2dfdd;
   color: #6f2b38;
@@ -736,8 +742,19 @@ button:disabled {
   color: #24435b;
 }
 
+.member-avatar.male.deceased,
+.member-avatar.female.deceased,
+.member-avatar.unknown.deceased {
+  background: #ece7dc;
+  color: #615849;
+}
+
 .member-avatar.has-photo {
   background: #ffffff;
+}
+
+.member-avatar.has-photo.deceased {
+  background: #ece7dc;
 }
 
 .member-avatar img {
@@ -745,6 +762,11 @@ button:disabled {
   height: 100%;
   object-fit: cover;
   width: 100%;
+}
+
+.member-avatar.deceased img {
+  filter: grayscale(1) sepia(0.15);
+  opacity: 0.82;
 }
 
 .avatar-letter {
@@ -1775,6 +1797,11 @@ button:disabled {
   opacity: 0.72;
 }
 
+.tree-member-card.deceased {
+  background: #f3f0e8;
+  border-color: #c9bfae;
+}
+
 .tree-member-card.compact {
   min-width: 220px;
   width: 260px;
@@ -1783,6 +1810,26 @@ button:disabled {
 .tree-member-card h3,
 .tree-member-card p {
   margin: 0;
+}
+
+.tree-member-card h3 {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.memory-mark {
+  background: #e9e1d1;
+  border: 1px solid #c9bfae;
+  border-radius: 999px;
+  color: #615849;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 5px 7px;
+  text-transform: uppercase;
 }
 
 .tree-member-card p,

@@ -29,7 +29,7 @@ function memberIcon(member) {
 }
 
 function avatarClassName(member) {
-  return `member-avatar ${member?.gender || "unknown"}${memberPhotoUrl(member) ? " has-photo" : ""}`;
+  return `member-avatar ${member?.gender || "unknown"}${member?.livingStatus === "deceased" ? " deceased" : ""}${memberPhotoUrl(member) ? " has-photo" : ""}`;
 }
 
 function memberPhotoUrl(member) {
@@ -714,12 +714,16 @@ function TreeLevel({ label, members, secondaryLine, featuredMemberId = "", empty
 
 function TreeCard({ member, secondaryLine, relationCount, isSelf = false, isMuted = false, compact = false }) {
   if (!member) return null;
+  const isDeceased = member.livingStatus === "deceased";
 
   return (
-    <article className={`tree-member-card ${member.gender || "unknown"}${isSelf ? " self" : ""}${isMuted ? " muted" : ""}${compact ? " compact" : ""}`}>
+    <article className={`tree-member-card ${member.gender || "unknown"}${isSelf ? " self" : ""}${isMuted ? " muted" : ""}${compact ? " compact" : ""}${isDeceased ? " deceased" : ""}`}>
       <MemberAvatar member={member} />
       <div>
-        <h3>{member.displayName}</h3>
+        <h3>
+          {member.displayName}
+          {isDeceased ? <span className="memory-mark" title="No longer with us">In memory</span> : null}
+        </h3>
         <p>{secondaryLine(member)}</p>
         <small>{lifeLine(member)}</small>
         {compact ? null : <small>{relationCount} linked relation{relationCount === 1 ? "" : "s"}</small>}
