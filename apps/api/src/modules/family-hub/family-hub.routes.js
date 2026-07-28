@@ -127,6 +127,56 @@ function serializeHistoryEvent(event) {
   };
 }
 
+function serializeMemberHistoryEvent(member, type, date) {
+  const year = date.getFullYear();
+  const title = type === "birth" ? `${member.displayName} was born` : `${member.displayName}'s wedding anniversary`;
+
+  return {
+    id: `${type}-${member._id}`,
+    title,
+    eventDate: date,
+    eventYear: year,
+    location: member.placeOfResidence || member.city || member.country || "",
+    category: type === "birth" ? "family" : "memory",
+    description:
+      type === "birth"
+        ? `Birth date added from ${member.displayName}'s profile.`
+        : `Anniversary date added from ${member.displayName}'s profile.`,
+    sourceNote: "Auto-generated from member profile",
+    createdByMemberId: member._id,
+    source: "profile",
+    eventType: type
+  };
+}
+
+async function getAutomaticHistoryEvents(familyId) {
+  const members = await FamilyMember.find({
+    familyId,
+    status: { $ne: "removed" },
+    $or: [{ dateOfBirth: { $exists: true } }, { anniversaryDate: { $exists: true } }]
+  }).sort({ displayName: 1 });
+
+  return members.flatMap((member) => {
+    const events = [];
+
+    if (member.dateOfBirth) {
+      events.push(serializeMemberHistoryEvent(member, "birth", member.dateOfBirth));
+    }
+
+    if (member.anniversaryDate) {
+      events.push(serializeMemberHistoryEvent(member, "anniversary", member.anniversaryDate));
+    }
+
+    return events;
+  });
+}
+
+function compareHistoryEvents(left, right) {
+  const leftDate = left.eventDate ? new Date(left.eventDate).getTime() : Number.POSITIVE_INFINITY;
+  const rightDate = right.eventDate ? new Date(right.eventDate).getTime() : Number.POSITIVE_INFINITY;
+  return (left.eventYear || 9999) - (right.eventYear || 9999) || leftDate - rightDate || left.title.localeCompare(right.title);
+}
+
 async function getFamilySnapshot(familyId) {
   const normalizedFamilyId = new mongoose.Types.ObjectId(familyId);
   const [memberCount, livingMembers, locationRows] = await Promise.all([
@@ -279,12 +329,16 @@ familyHubRoutes.get(
   "/family/:familyId/history",
   requireFamilyPermission(permissions.workspaceView),
   asyncHandler(async (req, res) => {
-    const events = await FamilyHistoryEvent.find({
-      familyId: req.familyId,
-      status: "active"
-    }).sort({ eventYear: 1, eventDate: 1, createdAt: 1 });
+    const [events, automaticEvents] = await Promise.all([
+      FamilyHistoryEvent.find({
+        familyId: req.familyId,
+        status: "active"
+      }).sort({ eventYear: 1, eventDate: 1, createdAt: 1 }),
+      getAutomaticHistoryEvents(req.familyId)
+    ]);
+    const historyEvents = [...events.map(serializeHistoryEvent), ...automaticEvents].sort(compareHistoryEvents);
 
-    res.json({ data: events.map(serializeHistoryEvent) });
+    res.json({ data: historyEvents });
   })
 );
 

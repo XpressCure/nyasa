@@ -351,7 +351,10 @@ export function FamilyTreePage() {
                 <time>{event.eventDate ? formatDate(event.eventDate) : event.eventYear}</time>
                 <div>
                   <strong>{event.title}</strong>
-                  <span>{event.category}{event.location ? ` - ${event.location}` : ""}</span>
+                  <span>
+                    {event.source === "profile" ? "Profile event" : event.category}
+                    {event.location ? ` - ${event.location}` : ""}
+                  </span>
                   {event.description ? <p>{event.description}</p> : null}
                   {event.sourceNote ? <small>{event.sourceNote}</small> : null}
                 </div>
