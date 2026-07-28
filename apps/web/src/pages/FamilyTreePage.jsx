@@ -114,10 +114,12 @@ export function FamilyTreePage() {
       }
 
       const response = await apiGet(`/members/family/${familyId}/tree?mode=${nextMode}`);
-      setMembers(response.data.members || []);
-      setLinks(response.data.links || []);
-      setSelfMemberId(String(response.data.selfMemberId || ""));
-      setMessage(response.data.members?.length ? "Tree data loaded." : "No family members found yet.");
+      const treeData = response.data || {};
+      const nextMembers = treeData.members || [];
+      setMembers(nextMembers);
+      setLinks(treeData.links || []);
+      setSelfMemberId(String(treeData.selfMemberId || ""));
+      setMessage(nextMembers.length ? "Tree data loaded." : "No family members found yet.");
     } catch (error) {
       setMembers([]);
       setLinks([]);

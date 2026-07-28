@@ -7,8 +7,11 @@ async function apiRequest(path, options = {}) {
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers
       }
