@@ -19,6 +19,10 @@ const devLoginSchema = z.object({
   message: "Email or phone is required"
 });
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function ensureLaunchFamilyMembership(user) {
   const existingMembership = await FamilyMember.findOne({
     userId: user._id,
@@ -60,6 +64,22 @@ async function ensureLaunchFamilyMembership(user) {
     role: "owner",
     status: "active"
   });
+
+  const unclaimedExistingProfile = await FamilyMember.findOne({
+    familyId: family._id,
+    $or: [{ userId: { $exists: false } }, { userId: null }],
+    displayName: new RegExp(`^${escapeRegex(user.fullName)}$`, "i"),
+    status: { $ne: "removed" }
+  });
+
+  if (unclaimedExistingProfile) {
+    unclaimedExistingProfile.userId = user._id;
+    unclaimedExistingProfile.status = "active";
+    unclaimedExistingProfile.joinedAt = unclaimedExistingProfile.joinedAt || new Date();
+    await unclaimedExistingProfile.save();
+
+    return { family, member: unclaimedExistingProfile };
+  }
 
   const member = await FamilyMember.findOneAndUpdate(
     { familyId: family._id, userId: user._id },

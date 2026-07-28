@@ -269,6 +269,19 @@ function canEditMemberProfile(actorMember, targetMember) {
   );
 }
 
+function uniqueObjectIdStrings(values) {
+  return values
+    .filter(Boolean)
+    .map((value) => String(value))
+    .filter((value, index, allValues) => allValues.indexOf(value) === index);
+}
+
+function parentFieldForGender(gender) {
+  if (gender === "male") return "fatherMemberId";
+  if (gender === "female") return "motherMemberId";
+  return "";
+}
+
 async function assertCanChangeMember({ actorMember, targetMember, nextRole, nextStatus }) {
   if (String(actorMember._id) === String(targetMember._id) && nextStatus && nextStatus !== "active") {
     throw httpError(400, "You cannot deactivate or remove yourself.", "CANNOT_REMOVE_SELF");
@@ -358,20 +371,27 @@ memberRoutes.get(
   "/family/:familyId/immediate-family",
   requireFamilyPermission(permissions.workspaceView),
   asyncHandler(async (req, res) => {
-    const [father, mother, spouse, children] = await Promise.all([
+    const [father, mother, spouse] = await Promise.all([
       req.member.fatherMemberId ? FamilyMember.findOne({ _id: req.member.fatherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
       req.member.motherMemberId ? FamilyMember.findOne({ _id: req.member.motherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
-      req.member.spouseMemberId ? FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
-      FamilyMember.find({
-        familyId: req.familyId,
-        status: { $ne: "removed" },
-        $or: [
-          { _id: { $in: req.member.childMemberIds || [] } },
-          { fatherMemberId: req.member._id },
-          { motherMemberId: req.member._id }
-        ]
-      }).sort({ dateOfBirth: 1, displayName: 1 })
+      req.member.spouseMemberId ? FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null
     ]);
+    const childIdList = uniqueObjectIdStrings([...(req.member.childMemberIds || []), ...(spouse?.childMemberIds || [])]);
+    const childQueries = [
+      { _id: { $in: childIdList } },
+      { fatherMemberId: req.member._id },
+      { motherMemberId: req.member._id }
+    ];
+
+    if (spouse?._id) {
+      childQueries.push({ fatherMemberId: spouse._id }, { motherMemberId: spouse._id });
+    }
+
+    const children = await FamilyMember.find({
+      familyId: req.familyId,
+      status: { $ne: "removed" },
+      $or: childQueries
+    }).sort({ dateOfBirth: 1, displayName: 1 });
 
     res.json({
       data: {
@@ -428,10 +448,21 @@ memberRoutes.post(
     }
 
     created.children = [];
+    const spouseForChildLinks =
+      created.spouse ||
+      (req.member.spouseMemberId
+        ? await FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } })
+        : null);
+
     for (const childProfile of body.children) {
       if (!childProfile.displayName) continue;
-      const parentLink =
-        req.member.gender === "female" ? { motherMemberId: req.member._id } : req.member.gender === "male" ? { fatherMemberId: req.member._id } : {};
+      const parentLink = {};
+      const actorParentField = parentFieldForGender(req.member.gender);
+      const spouseParentField = parentFieldForGender(spouseForChildLinks?.gender);
+
+      if (actorParentField) parentLink[actorParentField] = req.member._id;
+      if (spouseParentField && spouseParentField !== actorParentField) parentLink[spouseParentField] = spouseForChildLinks._id;
+
       const child = await upsertRelative({
         familyId: req.familyId,
         profile: childProfile,
@@ -453,6 +484,31 @@ memberRoutes.post(
         childrenCount: nextChildIds.length || req.member.childrenCount
       });
       await req.member.save();
+
+      const spouseToSync =
+        created.spouse ||
+        (req.member.spouseMemberId
+          ? await FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } })
+          : null);
+
+      if (spouseToSync) {
+        const spouseChildIds = uniqueObjectIdStrings([...(spouseToSync.childMemberIds || []), ...nextChildIds]);
+        spouseToSync.childMemberIds = spouseChildIds;
+        spouseToSync.childrenCount = spouseChildIds.length || spouseToSync.childrenCount;
+        await spouseToSync.save();
+
+        const spouseParentField = parentFieldForGender(spouseToSync.gender);
+        if (spouseParentField) {
+          await FamilyMember.updateMany(
+            {
+              _id: { $in: spouseChildIds },
+              familyId: req.familyId,
+              [spouseParentField]: { $exists: false }
+            },
+            { $set: { [spouseParentField]: spouseToSync._id } }
+          );
+        }
+      }
     }
 
     await writeAuditLog({

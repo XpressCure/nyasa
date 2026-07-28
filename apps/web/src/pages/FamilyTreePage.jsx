@@ -107,10 +107,15 @@ export function FamilyTreePage() {
     ]);
     const spouse = memberById.get(String(selfMember.spouseMemberId || ""));
     const childrenFromExplicitLinks = (selfMember.childMemberIds || []).map((childMemberId) => memberById.get(String(childMemberId)));
+    const childrenFromSpouseLinks = (spouse?.childMemberIds || []).map((childMemberId) => memberById.get(String(childMemberId)));
     const childrenFromParentLinks = validMembers(members).filter(
-      (member) => String(member.fatherMemberId || "") === selfMember._id || String(member.motherMemberId || "") === selfMember._id
+      (member) =>
+        String(member.fatherMemberId || "") === selfMember._id ||
+        String(member.motherMemberId || "") === selfMember._id ||
+        String(member.fatherMemberId || "") === spouse?._id ||
+        String(member.motherMemberId || "") === spouse?._id
     );
-    const children = uniqueMembers([...childrenFromExplicitLinks, ...childrenFromParentLinks]);
+    const children = uniqueMembers([...childrenFromExplicitLinks, ...childrenFromSpouseLinks, ...childrenFromParentLinks]);
     const couple = uniqueMembers([selfMember, spouse]);
     const linkedIds = new Set([...parents, ...couple, ...children].map((member) => member._id));
 
