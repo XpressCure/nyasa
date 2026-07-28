@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { API_BASE_URL, apiGet, apiPatch, apiPost } from "../lib/api.js";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
@@ -38,6 +39,7 @@ export function ProjectsPage() {
   const [rejectionReason, setRejectionReason] = useState("Needs more detail before approval");
   const canCreateProjects = hasPermission(session, "projects.create");
   const canManageProjects = hasPermission(session, "projects.manage");
+  const canLoadMembers = canCreateProjects || canManageProjects;
   const canViewExpenses = hasPermission(session, "expenses.view");
   const canSubmitExpenses = hasPermission(session, "expenses.submit");
   const canApproveExpenses = hasPermission(session, "expenses.approve");
@@ -277,7 +279,7 @@ export function ProjectsPage() {
         description="Every Sankalp records purpose, funds, progress, expenses, documents, photos, and decisions."
       />
       <section className="content-band">
-        <h2>Create Sankalp</h2>
+        <h2>{canCreateProjects ? "Create Sankalp" : "Sadasya Sankalp View"}</h2>
         {canCreateProjects ? (
           <form className="form-grid" onSubmit={createProject}>
             <label>
@@ -322,16 +324,34 @@ export function ProjectsPage() {
             <button type="submit">Create Sankalp</button>
           </form>
         ) : (
-          <p>Your current role can view Sankalp but cannot create them.</p>
+          <>
+            <p>
+              A general Sadasya can follow every Sankalp, see the target, allocated amount, spent amount, funding gap, and current
+              progress. Owners/admins create Sankalp and assign leads. Members contribute from Kosh and allocate their own wallet balance
+              to the Sankalp they want to support.
+            </p>
+            <div className="button-row">
+              <Link className="secondary-button" to="/treasury">
+                Add or Allocate Kosh
+              </Link>
+              <button type="button" className="secondary-button" onClick={loadProjects}>
+                Load Sankalp
+              </button>
+            </div>
+          </>
         )}
-        <div className="button-row">
-          <button type="button" className="secondary-button" onClick={loadProjects}>
-            Load Sankalp
-          </button>
-          <button type="button" className="secondary-button" onClick={loadMembers}>
-            Load Sadasya
-          </button>
-        </div>
+        {canCreateProjects ? (
+          <div className="button-row">
+            <button type="button" className="secondary-button" onClick={loadProjects}>
+              Load Sankalp
+            </button>
+            {canLoadMembers ? (
+              <button type="button" className="secondary-button" onClick={loadMembers}>
+                Load Sadasya
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {message ? <p className="form-message">{message}</p> : null}
       </section>
 

@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CircleUserRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPatch, apiPost, apiPostEmpty } from "../lib/api.js";
+import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 export function MembersPage() {
   const [members, setMembers] = useState([]);
@@ -13,6 +15,16 @@ export function MembersPage() {
   const [inviteUrl, setInviteUrl] = useState("");
   const [message, setMessage] = useState("");
   const [copiedUrl, setCopiedUrl] = useState("");
+  const [session, setSession] = useState(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+  const canManageMembers = hasPermission(session, "members.manage");
+
+  useEffect(() => {
+    loadCurrentSession()
+      .then(setSession)
+      .catch((error) => setMessage(error.message))
+      .finally(() => setSessionLoaded(true));
+  }, []);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -138,6 +150,37 @@ export function MembersPage() {
     if (member.gender === "male") return <span className="avatar-letter">M</span>;
     if (member.gender === "female") return <span className="avatar-letter">F</span>;
     return <CircleUserRound size={20} />;
+  }
+
+  if (sessionLoaded && !canManageMembers) {
+    return (
+      <section>
+        <PageHeader
+          eyebrow="Sadasya Directory"
+          title="Sadasya"
+          description="Owner and admin area for invitations, roles, and member status."
+        />
+        <section className="content-band">
+          <h2>Sadasya is for Kul admins</h2>
+          <p>
+            General Sadasya can see the Kul, complete their Parichay, follow Sankalp, and contribute through Kosh. Invites, role changes,
+            deactivation, and removals stay with the owner/admin team.
+          </p>
+          <div className="button-row">
+            <Link className="secondary-button" to="/family">
+              Open Kul
+            </Link>
+            <Link className="secondary-button" to="/profile">
+              Complete Parichay
+            </Link>
+            <Link className="secondary-button" to="/projects">
+              View Sankalp
+            </Link>
+          </div>
+          {message ? <p className="form-message">{message}</p> : null}
+        </section>
+      </section>
+    );
   }
 
   return (

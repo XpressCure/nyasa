@@ -150,43 +150,56 @@ function buildRelationshipMap(members, memberById) {
   return { childIds, childrenByParent, spousesByMember };
 }
 
-function buildRelationshipGraph(members, memberById) {
+function buildRelationshipGraph(members, memberById, selfMemberId = "") {
   const validMemberList = validMembers(members);
   const relationships = buildRelationshipMap(validMemberList, memberById);
-  const generationByMember = new Map(validMemberList.map((member) => [member._id, relationships.childIds.has(member._id) ? 1 : 0]));
+  const generationByMember = new Map();
+  const memberIds = new Set(validMemberList.map((member) => member._id));
 
-  for (let index = 0; index < validMemberList.length + 4; index += 1) {
-    let changed = false;
-
-    validMemberList.forEach((member) => {
-      parentIdsFor(member).forEach((parentId) => {
-        const nextGeneration = (generationByMember.get(parentId) || 0) + 1;
-        if ((generationByMember.get(member._id) || 0) < nextGeneration) {
-          generationByMember.set(member._id, nextGeneration);
-          changed = true;
-        }
-      });
-
-      (relationships.childrenByParent.get(member._id) || []).forEach((child) => {
-        const nextGeneration = (generationByMember.get(member._id) || 0) + 1;
-        if ((generationByMember.get(child._id) || 0) < nextGeneration) {
-          generationByMember.set(child._id, nextGeneration);
-          changed = true;
-        }
-      });
-
-      const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
-      if (spouse) {
-        const sharedGeneration = Math.max(generationByMember.get(member._id) || 0, generationByMember.get(spouse._id) || 0);
-        if (generationByMember.get(member._id) !== sharedGeneration || generationByMember.get(spouse._id) !== sharedGeneration) {
-          generationByMember.set(member._id, sharedGeneration);
-          generationByMember.set(spouse._id, sharedGeneration);
-          changed = true;
-        }
-      }
+  function neighborLinksFor(member) {
+    const links = [];
+    parentIdsFor(member).forEach((parentId) => {
+      if (memberIds.has(parentId)) links.push({ memberId: parentId, generationDelta: -1 });
     });
 
-    if (!changed) break;
+    (relationships.childrenByParent.get(member._id) || []).forEach((child) => {
+      links.push({ memberId: child._id, generationDelta: 1 });
+    });
+
+    const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
+    if (spouse) links.push({ memberId: spouse._id, generationDelta: 0 });
+
+    return links;
+  }
+
+  function assignConnectedGenerations(seedMemberId, seedGeneration) {
+    if (!memberIds.has(seedMemberId) || generationByMember.has(seedMemberId)) return;
+
+    const queue = [seedMemberId];
+    generationByMember.set(seedMemberId, seedGeneration);
+
+    while (queue.length) {
+      const memberId = queue.shift();
+      const member = memberById.get(memberId);
+      if (!member) continue;
+
+      const memberGeneration = generationByMember.get(memberId) || 0;
+      neighborLinksFor(member).forEach((link) => {
+        if (generationByMember.has(link.memberId)) return;
+        generationByMember.set(link.memberId, memberGeneration + link.generationDelta);
+        queue.push(link.memberId);
+      });
+    }
+  }
+
+  assignConnectedGenerations(String(selfMemberId || validMemberList[0]?._id || ""), 0);
+  validMemberList.forEach((member) => assignConnectedGenerations(member._id, 0));
+
+  const minimumGeneration = generationByMember.size ? Math.min(...generationByMember.values()) : 0;
+  if (minimumGeneration < 0) {
+    generationByMember.forEach((generation, memberId) => {
+      generationByMember.set(memberId, generation - minimumGeneration);
+    });
   }
 
   const generations = validMemberList.reduce((groups, member) => {
@@ -353,7 +366,7 @@ export function FamilyTreePage() {
     return { parents, couple, children, linkedIds };
   }, [memberById, members, selfMember]);
 
-  const relationshipGraph = useMemo(() => buildRelationshipGraph(members, memberById), [memberById, members]);
+  const relationshipGraph = useMemo(() => buildRelationshipGraph(members, memberById, selfMemberId), [memberById, members, selfMemberId]);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");

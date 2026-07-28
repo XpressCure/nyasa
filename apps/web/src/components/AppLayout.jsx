@@ -1,7 +1,9 @@
 import { Archive, BookOpenText, CalendarDays, GitBranch, HeartHandshake, Home, Images, Landmark, Search, UserCircle, Users } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
+import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 const navSections = [
   {
@@ -13,7 +15,7 @@ const navSections = [
       { to: "/profile", label: "Parichay", icon: UserCircle },
       { to: "/treasury", label: "Kosh", icon: Landmark },
       { to: "/projects", label: "Sankalp", icon: GitBranch },
-      { to: "/members", label: "Sadasya", icon: Archive }
+      { to: "/members", label: "Sadasya", icon: Archive, permission: "members.manage" }
     ]
   },
   {
@@ -28,6 +30,15 @@ const navSections = [
 ];
 
 export function AppLayout() {
+  const location = useLocation();
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    loadCurrentSession()
+      .then(setSession)
+      .catch(() => setSession(null));
+  }, [location.pathname]);
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -42,7 +53,7 @@ export function AppLayout() {
           {navSections.map((section) => (
             <div className="nav-section" key={section.title}>
               <span className="nav-section-title">{section.title}</span>
-              {section.items.map((item) => {
+              {section.items.filter((item) => !item.permission || hasPermission(session, item.permission)).map((item) => {
                 const Icon = item.icon;
                 if (item.planned) {
                   return (
