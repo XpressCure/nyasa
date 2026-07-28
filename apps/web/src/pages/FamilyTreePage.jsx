@@ -54,6 +54,33 @@ function uniqueMembers(members) {
   });
 }
 
+function buildWholeFamilyTree(members, links, memberById) {
+  const childrenByParent = new Map();
+  const childIds = new Set();
+
+  links.forEach((link) => {
+    if (!["father", "mother", "child"].includes(link.relationship)) return;
+
+    const parent = memberById.get(String(link.fromMemberId || ""));
+    const child = memberById.get(String(link.toMemberId || ""));
+
+    if (!parent || !child) return;
+
+    childIds.add(child._id);
+    const existingChildren = childrenByParent.get(parent._id) || [];
+    if (!existingChildren.some((existingChild) => existingChild._id === child._id)) {
+      childrenByParent.set(parent._id, [...existingChildren, child]);
+    }
+  });
+
+  const roots = validMembers(members).filter((member) => !childIds.has(member._id));
+
+  return {
+    childrenByParent,
+    roots: roots.length ? roots : validMembers(members).slice(0, 1)
+  };
+}
+
 export function FamilyTreePage() {
   const [mode, setMode] = useState("general");
   const [members, setMembers] = useState([]);
@@ -85,6 +112,8 @@ export function FamilyTreePage() {
 
     return { parents, couple, children, linkedIds };
   }, [memberById, members, selfMember]);
+
+  const wholeFamilyTree = useMemo(() => buildWholeFamilyTree(members, links, memberById), [memberById, members, links]);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -207,6 +236,28 @@ export function FamilyTreePage() {
         )}
 
         <div className="tree-register-header">
+          <div>
+            <h2>Whole Family Structure</h2>
+            <p>Each new parent-child link extends this tree across the complete family.</p>
+          </div>
+          <span>{links.length} saved link{links.length === 1 ? "" : "s"}</span>
+        </div>
+        <div className="whole-tree">
+          {wholeFamilyTree.roots.length ? (
+            wholeFamilyTree.roots.map((member) => (
+              <FamilyBranch
+                childrenByParent={wholeFamilyTree.childrenByParent}
+                key={member._id}
+                member={member}
+                secondaryLine={secondaryLine}
+              />
+            ))
+          ) : (
+            <div className="tree-empty-node">Add relatives from Profile to begin the full structure.</div>
+          )}
+        </div>
+
+        <div className="tree-register-header">
           <h2>Family Register</h2>
           <span>{members.length} profile{members.length === 1 ? "" : "s"}</span>
         </div>
@@ -225,6 +276,34 @@ export function FamilyTreePage() {
         {message ? <p className="form-message">{message}</p> : null}
       </section>
     </section>
+  );
+}
+
+function FamilyBranch({ member, childrenByParent, secondaryLine, visited = new Set(), depth = 0 }) {
+  if (!member || visited.has(member._id) || depth > 8) return null;
+
+  const nextVisited = new Set(visited);
+  nextVisited.add(member._id);
+  const children = (childrenByParent.get(member._id) || []).filter((child) => !nextVisited.has(child._id));
+
+  return (
+    <div className="family-branch">
+      <TreeCard member={member} relationCount={children.length} secondaryLine={secondaryLine} compact />
+      {children.length ? (
+        <div className="family-branch-children">
+          {children.map((child) => (
+            <FamilyBranch
+              childrenByParent={childrenByParent}
+              depth={depth + 1}
+              key={child._id}
+              member={child}
+              secondaryLine={secondaryLine}
+              visited={nextVisited}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

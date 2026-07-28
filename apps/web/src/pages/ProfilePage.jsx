@@ -44,6 +44,7 @@ const initialForm = {
 };
 
 const emptyRelative = {
+  _id: "",
   displayName: "",
   gender: "prefer_not_to_say",
   dateOfBirth: "",
@@ -121,6 +122,7 @@ function hydrateRelative(member, fallback = emptyRelative) {
 
   return {
     ...fallback,
+    _id: member._id || "",
     displayName: member.displayName || "",
     gender: member.gender || fallback.gender || "prefer_not_to_say",
     dateOfBirth: toInputDate(member.dateOfBirth),
@@ -148,6 +150,10 @@ function relativePayload(relative) {
     profession: relative.profession,
     bio: relative.bio
   };
+}
+
+function relativePhotoKey(group, index = null) {
+  return group === "children" ? `child-${index}` : group;
 }
 
 async function fileToUploadPayload(file) {
@@ -218,7 +224,7 @@ export function ProfilePage() {
     setImmediateFamily((current) => ({ ...current, children: current.children.filter((_, childIndex) => childIndex !== index) }));
     setRelativePhotoFiles((current) => {
       const next = { ...current };
-      delete next[`child-${index}`];
+      delete next[relativePhotoKey("children", index)];
       return next;
     });
   }
@@ -352,6 +358,59 @@ export function ProfilePage() {
       await loadImmediateFamily(familyId);
       setRelativePhotoFiles({});
       setMessage("Immediate family saved. These profiles can be completed later from their own accounts.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function saveRelative(group, index = null) {
+    const familyId = getFamilyId();
+
+    if (!familyId) {
+      setMessage("Join the Alahdadpur family workspace first.");
+      return;
+    }
+
+    const relative = group === "children" ? immediateFamily.children[index] : immediateFamily[group];
+    const payload = relativePayload(relative);
+
+    if (!payload) {
+      setMessage("Add a name before saving this family member.");
+      return;
+    }
+
+    try {
+      let savedMember = null;
+
+      if (relative._id) {
+        const response = await apiPatch(`/members/family/${familyId}/${relative._id}/profile`, payload);
+        savedMember = response.data;
+      } else {
+        const response = await apiPost(`/members/family/${familyId}/immediate-family`, {
+          father: group === "father" ? payload : undefined,
+          mother: group === "mother" ? payload : undefined,
+          spouse: group === "spouse" ? payload : undefined,
+          children: group === "children" ? [payload] : []
+        });
+        savedMember = group === "children" ? response.data.children?.[0] : response.data[group];
+        if (response.data.member) {
+          setProfile(response.data.member);
+          setForm(hydrateForm(response.data.member));
+        }
+      }
+
+      const key = relativePhotoKey(group, index);
+      if (savedMember?._id && relativePhotoFiles[key]) {
+        await uploadMemberPhoto(savedMember._id, relativePhotoFiles[key]);
+      }
+
+      await loadImmediateFamily(familyId);
+      setRelativePhotoFiles((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      setMessage(`${payload.displayName} saved.`);
     } catch (error) {
       setMessage(error.message);
     }
@@ -586,32 +645,44 @@ export function ProfilePage() {
         <form className="form-grid profile-form" onSubmit={saveImmediateFamily}>
           <h3 className="form-section-title">Father</h3>
           <RelativeFields
+            label="Father"
             relative={immediateFamily.father}
             onChange={(field, value) => updateRelative("father", field, value)}
             onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, father: file }))}
+            onSave={() => saveRelative("father")}
+            photoFile={relativePhotoFiles.father}
           />
 
           <h3 className="form-section-title">Mother</h3>
           <RelativeFields
+            label="Mother"
             relative={immediateFamily.mother}
             onChange={(field, value) => updateRelative("mother", field, value)}
             onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, mother: file }))}
+            onSave={() => saveRelative("mother")}
+            photoFile={relativePhotoFiles.mother}
           />
 
           <h3 className="form-section-title">Spouse</h3>
           <RelativeFields
+            label="Spouse"
             relative={immediateFamily.spouse}
             onChange={(field, value) => updateRelative("spouse", field, value)}
             onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, spouse: file }))}
+            onSave={() => saveRelative("spouse")}
+            photoFile={relativePhotoFiles.spouse}
           />
 
           <h3 className="form-section-title">Children</h3>
           {immediateFamily.children.map((child, index) => (
             <div className="relative-card" key={`child-${index}`}>
               <RelativeFields
+                label={`Child ${index + 1}`}
                 relative={child}
                 onChange={(field, value) => updateRelative("children", field, value, index)}
                 onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, [`child-${index}`]: file }))}
+                onSave={() => saveRelative("children", index)}
+                photoFile={relativePhotoFiles[relativePhotoKey("children", index)]}
               />
               {immediateFamily.children.length > 1 ? (
                 <button type="button" className="secondary-button" onClick={() => removeChildRow(index)}>
@@ -632,7 +703,7 @@ export function ProfilePage() {
   );
 }
 
-function RelativeFields({ relative, onChange, onPhoto }) {
+function RelativeFields({ label, relative, onChange, onPhoto, onSave, photoFile }) {
   return (
     <>
       <label>
@@ -686,6 +757,7 @@ function RelativeFields({ relative, onChange, onPhoto }) {
       <label>
         Photo
         <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => onPhoto(event.target.files[0] || null)} />
+        {photoFile ? <small>{photoFile.name} selected</small> : null}
       </label>
       <label>
         Place of residence
@@ -699,6 +771,12 @@ function RelativeFields({ relative, onChange, onPhoto }) {
         Notes
         <textarea value={relative.bio} onChange={(event) => onChange("bio", event.target.value)} rows="3" />
       </label>
+      <div className="relative-actions wide-field">
+        <span>{relative._id ? "Existing profile" : "New profile"}</span>
+        <button type="button" className="secondary-button" onClick={onSave}>
+          {relative._id ? `Update ${label}` : `Create ${label}`}
+        </button>
+      </div>
     </>
   );
 }

@@ -245,6 +245,30 @@ async function upsertRelative({ familyId, profile, defaults = {} }) {
   });
 }
 
+function isLinkedImmediateFamily(actorMember, targetMember) {
+  const actorId = String(actorMember._id);
+  const targetId = String(targetMember._id);
+
+  return (
+    String(targetMember.fatherMemberId || "") === actorId ||
+    String(targetMember.motherMemberId || "") === actorId ||
+    String(targetMember.spouseMemberId || "") === actorId ||
+    String(actorMember.fatherMemberId || "") === targetId ||
+    String(actorMember.motherMemberId || "") === targetId ||
+    String(actorMember.spouseMemberId || "") === targetId ||
+    (actorMember.childMemberIds || []).some((childMemberId) => String(childMemberId) === targetId) ||
+    (targetMember.childMemberIds || []).some((childMemberId) => String(childMemberId) === actorId)
+  );
+}
+
+function canEditMemberProfile(actorMember, targetMember) {
+  return (
+    String(actorMember._id) === String(targetMember._id) ||
+    ["owner", "admin"].includes(actorMember.role) ||
+    isLinkedImmediateFamily(actorMember, targetMember)
+  );
+}
+
 async function assertCanChangeMember({ actorMember, targetMember, nextRole, nextStatus }) {
   if (String(actorMember._id) === String(targetMember._id) && nextStatus && nextStatus !== "active") {
     throw httpError(400, "You cannot deactivate or remove yourself.", "CANNOT_REMOVE_SELF");
@@ -476,18 +500,8 @@ memberRoutes.post(
     }
 
     const isSelf = String(targetMember._id) === String(req.member._id);
-    const canManageMembers = ["owner", "admin"].includes(req.member.role);
-    const canAttachFamilyCircle =
-      String(targetMember.fatherMemberId || "") === String(req.member._id) ||
-      String(targetMember.motherMemberId || "") === String(req.member._id) ||
-      String(targetMember.spouseMemberId || "") === String(req.member._id) ||
-      String(req.member.fatherMemberId || "") === String(targetMember._id) ||
-      String(req.member.motherMemberId || "") === String(targetMember._id) ||
-      String(req.member.spouseMemberId || "") === String(targetMember._id) ||
-      (req.member.childMemberIds || []).some((childMemberId) => String(childMemberId) === String(targetMember._id)) ||
-      (targetMember.childMemberIds || []).some((childMemberId) => String(childMemberId) === String(req.member._id));
 
-    if (!isSelf && !canManageMembers && !canAttachFamilyCircle) {
+    if (!canEditMemberProfile(req.member, targetMember)) {
       throw httpError(403, "You can upload photos only for yourself or your immediate family.", "PHOTO_UPLOAD_NOT_ALLOWED");
     }
 
@@ -531,6 +545,48 @@ memberRoutes.post(
         documentId: document._id,
         photoUrl: targetMember.photoUrl
       }
+    });
+  })
+);
+
+memberRoutes.patch(
+  "/family/:familyId/:memberId/profile",
+  requireFamilyPermission(permissions.workspaceView),
+  asyncHandler(async (req, res) => {
+    const body = normalizeProfileUpdate(updateProfileSchema.parse(req.body));
+    const targetMember = await FamilyMember.findOne({
+      _id: req.params.memberId,
+      familyId: req.familyId,
+      status: { $ne: "removed" }
+    });
+
+    if (!targetMember) {
+      throw httpError(404, "Member not found.", "MEMBER_NOT_FOUND");
+    }
+
+    if (!canEditMemberProfile(req.member, targetMember)) {
+      throw httpError(403, "You can edit only yourself or your immediate family.", "PROFILE_EDIT_NOT_ALLOWED");
+    }
+
+    targetMember.set(body);
+    await targetMember.save();
+
+    await writeAuditLog({
+      familyId: req.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: req.member._id,
+      action: "member.profile_updated",
+      entityType: "FamilyMember",
+      entityId: String(targetMember._id),
+      summary: `Updated profile for ${targetMember.displayName}`,
+      after: body,
+      req
+    });
+
+    res.json({
+      data: serializeMember(targetMember, {
+        includeSensitive: String(targetMember._id) === String(req.member._id)
+      })
     });
   })
 );

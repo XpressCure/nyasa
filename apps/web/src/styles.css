@@ -1204,6 +1204,22 @@ button:disabled {
   padding: 14px;
 }
 
+.relative-actions {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.relative-actions span {
+  color: #4e5b53;
+  font-size: 13px;
+}
+
 .profile-help {
   background: #f8f6f1;
   border-left: 4px solid #d8a947;
@@ -1325,8 +1341,50 @@ button:disabled {
   margin: 0;
 }
 
+.tree-register-header p {
+  color: #4e5b53;
+  margin: 6px 0 0;
+}
+
 .tree-register-header span {
   color: #4e5b53;
+}
+
+.whole-tree {
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: flex;
+  gap: 18px;
+  margin-top: 14px;
+  overflow-x: auto;
+  padding: 18px;
+}
+
+.family-branch {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.family-branch-children {
+  border-top: 2px solid #d8a947;
+  display: flex;
+  gap: 14px;
+  padding-top: 18px;
+  position: relative;
+}
+
+.family-branch-children::before {
+  background: #d8a947;
+  content: "";
+  height: 18px;
+  left: 50%;
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -100%);
+  width: 2px;
 }
 
 .tree-grid {
@@ -1423,6 +1481,10 @@ button:disabled {
 
   .tree-toolbar {
     display: flex;
+  }
+
+  .whole-tree {
+    align-items: flex-start;
   }
 
   .member-summary {
