@@ -1,4 +1,4 @@
-import { Archive, BookOpenText, GitBranch, HeartHandshake, Home, Images, Landmark, Network, Search, UserCircle, Users } from "lucide-react";
+import { Archive, BookOpenText, CalendarDays, GitBranch, HeartHandshake, Home, Images, Landmark, Network, Search, UserCircle, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
@@ -8,6 +8,7 @@ const navSections = [
     title: "Workspace",
     items: [
       { to: "/dashboard", label: "Dashboard", icon: Home },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays },
       { to: "/family", label: "Family", icon: Users },
       { to: "/profile", label: "Profile", icon: UserCircle },
       { to: "/family-tree", label: "Family Tree", icon: Network },

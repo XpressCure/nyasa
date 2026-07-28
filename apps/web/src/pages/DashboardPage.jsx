@@ -223,8 +223,15 @@ export function DashboardPage() {
         </article>
 
         <article className="content-band">
-          <h2>Event Calendar</h2>
-          <p className="section-note">Any member can add upcoming puja, fast, gathering, or family date.</p>
+          <div className="tree-register-header">
+            <div>
+              <h2>Event Calendar</h2>
+              <p className="section-note">Any member can add upcoming puja, fast, gathering, or family date.</p>
+            </div>
+            <Link className="secondary-button" to="/calendar">
+              Open Calendar
+            </Link>
+          </div>
           <div className="stack-list">
             {hub?.calendarEvents?.length ? (
               hub.calendarEvents.map((item) => (

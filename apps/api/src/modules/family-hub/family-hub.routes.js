@@ -76,13 +76,14 @@ function daysUntil(date, today = startOfToday()) {
   return Math.round((date.getTime() - today.getTime()) / 86400000);
 }
 
-function serializeCelebration(member, type, date) {
+function serializeCelebration(member, type, date, extra = {}) {
   return {
     memberId: member._id,
     memberName: member.displayName,
     type,
     date,
-    daysUntil: daysUntil(date)
+    daysUntil: daysUntil(date),
+    ...extra
   };
 }
 
@@ -149,12 +150,48 @@ function serializeMemberHistoryEvent(member, type, date) {
   };
 }
 
+function serializeCoupleHistoryEvent(member, spouse, date) {
+  const names = spouse ? `${member.displayName} and ${spouse.displayName}` : member.displayName;
+
+  return {
+    id: `anniversary-${[String(member._id), String(spouse?._id || "")].filter(Boolean).sort().join("-")}`,
+    title: `${names} wedding anniversary`,
+    eventDate: date,
+    eventYear: date.getFullYear(),
+    location: member.placeOfResidence || member.city || spouse?.placeOfResidence || spouse?.city || member.country || "",
+    category: "memory",
+    description: `Anniversary date added from ${names}'s profile.`,
+    sourceNote: "Auto-generated from member profile",
+    createdByMemberId: member._id,
+    source: "profile",
+    eventType: "anniversary"
+  };
+}
+
+function getSpouseFromMaps(member, memberById, spouseByMemberId) {
+  return member.spouseMemberId ? memberById.get(String(member.spouseMemberId)) : spouseByMemberId.get(String(member._id));
+}
+
+function getCoupleKey(member, spouse, date) {
+  return spouse
+    ? [String(member._id), String(spouse._id)].sort().join(":")
+    : `${String(member._id)}:${date.toISOString().slice(0, 10)}`;
+}
+
 async function getAutomaticHistoryEvents(familyId) {
   const members = await FamilyMember.find({
     familyId,
     status: { $ne: "removed" },
     $or: [{ dateOfBirth: { $exists: true } }, { anniversaryDate: { $exists: true } }]
   }).sort({ displayName: 1 });
+  const memberById = new Map(members.map((member) => [String(member._id), member]));
+  const spouseByMemberId = new Map();
+  members.forEach((member) => {
+    if (member.spouseMemberId) {
+      spouseByMemberId.set(String(member.spouseMemberId), member);
+    }
+  });
+  const anniversaryKeys = new Set();
 
   return members.flatMap((member) => {
     const events = [];
@@ -164,7 +201,13 @@ async function getAutomaticHistoryEvents(familyId) {
     }
 
     if (member.anniversaryDate) {
-      events.push(serializeMemberHistoryEvent(member, "anniversary", member.anniversaryDate));
+      const spouse = getSpouseFromMaps(member, memberById, spouseByMemberId);
+      const anniversaryKey = getCoupleKey(member, spouse, member.anniversaryDate);
+
+      if (!anniversaryKeys.has(anniversaryKey)) {
+        anniversaryKeys.add(anniversaryKey);
+        events.push(serializeCoupleHistoryEvent(member, spouse, member.anniversaryDate));
+      }
     }
 
     return events;
@@ -220,15 +263,42 @@ async function getCelebrations(familyId) {
     livingStatus: { $ne: "deceased" },
     $or: [{ dateOfBirth: { $exists: true } }, { anniversaryDate: { $exists: true } }]
   }).sort({ displayName: 1 });
+  const memberById = new Map(members.map((member) => [String(member._id), member]));
+  const spouseByMemberId = new Map();
+  members.forEach((member) => {
+    if (member.spouseMemberId) {
+      spouseByMemberId.set(String(member.spouseMemberId), member);
+    }
+  });
+  const anniversaryKeys = new Set();
 
   return members
     .flatMap((member) => {
       const birthday = nextAnnualDate(member.dateOfBirth, today);
       const anniversary = nextAnnualDate(member.anniversaryDate, today);
-      return [
-        birthday && birthday <= windowEnd ? serializeCelebration(member, "birthday", birthday) : null,
-        anniversary && anniversary <= windowEnd ? serializeCelebration(member, "anniversary", anniversary) : null
-      ].filter(Boolean);
+      const events = [];
+
+      if (birthday && birthday <= windowEnd) {
+        events.push(serializeCelebration(member, "birthday", birthday));
+      }
+
+      if (anniversary && anniversary <= windowEnd) {
+        const spouse = getSpouseFromMaps(member, memberById, spouseByMemberId);
+        const anniversaryKey = getCoupleKey(member, spouse, anniversary);
+
+        if (!anniversaryKeys.has(anniversaryKey)) {
+          anniversaryKeys.add(anniversaryKey);
+          events.push(
+            serializeCelebration(member, "anniversary", anniversary, {
+              memberName: spouse ? `${member.displayName} and ${spouse.displayName}` : member.displayName,
+              spouseMemberId: spouse?._id,
+              spouseName: spouse?.displayName
+            })
+          );
+        }
+      }
+
+      return events;
     })
     .sort((left, right) => left.date - right.date || left.memberName.localeCompare(right.memberName));
 }
@@ -293,6 +363,23 @@ familyHubRoutes.post(
     });
 
     res.status(201).json({ data: serializeEvent(event) });
+  })
+);
+
+familyHubRoutes.get(
+  "/family/:familyId/calendar-events",
+  requireFamilyPermission(permissions.workspaceView),
+  asyncHandler(async (req, res) => {
+    const today = startOfToday();
+    const events = await FamilyCalendarEvent.find({
+      familyId: req.familyId,
+      status: "active",
+      startsAt: { $gte: today }
+    })
+      .sort({ startsAt: 1, title: 1 })
+      .limit(80);
+
+    res.json({ data: events.map(serializeEvent) });
   })
 );
 

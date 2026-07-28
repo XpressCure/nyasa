@@ -328,6 +328,29 @@ select {
   margin: 6px 0 0;
 }
 
+.calendar-month-list {
+  display: grid;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.calendar-month h3 {
+  margin-bottom: 10px;
+}
+
+.calendar-event-row p {
+  color: #4e5b53;
+  margin: 0;
+}
+
+.calendar-event-date {
+  align-items: center;
+  color: #805f1d;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 8px;
+}
+
 .metric-card,
 .content-band,
 .login-panel {
