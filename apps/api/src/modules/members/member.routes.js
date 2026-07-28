@@ -130,6 +130,38 @@ async function findLinkedSpouse(member, familyId) {
   });
 }
 
+async function findCoParentSpouse(member, familyId) {
+  if (!member) return null;
+
+  const sharedChild = await FamilyMember.findOne({
+    familyId,
+    status: { $ne: "removed" },
+    $or: [
+      { fatherMemberId: member._id, motherMemberId: { $exists: true, $ne: null } },
+      { motherMemberId: member._id, fatherMemberId: { $exists: true, $ne: null } }
+    ]
+  });
+
+  if (!sharedChild) return null;
+
+  const spouseMemberId =
+    String(sharedChild.fatherMemberId || "") === String(member._id)
+      ? sharedChild.motherMemberId
+      : sharedChild.fatherMemberId;
+
+  if (!spouseMemberId) return null;
+
+  return FamilyMember.findOne({
+    _id: spouseMemberId,
+    familyId,
+    status: { $ne: "removed" }
+  });
+}
+
+async function findSpouseOrCoParent(member, familyId) {
+  return (await findLinkedSpouse(member, familyId)) || findCoParentSpouse(member, familyId);
+}
+
 function serializeSelfMember(member, spouse = null) {
   const data = serializeMember(member, { includeSensitive: true });
 
@@ -215,6 +247,13 @@ function withReciprocalFamilyLinks(members) {
       if (spouse && !spouse.spouseMemberId) {
         spouse.spouseMemberId = member._id;
       }
+    }
+
+    const father = memberById.get(String(member.fatherMemberId || ""));
+    const mother = memberById.get(String(member.motherMemberId || ""));
+    if (father && mother) {
+      if (!father.spouseMemberId) father.spouseMemberId = mother._id;
+      if (!mother.spouseMemberId) mother.spouseMemberId = father._id;
     }
 
     [member.fatherMemberId, member.motherMemberId].forEach((parentMemberId) => {
@@ -420,7 +459,7 @@ memberRoutes.get(
   "/family/:familyId/me",
   requireFamilyPermission(permissions.workspaceView),
   asyncHandler(async (req, res) => {
-    const spouse = await findLinkedSpouse(req.member, req.familyId);
+    const spouse = await findSpouseOrCoParent(req.member, req.familyId);
     res.json({ data: serializeSelfMember(req.member, spouse) });
   })
 );
@@ -436,14 +475,14 @@ memberRoutes.patch(
     });
 
     if (body.anniversaryDate) {
-      const spouse = await findLinkedSpouse(member, req.familyId);
+      const spouse = await findSpouseOrCoParent(member, req.familyId);
       if (spouse && !spouse.anniversaryDate) {
         spouse.anniversaryDate = body.anniversaryDate;
         await spouse.save();
       }
     }
 
-    res.json({ data: serializeSelfMember(member, await findLinkedSpouse(member, req.familyId)) });
+    res.json({ data: serializeSelfMember(member, await findSpouseOrCoParent(member, req.familyId)) });
   })
 );
 
@@ -454,7 +493,7 @@ memberRoutes.get(
     const [father, mother, spouse] = await Promise.all([
       req.member.fatherMemberId ? FamilyMember.findOne({ _id: req.member.fatherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
       req.member.motherMemberId ? FamilyMember.findOne({ _id: req.member.motherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
-      findLinkedSpouse(req.member, req.familyId)
+      findSpouseOrCoParent(req.member, req.familyId)
     ]);
     const childIdList = uniqueObjectIdStrings([...(req.member.childMemberIds || []), ...(spouse?.childMemberIds || [])]);
     const childQueries = [
@@ -533,7 +572,7 @@ memberRoutes.post(
     created.children = [];
     const spouseForChildLinks =
       created.spouse ||
-      findLinkedSpouse(req.member, req.familyId);
+      (await findSpouseOrCoParent(req.member, req.familyId));
 
     for (const childProfile of body.children) {
       if (!childProfile.displayName) continue;
@@ -570,7 +609,7 @@ memberRoutes.post(
         created.spouse ||
         (memberUpdates.spouseMemberId
           ? await FamilyMember.findOne({ _id: memberUpdates.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } })
-          : await findLinkedSpouse(req.member, req.familyId));
+          : await findSpouseOrCoParent(req.member, req.familyId));
 
       if (spouseToSync) {
         const spouseChildIds = uniqueObjectIdStrings([...(spouseToSync.childMemberIds || []), ...nextChildIds]);

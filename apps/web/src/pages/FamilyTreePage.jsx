@@ -200,6 +200,7 @@ function buildRelationshipGraph(members, memberById) {
   const generationGap = 124;
   const padding = 34;
   const nodes = [];
+  let previousGenerationOrder = new Map();
 
   Object.entries(generations)
     .sort(([left], [right]) => Number(left) - Number(right))
@@ -207,8 +208,28 @@ function buildRelationshipGraph(members, memberById) {
       const orderedMembers = [];
       const usedIds = new Set();
 
+      function directParentScore(member) {
+        const parentIndexes = parentIdsFor(member)
+          .map((parentId) => previousGenerationOrder.get(parentId))
+          .filter((value) => Number.isFinite(value));
+
+        if (!parentIndexes.length) return Number.POSITIVE_INFINITY;
+        return parentIndexes.reduce((total, value) => total + value, 0) / parentIndexes.length;
+      }
+
+      function sortScore(member) {
+        const parentScore = directParentScore(member);
+        if (Number.isFinite(parentScore)) return parentScore;
+
+        const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
+        if (!spouse) return Number.POSITIVE_INFINITY;
+
+        const spouseParentScore = directParentScore(spouse);
+        return Number.isFinite(spouseParentScore) ? spouseParentScore + 0.1 : Number.POSITIVE_INFINITY;
+      }
+
       [...generationMembers]
-        .sort((left, right) => left.displayName.localeCompare(right.displayName))
+        .sort((left, right) => sortScore(left) - sortScore(right) || left.displayName.localeCompare(right.displayName))
         .forEach((member) => {
           if (usedIds.has(member._id)) return;
           const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
@@ -219,6 +240,8 @@ function buildRelationshipGraph(members, memberById) {
             usedIds.add(spouse._id);
           }
         });
+
+      previousGenerationOrder = new Map(orderedMembers.map((member, index) => [member._id, index]));
 
       orderedMembers.forEach((member, index) => {
         nodes.push({
@@ -308,11 +331,12 @@ export function FamilyTreePage() {
       return { parents: [], couple: [], children: [], linkedIds: new Set() };
     }
 
+    const relationships = buildRelationshipMap(members, memberById);
     const parents = uniqueMembers([
       memberById.get(String(selfMember.fatherMemberId || "")),
       memberById.get(String(selfMember.motherMemberId || ""))
     ]);
-    const spouse = memberById.get(String(selfMember.spouseMemberId || ""));
+    const spouse = spouseForMember(selfMember, memberById, relationships.spousesByMember);
     const childrenFromExplicitLinks = (selfMember.childMemberIds || []).map((childMemberId) => memberById.get(String(childMemberId)));
     const childrenFromSpouseLinks = (spouse?.childMemberIds || []).map((childMemberId) => memberById.get(String(childMemberId)));
     const childrenFromParentLinks = validMembers(members).filter(
