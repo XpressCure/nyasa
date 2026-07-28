@@ -21,6 +21,10 @@ function memberIcon(member) {
   return <CircleUserRound size={22} />;
 }
 
+function avatarClassName(member) {
+  return `member-avatar ${member?.gender || "unknown"}${member?.photoUrl ? " has-photo" : ""}`;
+}
+
 function educationLine(member) {
   const graduation = member?.education?.graduation?.degree || member?.education?.graduation?.institution;
   const postGraduation = member?.education?.postGraduation?.degree || member?.education?.postGraduation?.institution;
@@ -336,7 +340,7 @@ function TreeCard({ member, secondaryLine, relationCount, isSelf = false, isMute
 
   return (
     <article className={`tree-member-card ${member.gender || "unknown"}${isSelf ? " self" : ""}${isMuted ? " muted" : ""}${compact ? " compact" : ""}`}>
-      <span className="member-avatar">{memberIcon(member)}</span>
+      <MemberAvatar member={member} />
       <div>
         <h3>{member.displayName}</h3>
         <p>{secondaryLine(member)}</p>
@@ -344,5 +348,51 @@ function TreeCard({ member, secondaryLine, relationCount, isSelf = false, isMute
         {compact ? null : <small>{relationCount} linked relation{relationCount === 1 ? "" : "s"}</small>}
       </div>
     </article>
+  );
+}
+
+function MemberAvatar({ member }) {
+  const [photoSrc, setPhotoSrc] = useState("");
+
+  useEffect(() => {
+    let objectUrl = "";
+    let isActive = true;
+
+    async function loadPhoto() {
+      if (!member?.photoUrl) {
+        setPhotoSrc("");
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("nyasa_token");
+        const response = await fetch(member.photoUrl, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+
+        if (!response.ok) {
+          throw new Error("Photo could not be loaded.");
+        }
+
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        if (isActive) setPhotoSrc(objectUrl);
+      } catch (_error) {
+        if (isActive) setPhotoSrc("");
+      }
+    }
+
+    loadPhoto();
+
+    return () => {
+      isActive = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [member?._id, member?.photoUrl]);
+
+  return (
+    <span className={avatarClassName(member)}>
+      {photoSrc ? <img alt={`${member.displayName} profile`} src={photoSrc} /> : memberIcon(member)}
+    </span>
   );
 }

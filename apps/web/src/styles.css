@@ -587,8 +587,10 @@ button:disabled {
   border-radius: 999px;
   color: #17211c;
   display: inline-flex;
+  flex: 0 0 auto;
   height: 42px;
   justify-content: center;
+  overflow: hidden;
   width: 42px;
 }
 
@@ -600,6 +602,17 @@ button:disabled {
 .member-avatar.male {
   background: #dfe8ef;
   color: #24435b;
+}
+
+.member-avatar.has-photo {
+  background: #ffffff;
+}
+
+.member-avatar img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
 }
 
 .avatar-letter {
