@@ -33,6 +33,10 @@ function healthLine(member) {
   return conditions || member?.health?.bloodGroup || member?.health?.geneticNotes || "Health details pending";
 }
 
+function validMembers(value) {
+  return Array.isArray(value) ? value.filter((member) => member && member._id) : [];
+}
+
 function lifeLine(member) {
   if (!member) return "";
   if (member.livingStatus === "deceased") {
@@ -58,7 +62,7 @@ export function FamilyTreePage() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const memberById = useMemo(() => new Map(members.map((member) => [member._id, member])), [members]);
+  const memberById = useMemo(() => new Map(validMembers(members).map((member) => [member._id, member])), [members]);
   const selfMember = memberById.get(selfMemberId) || members[0] || null;
 
   const treeFamily = useMemo(() => {
@@ -72,7 +76,7 @@ export function FamilyTreePage() {
     ]);
     const spouse = memberById.get(String(selfMember.spouseMemberId || ""));
     const childrenFromExplicitLinks = (selfMember.childMemberIds || []).map((childMemberId) => memberById.get(String(childMemberId)));
-    const childrenFromParentLinks = members.filter(
+    const childrenFromParentLinks = validMembers(members).filter(
       (member) => String(member.fatherMemberId || "") === selfMember._id || String(member.motherMemberId || "") === selfMember._id
     );
     const children = uniqueMembers([...childrenFromExplicitLinks, ...childrenFromParentLinks]);
@@ -92,7 +96,7 @@ export function FamilyTreePage() {
     if (familyId) return familyId;
 
     const familiesResponse = await apiGet("/families");
-    const firstMembership = familiesResponse.data[0];
+    const firstMembership = familiesResponse.data?.[0];
     if (firstMembership?.familyId?._id) {
       familyId = firstMembership.familyId._id;
       localStorage.setItem("nyasa_family_id", familyId);
@@ -115,7 +119,7 @@ export function FamilyTreePage() {
 
       const response = await apiGet(`/members/family/${familyId}/tree?mode=${nextMode}`);
       const treeData = response.data || {};
-      const nextMembers = treeData.members || [];
+      const nextMembers = validMembers(treeData.members);
       setMembers(nextMembers);
       setLinks(treeData.links || []);
       setSelfMemberId(String(treeData.selfMemberId || ""));
@@ -142,7 +146,7 @@ export function FamilyTreePage() {
   function secondaryLine(member) {
     if (mode === "education") return educationLine(member);
     if (mode === "health") return healthLine(member);
-    return member.placeOfResidence || member.city || member.relationLabel || "Relationship details pending";
+    return member?.placeOfResidence || member?.city || member?.relationLabel || "Relationship details pending";
   }
 
   useEffect(() => {
@@ -207,7 +211,7 @@ export function FamilyTreePage() {
           <span>{members.length} profile{members.length === 1 ? "" : "s"}</span>
         </div>
         <div className="tree-grid">
-          {members.map((member) => (
+          {validMembers(members).map((member) => (
             <TreeCard
               isMuted={!treeFamily.linkedIds.has(member._id)}
               isSelf={member._id === selfMember?._id}
@@ -249,6 +253,8 @@ function TreeLevel({ label, members, secondaryLine, featuredMemberId = "", empty
 }
 
 function TreeCard({ member, secondaryLine, relationCount, isSelf = false, isMuted = false, compact = false }) {
+  if (!member) return null;
+
   return (
     <article className={`tree-member-card ${member.gender || "unknown"}${isSelf ? " self" : ""}${isMuted ? " muted" : ""}${compact ? " compact" : ""}`}>
       <span className="member-avatar">{memberIcon(member)}</span>

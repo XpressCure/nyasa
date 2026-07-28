@@ -1206,6 +1206,35 @@ button:disabled {
   padding: 12px;
 }
 
+.app-error-page {
+  background: #f7f4ee;
+  min-height: 100vh;
+  padding: 40px;
+}
+
+.app-error-panel {
+  margin: 0 auto;
+  max-width: 760px;
+}
+
+.app-error-panel pre {
+  background: #17211c;
+  border-radius: 8px;
+  color: #fff;
+  overflow-x: auto;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+
+.app-error-panel button {
+  background: #17211c;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  padding: 12px 16px;
+}
+
 .tree-toolbar {
   background: #ebe5d9;
   border-radius: 8px;
