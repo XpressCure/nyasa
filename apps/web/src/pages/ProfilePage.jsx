@@ -3,18 +3,123 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPatch } from "../lib/api.js";
 
+const initialForm = {
+  displayName: "",
+  gender: "prefer_not_to_say",
+  photoUrl: "",
+  dateOfBirth: "",
+  livingStatus: "living",
+  maritalStatus: "unknown",
+  anniversaryDate: "",
+  relationLabel: "",
+  grandfatherName: "",
+  grandmotherName: "",
+  childrenCount: "",
+  placeOfResidence: "",
+  city: "",
+  state: "",
+  country: "",
+  profession: "",
+  bio: "",
+  education: {
+    intermediate: { institution: "", degree: "", year: "", details: "" },
+    graduation: { institution: "", degree: "", year: "", details: "" },
+    postGraduation: { institution: "", degree: "", year: "", details: "" }
+  },
+  work: {
+    currentPlace: "",
+    currentRole: "",
+    previousPlaces: "",
+    experienceYears: "",
+    notes: ""
+  },
+  health: {
+    bloodGroup: "",
+    knownConditionsText: "",
+    allergiesText: "",
+    geneticNotes: ""
+  }
+};
+
+function toInputDate(value) {
+  if (!value) return "";
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function listFromText(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function textFromList(value) {
+  return Array.isArray(value) ? value.join(", ") : "";
+}
+
+function hydrateForm(member) {
+  return {
+    ...initialForm,
+    displayName: member.displayName || "",
+    gender: member.gender || "prefer_not_to_say",
+    photoUrl: member.photoUrl || "",
+    dateOfBirth: toInputDate(member.dateOfBirth),
+    livingStatus: member.livingStatus || "living",
+    maritalStatus: member.maritalStatus || "unknown",
+    anniversaryDate: toInputDate(member.anniversaryDate),
+    relationLabel: member.relationLabel || "",
+    grandfatherName: member.grandfatherName || "",
+    grandmotherName: member.grandmotherName || "",
+    childrenCount: member.childrenCount ?? "",
+    placeOfResidence: member.placeOfResidence || "",
+    city: member.city || "",
+    state: member.state || "",
+    country: member.country || "",
+    profession: member.profession || "",
+    bio: member.bio || "",
+    education: {
+      intermediate: { ...initialForm.education.intermediate, ...(member.education?.intermediate || {}) },
+      graduation: { ...initialForm.education.graduation, ...(member.education?.graduation || {}) },
+      postGraduation: { ...initialForm.education.postGraduation, ...(member.education?.postGraduation || {}) }
+    },
+    work: { ...initialForm.work, ...(member.work || {}) },
+    health: {
+      bloodGroup: member.health?.bloodGroup || "",
+      knownConditionsText: textFromList(member.health?.knownConditions),
+      allergiesText: textFromList(member.health?.allergies),
+      geneticNotes: member.health?.geneticNotes || ""
+    }
+  };
+}
+
 export function ProfilePage() {
   const [profile, setProfile] = useState(null);
-  const [displayName, setDisplayName] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [country, setCountry] = useState("");
-  const [profession, setProfession] = useState("");
-  const [bio, setBio] = useState("");
+  const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateEducation(stage, field, value) {
+    setForm((current) => ({
+      ...current,
+      education: {
+        ...current.education,
+        [stage]: { ...current.education[stage], [field]: value }
+      }
+    }));
+  }
+
+  function updateNested(section, field, value) {
+    setForm((current) => ({
+      ...current,
+      [section]: { ...current[section], [field]: value }
+    }));
   }
 
   async function loadProfile() {
@@ -35,20 +140,14 @@ export function ProfilePage() {
     }
 
     if (!familyId) {
-      setMessage("Join or create the Alahdadpur family workspace first, then complete your profile.");
+      setMessage("Join the Alahdadpur family workspace first, then complete your profile.");
       return;
     }
 
     try {
       const response = await apiGet(`/members/family/${familyId}/me`);
-      const member = response.data;
-      setProfile(member);
-      setDisplayName(member.displayName || "");
-      setCity(member.city || "");
-      setState(member.state || "");
-      setCountry(member.country || "");
-      setProfession(member.profession || "");
-      setBio(member.bio || "");
+      setProfile(response.data);
+      setForm(hydrateForm(response.data));
       setMessage("Profile loaded.");
     } catch (error) {
       setMessage(error.message);
@@ -60,20 +159,23 @@ export function ProfilePage() {
     const familyId = getFamilyId();
 
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      setMessage("Join the Alahdadpur family workspace first.");
       return;
     }
 
     try {
       const response = await apiPatch(`/members/family/${familyId}/me`, {
-        displayName,
-        city,
-        state,
-        country,
-        profession,
-        bio
+        ...form,
+        childrenCount: form.childrenCount === "" ? undefined : Number(form.childrenCount),
+        health: {
+          bloodGroup: form.health.bloodGroup,
+          knownConditions: listFromText(form.health.knownConditionsText),
+          allergies: listFromText(form.health.allergiesText),
+          geneticNotes: form.health.geneticNotes
+        }
       });
       setProfile(response.data);
+      setForm(hydrateForm(response.data));
       setMessage("Profile updated.");
     } catch (error) {
       setMessage(error.message);
@@ -86,7 +188,11 @@ export function ProfilePage() {
 
   return (
     <section>
-      <PageHeader eyebrow="My Account" title="Profile" description="Keep your family profile, location, profession, and personal bio current." />
+      <PageHeader
+        eyebrow="My Account"
+        title="Profile"
+        description="Fill what you know today. Nyasa will keep improving each profile as the family adds more details."
+      />
       <section className="content-band">
         <h2>My Profile</h2>
         {profile ? (
@@ -96,38 +202,183 @@ export function ProfilePage() {
         ) : (
           <div className="empty-state">
             <h3>Start with the Alahdadpur family workspace</h3>
-            <p>
-              Your bio is connected to the family workspace so relatives can see who you are, where you live, your profession, and your story.
-            </p>
+            <p>Your profile becomes part of the family record, family tree, and future health tree.</p>
             <Link className="secondary-button" to="/family">
               Open Family Workspace
             </Link>
           </div>
         )}
+
         <form className="form-grid profile-form" onSubmit={saveProfile}>
+          <h3 className="form-section-title">Identity</h3>
           <label>
-            Display name
-            <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+            Full name
+            <input value={form.displayName} onChange={(event) => updateField("displayName", event.target.value)} />
           </label>
           <label>
-            Profession
-            <input value={profession} onChange={(event) => setProfession(event.target.value)} />
+            Gender
+            <select value={form.gender} onChange={(event) => updateField("gender", event.target.value)}>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </label>
+          <label>
+            Living status
+            <select value={form.livingStatus} onChange={(event) => updateField("livingStatus", event.target.value)}>
+              <option value="living">Living</option>
+              <option value="deceased">No longer in this world</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </label>
+          <label>
+            Date of birth
+            <input type="date" value={form.dateOfBirth} onChange={(event) => updateField("dateOfBirth", event.target.value)} />
+          </label>
+          <label>
+            Photo URL
+            <input value={form.photoUrl} onChange={(event) => updateField("photoUrl", event.target.value)} placeholder="Upload support coming next" />
+          </label>
+          <label>
+            Relationship note
+            <input value={form.relationLabel} onChange={(event) => updateField("relationLabel", event.target.value)} placeholder="Son of, daughter of, bua, chacha..." />
+          </label>
+
+          <h3 className="form-section-title">Family Links</h3>
+          <label>
+            Marital status
+            <select value={form.maritalStatus} onChange={(event) => updateField("maritalStatus", event.target.value)}>
+              <option value="unknown">Unknown</option>
+              <option value="single">Single</option>
+              <option value="married">Married</option>
+              <option value="widowed">Widowed</option>
+              <option value="divorced">Divorced</option>
+              <option value="separated">Separated</option>
+            </select>
+          </label>
+          <label>
+            Anniversary date
+            <input type="date" value={form.anniversaryDate} onChange={(event) => updateField("anniversaryDate", event.target.value)} />
+          </label>
+          <label>
+            Number of children
+            <input type="number" min="0" value={form.childrenCount} onChange={(event) => updateField("childrenCount", event.target.value)} />
+          </label>
+          <label>
+            Grandfather's name
+            <input value={form.grandfatherName} onChange={(event) => updateField("grandfatherName", event.target.value)} />
+          </label>
+          <label>
+            Grandmother's name
+            <input value={form.grandmotherName} onChange={(event) => updateField("grandmotherName", event.target.value)} />
+          </label>
+
+          <h3 className="form-section-title">Residence</h3>
+          <label>
+            Place of residence
+            <input value={form.placeOfResidence} onChange={(event) => updateField("placeOfResidence", event.target.value)} />
           </label>
           <label>
             City
-            <input value={city} onChange={(event) => setCity(event.target.value)} />
+            <input value={form.city} onChange={(event) => updateField("city", event.target.value)} />
           </label>
           <label>
             State
-            <input value={state} onChange={(event) => setState(event.target.value)} />
+            <input value={form.state} onChange={(event) => updateField("state", event.target.value)} />
           </label>
           <label>
             Country
-            <input value={country} onChange={(event) => setCountry(event.target.value)} />
+            <input value={form.country} onChange={(event) => updateField("country", event.target.value)} />
+          </label>
+
+          <h3 className="form-section-title">Education</h3>
+          {[
+            ["intermediate", "Intermediate"],
+            ["graduation", "Graduation"],
+            ["postGraduation", "Post graduation"]
+          ].map(([stage, label]) => (
+            <div className="nested-fieldset" key={stage}>
+              <strong>{label}</strong>
+              <input
+                value={form.education[stage].institution}
+                onChange={(event) => updateEducation(stage, "institution", event.target.value)}
+                placeholder="School, college, or university"
+              />
+              <input
+                value={form.education[stage].degree}
+                onChange={(event) => updateEducation(stage, "degree", event.target.value)}
+                placeholder="Course or degree"
+              />
+              <input
+                type="number"
+                value={form.education[stage].year}
+                onChange={(event) => updateEducation(stage, "year", event.target.value)}
+                placeholder="Year"
+              />
+              <input
+                value={form.education[stage].details}
+                onChange={(event) => updateEducation(stage, "details", event.target.value)}
+                placeholder="Details"
+              />
+            </div>
+          ))}
+
+          <h3 className="form-section-title">Work</h3>
+          <label>
+            Profession
+            <input value={form.profession} onChange={(event) => updateField("profession", event.target.value)} />
+          </label>
+          <label>
+            Current place of work
+            <input value={form.work.currentPlace} onChange={(event) => updateNested("work", "currentPlace", event.target.value)} />
+          </label>
+          <label>
+            Current role
+            <input value={form.work.currentRole} onChange={(event) => updateNested("work", "currentRole", event.target.value)} />
+          </label>
+          <label>
+            Experience in years
+            <input type="number" min="0" value={form.work.experienceYears} onChange={(event) => updateNested("work", "experienceYears", event.target.value)} />
           </label>
           <label className="wide-field">
+            Earlier places of work
+            <textarea value={form.work.previousPlaces} onChange={(event) => updateNested("work", "previousPlaces", event.target.value)} rows="3" />
+          </label>
+
+          <h3 className="form-section-title">Health Notes</h3>
+          <p className="profile-help wide-field">
+            Add only what you are comfortable sharing. These notes are stored for future health-tree analysis and are not shown in the public member list.
+          </p>
+          <label>
+            Blood group
+            <input value={form.health.bloodGroup} onChange={(event) => updateNested("health", "bloodGroup", event.target.value)} />
+          </label>
+          <label>
+            Existing diseases
+            <input
+              value={form.health.knownConditionsText}
+              onChange={(event) => updateNested("health", "knownConditionsText", event.target.value)}
+              placeholder="Comma separated"
+            />
+          </label>
+          <label>
+            Allergies
+            <input
+              value={form.health.allergiesText}
+              onChange={(event) => updateNested("health", "allergiesText", event.target.value)}
+              placeholder="Comma separated"
+            />
+          </label>
+          <label className="wide-field">
+            Genetic or recurring family health notes
+            <textarea value={form.health.geneticNotes} onChange={(event) => updateNested("health", "geneticNotes", event.target.value)} rows="3" />
+          </label>
+
+          <h3 className="form-section-title">Story</h3>
+          <label className="wide-field">
             Bio
-            <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows="5" />
+            <textarea value={form.bio} onChange={(event) => updateField("bio", event.target.value)} rows="5" />
           </label>
           <button type="submit" disabled={!getFamilyId()}>
             Save Profile

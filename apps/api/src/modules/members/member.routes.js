@@ -10,12 +10,60 @@ import { permissions } from "../permissions/permissions.js";
 
 export const memberRoutes = Router();
 
+const optionalNumber = (schema) =>
+  z.preprocess((value) => (value === "" || value === null ? undefined : value), schema.optional());
+
+const educationStageSchema = z.object({
+  institution: z.string().optional(),
+  degree: z.string().optional(),
+  year: optionalNumber(z.coerce.number().int().min(1900).max(2100)),
+  details: z.string().optional()
+});
+
+const workHistorySchema = z.object({
+  currentPlace: z.string().optional(),
+  currentRole: z.string().optional(),
+  previousPlaces: z.string().optional(),
+  experienceYears: optionalNumber(z.coerce.number().min(0).max(100)),
+  notes: z.string().optional()
+});
+
+const healthProfileSchema = z.object({
+  bloodGroup: z.string().optional(),
+  knownConditions: z.array(z.string()).optional(),
+  allergies: z.array(z.string()).optional(),
+  geneticNotes: z.string().optional()
+});
+
 const updateProfileSchema = z.object({
   displayName: z.string().min(2).optional(),
+  relationLabel: z.string().optional(),
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
+  photoUrl: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  livingStatus: z.enum(["living", "deceased", "unknown"]).optional(),
+  maritalStatus: z.enum(["single", "married", "widowed", "divorced", "separated", "unknown"]).optional(),
+  anniversaryDate: z.string().optional(),
+  fatherMemberId: z.string().optional(),
+  motherMemberId: z.string().optional(),
+  spouseMemberId: z.string().optional(),
+  grandfatherName: z.string().optional(),
+  grandmotherName: z.string().optional(),
+  childrenCount: optionalNumber(z.coerce.number().int().min(0)),
   city: z.string().optional(),
   state: z.string().optional(),
   country: z.string().optional(),
+  placeOfResidence: z.string().optional(),
   profession: z.string().optional(),
+  education: z
+    .object({
+      intermediate: educationStageSchema.optional(),
+      graduation: educationStageSchema.optional(),
+      postGraduation: educationStageSchema.optional()
+    })
+    .optional(),
+  work: workHistorySchema.optional(),
+  health: healthProfileSchema.optional(),
   bio: z.string().optional()
 });
 
@@ -26,6 +74,58 @@ const updateRoleSchema = z.object({
 const updateStatusSchema = z.object({
   status: z.enum(["active", "inactive", "removed"])
 });
+
+function serializeMember(member, { includeSensitive = false } = {}) {
+  const data = member?.toObject ? member.toObject() : { ...member };
+
+  if (!includeSensitive) {
+    delete data.health;
+  }
+
+  return data;
+}
+
+function toOptionalDate(value) {
+  return value ? new Date(value) : undefined;
+}
+
+function toOptionalObjectId(value) {
+  return value || undefined;
+}
+
+function normalizeProfileUpdate(body) {
+  return {
+    ...body,
+    dateOfBirth: toOptionalDate(body.dateOfBirth),
+    anniversaryDate: toOptionalDate(body.anniversaryDate),
+    fatherMemberId: toOptionalObjectId(body.fatherMemberId),
+    motherMemberId: toOptionalObjectId(body.motherMemberId),
+    spouseMemberId: toOptionalObjectId(body.spouseMemberId)
+  };
+}
+
+function buildTreeLinks(members) {
+  const memberIds = new Set(members.map((member) => String(member._id)));
+  const links = [];
+
+  members.forEach((member) => {
+    [
+      ["fatherMemberId", "father"],
+      ["motherMemberId", "mother"],
+      ["spouseMemberId", "spouse"]
+    ].forEach(([field, relationship]) => {
+      if (member[field] && memberIds.has(String(member[field]))) {
+        links.push({
+          fromMemberId: String(member[field]),
+          toMemberId: String(member._id),
+          relationship
+        });
+      }
+    });
+  });
+
+  return links;
+}
 
 async function assertCanChangeMember({ actorMember, targetMember, nextRole, nextStatus }) {
   if (String(actorMember._id) === String(targetMember._id) && nextStatus && nextStatus !== "active") {
@@ -65,7 +165,25 @@ memberRoutes.get(
       status: { $ne: "removed" }
     }).sort({ displayName: 1 });
 
-    res.json({ data: members });
+    res.json({ data: members.map((member) => serializeMember(member)) });
+  })
+);
+
+memberRoutes.get(
+  "/family/:familyId/tree",
+  requireFamilyPermission(permissions.membersView),
+  asyncHandler(async (req, res) => {
+    const members = await FamilyMember.find({
+      familyId: req.familyId,
+      status: { $ne: "removed" }
+    }).sort({ displayName: 1 });
+
+    res.json({
+      data: {
+        members: members.map((member) => serializeMember(member)),
+        links: buildTreeLinks(members)
+      }
+    });
   })
 );
 
@@ -73,7 +191,7 @@ memberRoutes.get(
   "/family/:familyId/me",
   requireFamilyPermission(permissions.workspaceView),
   asyncHandler(async (req, res) => {
-    res.json({ data: req.member });
+    res.json({ data: serializeMember(req.member, { includeSensitive: true }) });
   })
 );
 
@@ -81,13 +199,13 @@ memberRoutes.patch(
   "/family/:familyId/me",
   requireFamilyPermission(permissions.workspaceView),
   asyncHandler(async (req, res) => {
-    const body = updateProfileSchema.parse(req.body);
+    const body = normalizeProfileUpdate(updateProfileSchema.parse(req.body));
 
     const member = await FamilyMember.findByIdAndUpdate(req.member._id, body, {
       new: true
     });
 
-    res.json({ data: member });
+    res.json({ data: serializeMember(member, { includeSensitive: true }) });
   })
 );
 
@@ -125,7 +243,7 @@ memberRoutes.patch(
       req
     });
 
-    res.json({ data: targetMember });
+    res.json({ data: serializeMember(targetMember) });
   })
 );
 
@@ -163,6 +281,6 @@ memberRoutes.patch(
       req
     });
 
-    res.json({ data: targetMember });
+    res.json({ data: serializeMember(targetMember) });
   })
 );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CircleUserRound, Mars, Venus } from "lucide-react";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPatch, apiPost, apiPostEmpty } from "../lib/api.js";
 
@@ -133,6 +134,12 @@ export function MembersPage() {
     return role.replaceAll("_", " ");
   }
 
+  function memberIcon(member) {
+    if (member.gender === "male") return <Mars size={20} />;
+    if (member.gender === "female") return <Venus size={20} />;
+    return <CircleUserRound size={20} />;
+  }
+
   return (
     <section>
       <PageHeader
@@ -189,9 +196,15 @@ export function MembersPage() {
           <div className="list-stack">
             {members.map((member) => (
               <div className="member-row" key={member._id}>
-                <div>
-                  <strong>{member.displayName}</strong>
-                  <span>{formatRole(member.role)} - {member.status}</span>
+                <div className="member-summary">
+                  <span className={`member-avatar ${member.gender || "unknown"}`}>{memberIcon(member)}</span>
+                  <div>
+                    <strong>{member.displayName}</strong>
+                    <span>
+                      {formatRole(member.role)} - {member.status} - {member.livingStatus || "living"}
+                    </span>
+                    <span>{member.placeOfResidence || member.city || member.profession || "Profile details pending"}</span>
+                  </div>
                 </div>
                 <div className="row-actions">
                   <select value={member.role} onChange={(event) => updateMemberRole(member._id, event.target.value)}>
