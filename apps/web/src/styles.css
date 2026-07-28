@@ -602,6 +602,12 @@ button:disabled {
   color: #24435b;
 }
 
+.avatar-letter {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .invite-row span {
   color: #4e5b53;
   display: block;

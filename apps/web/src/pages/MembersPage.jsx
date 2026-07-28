@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CircleUserRound, Mars, Venus } from "lucide-react";
+import { CircleUserRound } from "lucide-react";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPatch, apiPost, apiPostEmpty } from "../lib/api.js";
 
@@ -135,8 +135,8 @@ export function MembersPage() {
   }
 
   function memberIcon(member) {
-    if (member.gender === "male") return <Mars size={20} />;
-    if (member.gender === "female") return <Venus size={20} />;
+    if (member.gender === "male") return <span className="avatar-letter">M</span>;
+    if (member.gender === "female") return <span className="avatar-letter">F</span>;
     return <CircleUserRound size={20} />;
   }
 

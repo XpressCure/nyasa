@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpenText, CircleUserRound, HeartPulse, Mars, Network, Venus } from "lucide-react";
+import { BookOpenText, CircleUserRound, HeartPulse, Network } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet } from "../lib/api.js";
@@ -16,8 +16,8 @@ function formatDate(value) {
 }
 
 function memberIcon(member) {
-  if (member?.gender === "male") return <Mars size={22} />;
-  if (member?.gender === "female") return <Venus size={22} />;
+  if (member?.gender === "male") return <span className="avatar-letter">M</span>;
+  if (member?.gender === "female") return <span className="avatar-letter">F</span>;
   return <CircleUserRound size={22} />;
 }
 
