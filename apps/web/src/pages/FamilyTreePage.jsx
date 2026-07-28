@@ -85,13 +85,16 @@ function coupleKeyFor(firstId, secondId = "") {
   return [String(firstId || ""), String(secondId || "")].filter(Boolean).sort().join(":");
 }
 
-function spouseForMember(member, memberById) {
+function spouseForMember(member, memberById, spousesByMember = new Map()) {
   if (!member) return null;
   if (member.spouseMemberId && memberById.has(String(member.spouseMemberId))) {
     return memberById.get(String(member.spouseMemberId));
   }
 
-  return [...memberById.values()].find((possibleSpouse) => String(possibleSpouse.spouseMemberId || "") === member._id) || null;
+  const reverseSpouse = [...memberById.values()].find((possibleSpouse) => String(possibleSpouse.spouseMemberId || "") === member._id);
+  if (reverseSpouse) return reverseSpouse;
+
+  return spousesByMember.get(member._id) || null;
 }
 
 function buildRelationshipMap(members, memberById) {
@@ -107,6 +110,14 @@ function buildRelationshipMap(members, memberById) {
   });
 
   validMemberList.forEach((member) => {
+    const father = member.fatherMemberId ? memberById.get(String(member.fatherMemberId)) : null;
+    const mother = member.motherMemberId ? memberById.get(String(member.motherMemberId)) : null;
+
+    if (father && mother) {
+      if (!spousesByMember.has(father._id)) spousesByMember.set(father._id, mother);
+      if (!spousesByMember.has(mother._id)) spousesByMember.set(mother._id, father);
+    }
+
     const spouse = spousesByMember.get(member._id);
     if (spouse && !spousesByMember.has(spouse._id)) {
       spousesByMember.set(spouse._id, member);
@@ -164,7 +175,7 @@ function buildRelationshipGraph(members, memberById) {
         }
       });
 
-      const spouse = spouseForMember(member, memberById);
+      const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
       if (spouse) {
         const sharedGeneration = Math.max(generationByMember.get(member._id) || 0, generationByMember.get(spouse._id) || 0);
         if (generationByMember.get(member._id) !== sharedGeneration || generationByMember.get(spouse._id) !== sharedGeneration) {
@@ -200,7 +211,7 @@ function buildRelationshipGraph(members, memberById) {
         .sort((left, right) => left.displayName.localeCompare(right.displayName))
         .forEach((member) => {
           if (usedIds.has(member._id)) return;
-          const spouse = spouseForMember(member, memberById);
+          const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
           orderedMembers.push(member);
           usedIds.add(member._id);
           if (spouse && generationMembers.some((item) => item._id === spouse._id) && !usedIds.has(spouse._id)) {
@@ -231,10 +242,31 @@ function buildRelationshipGraph(members, memberById) {
     edges.push({ fromId: String(fromId), toId: String(toId), type });
   }
 
+  function addParentCoupleEdge(firstParentId, secondParentId, childId) {
+    if (!nodeById.has(String(firstParentId)) || !nodeById.has(String(secondParentId)) || !nodeById.has(String(childId))) return;
+    const key = `parentCouple:${coupleKeyFor(firstParentId, secondParentId)}:${childId}`;
+    if (edgeKeys.has(key)) return;
+    edgeKeys.add(key);
+    edges.push({ fromId: String(firstParentId), spouseId: String(secondParentId), toId: String(childId), type: "parentCouple" });
+  }
+
   validMemberList.forEach((member) => {
-    parentIdsFor(member).forEach((parentId) => addEdge(parentId, member._id, "parent"));
-    (member.childMemberIds || []).forEach((childMemberId) => addEdge(member._id, childMemberId, "parent"));
-    const spouse = spouseForMember(member, memberById);
+    const fatherId = member.fatherMemberId && nodeById.has(String(member.fatherMemberId)) ? String(member.fatherMemberId) : "";
+    const motherId = member.motherMemberId && nodeById.has(String(member.motherMemberId)) ? String(member.motherMemberId) : "";
+
+    if (fatherId && motherId) {
+      addParentCoupleEdge(fatherId, motherId, member._id);
+    } else {
+      parentIdsFor(member).forEach((parentId) => addEdge(parentId, member._id, "parent"));
+    }
+
+    (member.childMemberIds || []).forEach((childMemberId) => {
+      const child = memberById.get(String(childMemberId));
+      if (child?.fatherMemberId || child?.motherMemberId) return;
+      addEdge(member._id, childMemberId, "parent");
+    });
+
+    const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
     if (spouse) addEdge(member._id, spouse._id, "spouse");
   });
 
@@ -466,7 +498,7 @@ export function FamilyTreePage() {
             <div className="tree-register-header">
               <div>
                 <h2>Whole Family Map</h2>
-                <p>Parents, spouses, siblings, children, and in-law branches are grouped into connected family units.</p>
+                <p>One connected map. Solid gold lines show parent-child links; dashed brown lines show spouse or co-parent couples.</p>
               </div>
               <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
             </div>
@@ -589,15 +621,38 @@ function RelationshipGraph({ graph, secondaryLine, selfMemberId }) {
           if (!fromNode || !toNode) return null;
 
           if (edge.type === "spouse") {
-            const y = fromNode.y + graph.nodeHeight / 2;
+            const leftNode = fromNode.x <= toNode.x ? fromNode : toNode;
+            const rightNode = fromNode.x <= toNode.x ? toNode : fromNode;
+            const leftY = leftNode.y + graph.nodeHeight / 2;
+            const rightY = rightNode.y + graph.nodeHeight / 2;
             return (
               <line
                 className="relationship-line spouse-line"
                 key={`${edge.type}-${edge.fromId}-${edge.toId}`}
-                x1={fromNode.x + graph.nodeWidth}
-                x2={toNode.x}
-                y1={y}
-                y2={toNode.y + graph.nodeHeight / 2}
+                x1={leftNode.x + graph.nodeWidth}
+                x2={rightNode.x}
+                y1={leftY}
+                y2={rightY}
+              />
+            );
+          }
+
+          if (edge.type === "parentCouple") {
+            const spouseNode = graph.nodeById.get(edge.spouseId);
+            if (!spouseNode) return null;
+
+            const parentCenterX = (fromNode.x + graph.nodeWidth / 2 + spouseNode.x + graph.nodeWidth / 2) / 2;
+            const startY = Math.max(fromNode.y, spouseNode.y) + graph.nodeHeight;
+            const endX = toNode.x + graph.nodeWidth / 2;
+            const endY = toNode.y;
+            const midY = startY + Math.max(34, (endY - startY) / 2);
+
+            return (
+              <path
+                className="relationship-line parent-line couple-parent-line"
+                d={`M ${parentCenterX} ${startY} L ${parentCenterX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`}
+                fill="none"
+                key={`${edge.type}-${edge.fromId}-${edge.spouseId}-${edge.toId}`}
               />
             );
           }
