@@ -1568,12 +1568,48 @@ button:disabled {
   background: #f8f6f1;
   border: 1px solid #e2ded3;
   border-radius: 8px;
-  display: grid;
-  gap: 24px;
   margin-top: 14px;
   max-height: 780px;
   overflow: auto;
   padding: 18px;
+}
+
+.relationship-graph {
+  min-height: 320px;
+  min-width: 860px;
+  position: relative;
+}
+
+.relationship-lines {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.relationship-line {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.parent-line {
+  stroke: #d8a947;
+}
+
+.spouse-line {
+  stroke: #805f1d;
+  stroke-dasharray: 7 7;
+}
+
+.relationship-node {
+  position: absolute;
+  z-index: 1;
+}
+
+.relationship-node .tree-member-card.compact {
+  height: 126px;
+  min-width: 238px;
+  width: 238px;
 }
 
 .generation-row {

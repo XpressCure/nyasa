@@ -139,7 +139,7 @@ function buildRelationshipMap(members, memberById) {
   return { childIds, childrenByParent, spousesByMember };
 }
 
-function buildExpandedFamilyMap(members, memberById) {
+function buildRelationshipGraph(members, memberById) {
   const validMemberList = validMembers(members);
   const relationships = buildRelationshipMap(validMemberList, memberById);
   const generationByMember = new Map(validMemberList.map((member) => [member._id, relationships.childIds.has(member._id) ? 1 : 0]));
@@ -148,19 +148,23 @@ function buildExpandedFamilyMap(members, memberById) {
     let changed = false;
 
     validMemberList.forEach((member) => {
-      const parentGenerations = parentIdsFor(member)
-        .map((parentId) => generationByMember.get(parentId))
-        .filter((generation) => generation !== undefined);
-
-      if (parentGenerations.length) {
-        const nextGeneration = Math.max(...parentGenerations) + 1;
+      parentIdsFor(member).forEach((parentId) => {
+        const nextGeneration = (generationByMember.get(parentId) || 0) + 1;
         if ((generationByMember.get(member._id) || 0) < nextGeneration) {
           generationByMember.set(member._id, nextGeneration);
           changed = true;
         }
-      }
+      });
 
-      const spouse = relationships.spousesByMember.get(member._id);
+      (relationships.childrenByParent.get(member._id) || []).forEach((child) => {
+        const nextGeneration = (generationByMember.get(member._id) || 0) + 1;
+        if ((generationByMember.get(child._id) || 0) < nextGeneration) {
+          generationByMember.set(child._id, nextGeneration);
+          changed = true;
+        }
+      });
+
+      const spouse = spouseForMember(member, memberById);
       if (spouse) {
         const sharedGeneration = Math.max(generationByMember.get(member._id) || 0, generationByMember.get(spouse._id) || 0);
         if (generationByMember.get(member._id) !== sharedGeneration || generationByMember.get(spouse._id) !== sharedGeneration) {
@@ -174,67 +178,75 @@ function buildExpandedFamilyMap(members, memberById) {
     if (!changed) break;
   }
 
-  const unitMap = new Map();
-
-  validMemberList.forEach((member) => {
-    const father = member.fatherMemberId ? memberById.get(String(member.fatherMemberId)) : null;
-    const mother = member.motherMemberId ? memberById.get(String(member.motherMemberId)) : null;
-    const parentIds = [father?._id, mother?._id].filter(Boolean);
-
-    if (parentIds.length) {
-      const key = `parents:${coupleKeyFor(parentIds[0], parentIds[1])}`;
-      const existingUnit = unitMap.get(key) || {
-        id: key,
-        generation: Math.min(...parentIds.map((parentId) => generationByMember.get(parentId) || 0)),
-        partners: uniqueMembers([father, mother]),
-        children: []
-      };
-      existingUnit.children = uniqueMembers([...existingUnit.children, member]);
-      unitMap.set(key, existingUnit);
-    }
-
-    const spouse = relationships.spousesByMember.get(member._id);
-    const hasKnownChildren = Boolean(relationships.childrenByParent.get(member._id)?.length || relationships.childrenByParent.get(spouse?._id)?.length);
-    if (spouse && !hasKnownChildren) {
-      const key = `couple:${coupleKeyFor(member._id, spouse._id)}`;
-      if (!unitMap.has(key)) {
-        unitMap.set(key, {
-          id: key,
-          generation: generationByMember.get(member._id) || 0,
-          partners: uniqueMembers([member, spouse]),
-          children: []
-        });
-      }
-    }
-  });
-
-  validMemberList.forEach((member) => {
-    const hasParentUnit = parentIdsFor(member).length;
-    const spouse = relationships.spousesByMember.get(member._id);
-    const appearsAsPartner = [...unitMap.values()].some((unit) => unit.partners.some((partner) => partner._id === member._id));
-    const appearsAsChild = [...unitMap.values()].some((unit) => unit.children.some((child) => child._id === member._id));
-
-    if (!hasParentUnit && !spouse && !appearsAsPartner && !appearsAsChild) {
-      unitMap.set(`solo:${member._id}`, {
-        id: `solo:${member._id}`,
-        generation: generationByMember.get(member._id) || 0,
-        partners: [member],
-        children: []
-      });
-    }
-  });
-
-  const generations = [...unitMap.values()].reduce((groups, unit) => {
-    const generation = unit.generation || 0;
-    return { ...groups, [generation]: [...(groups[generation] || []), unit] };
+  const generations = validMemberList.reduce((groups, member) => {
+    const generation = generationByMember.get(member._id) || 0;
+    return { ...groups, [generation]: [...(groups[generation] || []), member] };
   }, {});
 
-  return Object.entries(generations)
+  const nodeWidth = 238;
+  const nodeHeight = 126;
+  const columnGap = 34;
+  const generationGap = 124;
+  const padding = 34;
+  const nodes = [];
+
+  Object.entries(generations)
     .sort(([left], [right]) => Number(left) - Number(right))
-    .map(([generation, units]) => ({
-      generation: Number(generation),
-      units: units.sort((left, right) => (left.partners[0]?.displayName || "").localeCompare(right.partners[0]?.displayName || ""))
-    }));
+    .forEach(([generation, generationMembers]) => {
+      const orderedMembers = [];
+      const usedIds = new Set();
+
+      [...generationMembers]
+        .sort((left, right) => left.displayName.localeCompare(right.displayName))
+        .forEach((member) => {
+          if (usedIds.has(member._id)) return;
+          const spouse = spouseForMember(member, memberById);
+          orderedMembers.push(member);
+          usedIds.add(member._id);
+          if (spouse && generationMembers.some((item) => item._id === spouse._id) && !usedIds.has(spouse._id)) {
+            orderedMembers.push(spouse);
+            usedIds.add(spouse._id);
+          }
+        });
+
+      orderedMembers.forEach((member, index) => {
+        nodes.push({
+          id: member._id,
+          member,
+          x: padding + index * (nodeWidth + columnGap),
+          y: padding + Number(generation) * (nodeHeight + generationGap)
+        });
+      });
+    });
+
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const edgeKeys = new Set();
+  const edges = [];
+
+  function addEdge(fromId, toId, type) {
+    if (!nodeById.has(String(fromId)) || !nodeById.has(String(toId))) return;
+    const key = type === "spouse" ? `${type}:${coupleKeyFor(fromId, toId)}` : `${type}:${fromId}:${toId}`;
+    if (edgeKeys.has(key)) return;
+    edgeKeys.add(key);
+    edges.push({ fromId: String(fromId), toId: String(toId), type });
+  }
+
+  validMemberList.forEach((member) => {
+    parentIdsFor(member).forEach((parentId) => addEdge(parentId, member._id, "parent"));
+    (member.childMemberIds || []).forEach((childMemberId) => addEdge(member._id, childMemberId, "parent"));
+    const spouse = spouseForMember(member, memberById);
+    if (spouse) addEdge(member._id, spouse._id, "spouse");
+  });
+
+  return {
+    edges,
+    nodeById,
+    nodes,
+    height: nodes.length ? Math.max(...nodes.map((node) => node.y)) + nodeHeight + padding : 260,
+    width: nodes.length ? Math.max(...nodes.map((node) => node.x)) + nodeWidth + padding : 860,
+    nodeHeight,
+    nodeWidth
+  };
 }
 
 export function FamilyTreePage() {
@@ -285,7 +297,7 @@ export function FamilyTreePage() {
     return { parents, couple, children, linkedIds };
   }, [memberById, members, selfMember]);
 
-  const expandedFamilyMap = useMemo(() => buildExpandedFamilyMap(members, memberById), [memberById, members]);
+  const relationshipGraph = useMemo(() => buildRelationshipGraph(members, memberById), [memberById, members]);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -459,17 +471,8 @@ export function FamilyTreePage() {
               <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
             </div>
             <div className="expanded-family-map">
-              {expandedFamilyMap.length ? (
-                expandedFamilyMap.map((generation) => (
-                  <GenerationRow
-                generation={generation.generation}
-                key={generation.generation}
-                memberById={memberById}
-                secondaryLine={secondaryLine}
-                selfMemberId={selfMember?._id}
-                units={generation.units}
-                  />
-                ))
+              {relationshipGraph.nodes.length ? (
+                <RelationshipGraph graph={relationshipGraph} secondaryLine={secondaryLine} selfMemberId={selfMember?._id} />
               ) : (
                 <div className="tree-empty-node">Add relatives from Profile to begin the full structure.</div>
               )}
@@ -576,67 +579,56 @@ export function FamilyTreePage() {
   );
 }
 
-function GenerationRow({ generation, units, memberById, secondaryLine, selfMemberId }) {
+function RelationshipGraph({ graph, secondaryLine, selfMemberId }) {
   return (
-    <div className="generation-row">
-      <div className="generation-label">
-        <strong>Generation {generation + 1}</strong>
-        <span>{units.length} family unit{units.length === 1 ? "" : "s"}</span>
-      </div>
-      <div className="generation-units">
-        {units.map((unit) => (
-          <FamilyUnit key={unit.id} memberById={memberById} secondaryLine={secondaryLine} selfMemberId={selfMemberId} unit={unit} />
-        ))}
-      </div>
-    </div>
-  );
-}
+    <div className="relationship-graph" style={{ height: graph.height, width: graph.width }}>
+      <svg className="relationship-lines" height={graph.height} width={graph.width}>
+        {graph.edges.map((edge) => {
+          const fromNode = graph.nodeById.get(edge.fromId);
+          const toNode = graph.nodeById.get(edge.toId);
+          if (!fromNode || !toNode) return null;
 
-function FamilyUnit({ unit, memberById, secondaryLine, selfMemberId }) {
-  return (
-    <article className="family-unit">
-      <div className="couple-row">
-        {unit.partners.map((partner, index) => (
-          <div className="couple-partner" key={partner._id}>
-            <TreeCard isSelf={partner._id === selfMemberId} member={partner} relationCount={unit.children.length} secondaryLine={secondaryLine} compact />
-            {index === 0 && unit.partners.length > 1 ? <span className="marriage-link">spouse</span> : null}
-          </div>
-        ))}
-      </div>
-      {unit.children.length ? (
-        <div className="sibling-strip">
-          <span className="sibling-label">Children / siblings</span>
-          <div className="sibling-list">
-            {unit.children.map((child) => (
-              <ChildBridge
-                child={child}
-                key={child._id}
-                memberById={memberById}
-                secondaryLine={secondaryLine}
-                selfMemberId={selfMemberId}
+          if (edge.type === "spouse") {
+            const y = fromNode.y + graph.nodeHeight / 2;
+            return (
+              <line
+                className="relationship-line spouse-line"
+                key={`${edge.type}-${edge.fromId}-${edge.toId}`}
+                x1={fromNode.x + graph.nodeWidth}
+                x2={toNode.x}
+                y1={y}
+                y2={toNode.y + graph.nodeHeight / 2}
               />
-            ))}
-          </div>
+            );
+          }
+
+          const startX = fromNode.x + graph.nodeWidth / 2;
+          const startY = fromNode.y + graph.nodeHeight;
+          const endX = toNode.x + graph.nodeWidth / 2;
+          const endY = toNode.y;
+          const midY = startY + Math.max(34, (endY - startY) / 2);
+
+          return (
+            <path
+              className="relationship-line parent-line"
+              d={`M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`}
+              fill="none"
+              key={`${edge.type}-${edge.fromId}-${edge.toId}`}
+            />
+          );
+        })}
+      </svg>
+      {graph.nodes.map((node) => (
+        <div className="relationship-node" key={node.id} style={{ left: node.x, top: node.y }}>
+          <TreeCard
+            isSelf={node.id === selfMemberId}
+            member={node.member}
+            relationCount={0}
+            secondaryLine={secondaryLine}
+            compact
+          />
         </div>
-      ) : (
-        <p className="unit-note">No children linked yet.</p>
-      )}
-    </article>
-  );
-}
-
-function ChildBridge({ child, memberById, secondaryLine, selfMemberId }) {
-  const spouse = spouseForMember(child, memberById);
-
-  if (!spouse) {
-    return <TreeCard isSelf={child._id === selfMemberId} member={child} relationCount={0} secondaryLine={secondaryLine} compact />;
-  }
-
-  return (
-    <div className="child-bridge">
-      <TreeCard isSelf={child._id === selfMemberId} member={child} relationCount={0} secondaryLine={secondaryLine} compact />
-      <span className="marriage-link">spouse</span>
-      <TreeCard isSelf={spouse._id === selfMemberId} member={spouse} relationCount={0} secondaryLine={secondaryLine} compact />
+      ))}
     </div>
   );
 }
