@@ -4,8 +4,9 @@ import { apiPost } from "../lib/api.js";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [fullName, setFullName] = useState("Kumar Saurabh");
-  const [phone, setPhone] = useState("9876543210");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [needsPhone, setNeedsPhone] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(event) {
@@ -13,7 +14,10 @@ export function LoginPage() {
     setError("");
 
     try {
-      const response = await apiPost("/auth/dev-login", { fullName, phone });
+      const response = await apiPost("/auth/dev-login", {
+        fullName,
+        ...(needsPhone && phone.trim() ? { phone } : {})
+      });
       localStorage.setItem("nyasa_token", response.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(response.data.user));
       if (response.data.family?._id) {
@@ -21,6 +25,9 @@ export function LoginPage() {
       }
       navigate("/profile");
     } catch (apiError) {
+      if (apiError.code === "LOGIN_PHONE_REQUIRED") {
+        setNeedsPhone(true);
+      }
       setError(apiError.message);
     }
   }
@@ -30,16 +37,19 @@ export function LoginPage() {
       <section className="login-panel">
         <span className="brand-mark">N</span>
         <h1>Welcome to Nyasa</h1>
-        <p>Enter your name and phone number. After sign-in, complete your family bio.</p>
+        <p>Enter your name. If Nyasa finds one clear family profile, it will open it directly.</p>
         <form className="form-stack" onSubmit={handleSubmit}>
           <label>
             Full name
-            <input value={fullName} onChange={(event) => setFullName(event.target.value)} type="text" />
+            <input autoFocus value={fullName} onChange={(event) => setFullName(event.target.value)} type="text" />
           </label>
-          <label>
-            Phone number
-            <input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" />
-          </label>
+          {needsPhone ? (
+            <label>
+              Phone number
+              <input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" />
+              <small>Needed only when the name is new or more than one profile matches.</small>
+            </label>
+          ) : null}
           {error ? <p className="form-error">{error}</p> : null}
           <button type="submit">Continue</button>
         </form>
