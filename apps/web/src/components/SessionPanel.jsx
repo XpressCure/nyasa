@@ -1,6 +1,6 @@
-import { LogIn, RefreshCw } from "lucide-react";
+import { Home, LogIn, LogOut, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { loadCurrentSession } from "../lib/session.js";
 
 function formatRole(role) {
@@ -8,6 +8,7 @@ function formatRole(role) {
 }
 
 export function SessionPanel() {
+  const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [error, setError] = useState("");
 
@@ -24,6 +25,14 @@ export function SessionPanel() {
   useEffect(() => {
     refreshSession();
   }, []);
+
+  function logout() {
+    localStorage.removeItem("nyasa_token");
+    localStorage.removeItem("nyasa_user");
+    localStorage.removeItem("nyasa_family_id");
+    setSession(null);
+    navigate("/");
+  }
 
   if (!session?.user) {
     return (
@@ -45,10 +54,20 @@ export function SessionPanel() {
         <small>{session.family?.name || "No family selected"}</small>
       </div>
       {error ? <small className="session-error">{error}</small> : null}
-      <button type="button" onClick={refreshSession}>
-        <RefreshCw size={14} />
-        Refresh
-      </button>
+      <div className="session-actions">
+        <Link to="/">
+          <Home size={14} />
+          Home
+        </Link>
+        <button type="button" onClick={refreshSession}>
+          <RefreshCw size={14} />
+          Refresh
+        </button>
+        <button type="button" onClick={logout}>
+          <LogOut size={14} />
+          Logout
+        </button>
+      </div>
     </div>
   );
 }

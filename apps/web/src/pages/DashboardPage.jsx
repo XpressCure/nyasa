@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Flag, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
@@ -20,6 +21,14 @@ function celebrationLabel(item) {
   if (item.daysUntil === 0) return "Today";
   if (item.daysUntil === 1) return "Tomorrow";
   return `In ${item.daysUntil} days`;
+}
+
+function clampPercent(value) {
+  return Math.max(0, Math.min(100, Math.round(value || 0)));
+}
+
+function carPosition(progress) {
+  return Math.max(6, Math.min(94, progress));
 }
 
 async function getSelectedFamilyId() {
@@ -119,6 +128,26 @@ export function DashboardPage() {
     ["Kul Kosh", formatMoney(metrics?.treasuryBalance)],
     ["This Year", formatMoney(metrics?.contributionThisYear)]
   ];
+  const memberCount = hub?.snapshot?.memberCount ?? metrics?.memberCount ?? 0;
+  const locationCount = hub?.snapshot?.locationCount ?? 0;
+  const activeProjects = metrics?.activeProjects ?? 0;
+  const rallyCars = [
+    {
+      label: "Parichay Car",
+      progress: clampPercent((memberCount / 70) * 100),
+      detail: `${memberCount} profiles added`
+    },
+    {
+      label: "Kul Map Car",
+      progress: clampPercent((locationCount / 12) * 100),
+      detail: `${locationCount} locations mapped`
+    },
+    {
+      label: "Sankalp Car",
+      progress: clampPercent((activeProjects / 5) * 100),
+      detail: `${activeProjects} active Sankalp`
+    }
+  ];
 
   return (
     <section>
@@ -155,6 +184,42 @@ export function DashboardPage() {
           ) : (
             <p className="empty-copy">Age groups will appear after the dashboard loads.</p>
           )}
+        </div>
+      </section>
+      <section className="content-band rally-band">
+        <div className="tree-register-header">
+          <div>
+            <h2>Nyasa Rally</h2>
+            <p className="section-note">A weekly coordination game. Cars move when the Kul completes useful work inside Nyasa.</p>
+          </div>
+          <span>
+            <Trophy size={16} />
+            First week
+          </span>
+        </div>
+        <div className="rally-track-list">
+          {rallyCars.map((car) => (
+            <div className="rally-lane" key={car.label}>
+              <div className="rally-lane-header">
+                <strong>{car.label}</strong>
+                <span>{car.detail}</span>
+              </div>
+              <div className="rally-track">
+                <span className="rally-car" style={{ left: `${carPosition(car.progress)}%` }}>
+                  N
+                </span>
+                <Flag className="rally-flag" size={18} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rally-task-grid">
+          <span>Fill Parichay</span>
+          <span>Upload photo</span>
+          <span>Add parents, spouse, children</span>
+          <span>Check Kul Map</span>
+          <span>Add Panchang event</span>
+          <span>Support Sankalp</span>
         </div>
       </section>
       <section className="dashboard-grid">

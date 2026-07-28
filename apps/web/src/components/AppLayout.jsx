@@ -9,6 +9,7 @@ const navSections = [
   {
     title: "कार्यस्थल",
     items: [
+      { to: "/", label: "Home", icon: Home, end: true },
       { to: "/dashboard", label: "Darshan", icon: Home },
       { to: "/calendar", label: "Panchang", icon: CalendarDays },
       { to: "/family", label: "Kul", icon: Users },
@@ -66,7 +67,7 @@ export function AppLayout() {
                 }
 
                 return (
-                  <NavLink key={item.to} to={item.to} className="nav-link">
+                  <NavLink end={item.end} key={item.to} to={item.to} className="nav-link">
                     <Icon size={18} />
                     <span>{item.label}</span>
                   </NavLink>
