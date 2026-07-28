@@ -369,48 +369,20 @@ function TreeCard({ member, secondaryLine, relationCount, isSelf = false, isMute
 }
 
 function MemberAvatar({ member }) {
-  const [photoSrc, setPhotoSrc] = useState("");
+  const [hasImageError, setHasImageError] = useState(false);
+  const photoUrl = memberPhotoUrl(member);
 
   useEffect(() => {
-    let objectUrl = "";
-    let isActive = true;
-
-    async function loadPhoto() {
-      const photoUrl = memberPhotoUrl(member);
-      if (!photoUrl) {
-        setPhotoSrc("");
-        return;
-      }
-
-      try {
-        const token = localStorage.getItem("nyasa_token");
-        const response = await fetch(photoUrl, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-
-        if (!response.ok) {
-          throw new Error("Photo could not be loaded.");
-        }
-
-        const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
-        if (isActive) setPhotoSrc(objectUrl);
-      } catch (_error) {
-        if (isActive) setPhotoSrc("");
-      }
-    }
-
-    loadPhoto();
-
-    return () => {
-      isActive = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+    setHasImageError(false);
   }, [member?._id, member?.photoUrl, member?.photoDocumentId]);
 
   return (
     <span className={avatarClassName(member)}>
-      {photoSrc ? <img alt={`${member.displayName} profile`} src={photoSrc} /> : memberIcon(member)}
+      {photoUrl && !hasImageError ? (
+        <img alt={`${member.displayName} profile`} src={photoUrl} onError={() => setHasImageError(true)} />
+      ) : (
+        memberIcon(member)
+      )}
     </span>
   );
 }

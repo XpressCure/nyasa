@@ -37,6 +37,44 @@ function serializeDocument(document) {
   };
 }
 
+function streamDocument(document, res, disposition = "attachment") {
+  if (document.storageDriver === "s3") {
+    return getDocumentObject(document).then((s3Object) => {
+      res.setHeader("Content-Type", document.mimeType);
+      res.setHeader("Content-Disposition", `${disposition}; filename="${document.originalName.replaceAll("\"", "")}"`);
+      s3Object.Body.pipe(res);
+    });
+  }
+
+  if (disposition === "inline") {
+    res.setHeader("Content-Type", document.mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${document.originalName.replaceAll("\"", "")}"`);
+    res.sendFile(document.storagePath);
+    return null;
+  }
+
+  res.download(document.storagePath, document.originalName);
+  return null;
+}
+
+documentRoutes.get(
+  "/family/:familyId/:documentId/member-photo",
+  asyncHandler(async (req, res) => {
+    const document = await Document.findOne({
+      _id: req.params.documentId,
+      familyId: req.params.familyId,
+      category: "member_photo",
+      status: "active"
+    });
+
+    if (!document) {
+      throw httpError(404, "Member photo not found.", "MEMBER_PHOTO_NOT_FOUND");
+    }
+
+    await streamDocument(document, res, "inline");
+  })
+);
+
 documentRoutes.use(requireAuth);
 
 documentRoutes.post(
@@ -106,45 +144,6 @@ documentRoutes.post(
     });
 
     res.status(201).json({ data: serializeDocument(document) });
-  })
-);
-
-function streamDocument(document, res, disposition = "attachment") {
-  if (document.storageDriver === "s3") {
-    return getDocumentObject(document).then((s3Object) => {
-      res.setHeader("Content-Type", document.mimeType);
-      res.setHeader("Content-Disposition", `${disposition}; filename="${document.originalName.replaceAll("\"", "")}"`);
-      s3Object.Body.pipe(res);
-    });
-  }
-
-  if (disposition === "inline") {
-    res.setHeader("Content-Type", document.mimeType);
-    res.setHeader("Content-Disposition", `inline; filename="${document.originalName.replaceAll("\"", "")}"`);
-    res.sendFile(document.storagePath);
-    return null;
-  }
-
-  res.download(document.storagePath, document.originalName);
-  return null;
-}
-
-documentRoutes.get(
-  "/family/:familyId/:documentId/member-photo",
-  requireFamilyPermission(permissions.workspaceView),
-  asyncHandler(async (req, res) => {
-    const document = await Document.findOne({
-      _id: req.params.documentId,
-      familyId: req.familyId,
-      category: "member_photo",
-      status: "active"
-    });
-
-    if (!document) {
-      throw httpError(404, "Member photo not found.", "MEMBER_PHOTO_NOT_FOUND");
-    }
-
-    await streamDocument(document, res, "inline");
   })
 );
 
