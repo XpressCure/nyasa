@@ -88,6 +88,44 @@ async function updateUserLoginFields(user, body) {
   return user;
 }
 
+function copyMissingMemberFields(sourceMember, targetMember) {
+  [
+    "relationLabel",
+    "gender",
+    "photoUrl",
+    "photoDocumentId",
+    "dateOfBirth",
+    "livingStatus",
+    "dateOfDeath",
+    "yearOfDeath",
+    "maritalStatus",
+    "anniversaryDate",
+    "fatherMemberId",
+    "motherMemberId",
+    "spouseMemberId",
+    "grandfatherName",
+    "grandmotherName",
+    "childrenCount",
+    "city",
+    "state",
+    "country",
+    "placeOfResidence",
+    "profession",
+    "education",
+    "work",
+    "health",
+    "bio"
+  ].forEach((field) => {
+    if (targetMember[field] === undefined || targetMember[field] === "" || targetMember[field] === null) {
+      targetMember[field] = sourceMember[field];
+    }
+  });
+
+  targetMember.childMemberIds = [
+    ...new Set([...(targetMember.childMemberIds || []), ...(sourceMember.childMemberIds || [])].filter(Boolean).map(String))
+  ];
+}
+
 async function findOrCreateLoginUser(body) {
   if (!body.phone && !body.email) {
     return User.create({
@@ -125,6 +163,30 @@ async function ensureLaunchFamilyMembership(user, { family, isNewFamily, profile
   }).populate("familyId");
 
   if (existingMembership) {
+    if (profileToClaim && String(profileToClaim._id) !== String(existingMembership._id)) {
+      copyMissingMemberFields(existingMembership, profileToClaim);
+      profileToClaim.userId = user._id;
+      profileToClaim.status = "active";
+      profileToClaim.joinedAt = profileToClaim.joinedAt || existingMembership.joinedAt || new Date();
+      await profileToClaim.save();
+
+      if (existingMembership.role !== "owner") {
+        await FamilyMember.updateMany({ familyId: family._id, fatherMemberId: existingMembership._id }, { $set: { fatherMemberId: profileToClaim._id } });
+        await FamilyMember.updateMany({ familyId: family._id, motherMemberId: existingMembership._id }, { $set: { motherMemberId: profileToClaim._id } });
+        await FamilyMember.updateMany({ familyId: family._id, spouseMemberId: existingMembership._id }, { $set: { spouseMemberId: profileToClaim._id } });
+        await FamilyMember.updateMany({ familyId: family._id, childMemberIds: existingMembership._id }, { $addToSet: { childMemberIds: profileToClaim._id } });
+        await FamilyMember.updateMany({ familyId: family._id, childMemberIds: existingMembership._id }, { $pull: { childMemberIds: existingMembership._id } });
+
+        existingMembership.status = "removed";
+        await existingMembership.save();
+      }
+
+      return {
+        family,
+        member: profileToClaim
+      };
+    }
+
     return {
       family: existingMembership.familyId,
       member: existingMembership

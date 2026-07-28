@@ -110,6 +110,41 @@ function serializeMember(member, { includeSensitive = false } = {}) {
   return data;
 }
 
+async function findLinkedSpouse(member, familyId) {
+  if (!member) return null;
+
+  if (member.spouseMemberId) {
+    const spouse = await FamilyMember.findOne({
+      _id: member.spouseMemberId,
+      familyId,
+      status: { $ne: "removed" }
+    });
+
+    if (spouse) return spouse;
+  }
+
+  return FamilyMember.findOne({
+    familyId,
+    spouseMemberId: member._id,
+    status: { $ne: "removed" }
+  });
+}
+
+function serializeSelfMember(member, spouse = null) {
+  const data = serializeMember(member, { includeSensitive: true });
+
+  if (!data.anniversaryDate && spouse?.anniversaryDate) {
+    data.anniversaryDate = spouse.anniversaryDate;
+  }
+
+  const childIds = uniqueObjectIdStrings([...(member.childMemberIds || []), ...(spouse?.childMemberIds || [])]);
+  if (!data.childrenCount && childIds.length) {
+    data.childrenCount = childIds.length;
+  }
+
+  return data;
+}
+
 function toOptionalDate(value) {
   return value ? new Date(value) : undefined;
 }
@@ -168,6 +203,41 @@ function buildTreeLinks(members) {
   });
 
   return links;
+}
+
+function withReciprocalFamilyLinks(members) {
+  const memberObjects = members.map((member) => (member?.toObject ? member.toObject() : { ...member }));
+  const memberById = new Map(memberObjects.map((member) => [String(member._id), member]));
+
+  memberObjects.forEach((member) => {
+    if (member.spouseMemberId) {
+      const spouse = memberById.get(String(member.spouseMemberId));
+      if (spouse && !spouse.spouseMemberId) {
+        spouse.spouseMemberId = member._id;
+      }
+    }
+
+    [member.fatherMemberId, member.motherMemberId].forEach((parentMemberId) => {
+      const parent = memberById.get(String(parentMemberId || ""));
+      if (!parent) return;
+      parent.childMemberIds = uniqueObjectIdStrings([...(parent.childMemberIds || []), member._id]);
+    });
+
+    (member.childMemberIds || []).forEach((childMemberId) => {
+      const child = memberById.get(String(childMemberId));
+      if (!child) return;
+
+      if (member.gender === "male" && !child.fatherMemberId) {
+        child.fatherMemberId = member._id;
+      }
+
+      if (member.gender === "female" && !child.motherMemberId) {
+        child.motherMemberId = member._id;
+      }
+    });
+  });
+
+  return memberObjects;
 }
 
 function memberHasHealthSignal(member) {
@@ -333,13 +403,14 @@ memberRoutes.get(
       familyId: req.familyId,
       status: { $ne: "removed" }
     }).sort({ displayName: 1 });
+    const visibleMembers = withReciprocalFamilyLinks(members);
 
     res.json({
       data: {
         mode,
         selfMemberId: req.member._id,
-        members: members.map((member) => serializeTreeMember(member, mode)),
-        links: buildTreeLinks(members)
+        members: visibleMembers.map((member) => serializeTreeMember(member, mode)),
+        links: buildTreeLinks(visibleMembers)
       }
     });
   })
@@ -349,7 +420,8 @@ memberRoutes.get(
   "/family/:familyId/me",
   requireFamilyPermission(permissions.workspaceView),
   asyncHandler(async (req, res) => {
-    res.json({ data: serializeMember(req.member, { includeSensitive: true }) });
+    const spouse = await findLinkedSpouse(req.member, req.familyId);
+    res.json({ data: serializeSelfMember(req.member, spouse) });
   })
 );
 
@@ -363,7 +435,15 @@ memberRoutes.patch(
       new: true
     });
 
-    res.json({ data: serializeMember(member, { includeSensitive: true }) });
+    if (body.anniversaryDate) {
+      const spouse = await findLinkedSpouse(member, req.familyId);
+      if (spouse && !spouse.anniversaryDate) {
+        spouse.anniversaryDate = body.anniversaryDate;
+        await spouse.save();
+      }
+    }
+
+    res.json({ data: serializeSelfMember(member, await findLinkedSpouse(member, req.familyId)) });
   })
 );
 
@@ -374,7 +454,7 @@ memberRoutes.get(
     const [father, mother, spouse] = await Promise.all([
       req.member.fatherMemberId ? FamilyMember.findOne({ _id: req.member.fatherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
       req.member.motherMemberId ? FamilyMember.findOne({ _id: req.member.motherMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null,
-      req.member.spouseMemberId ? FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } }) : null
+      findLinkedSpouse(req.member, req.familyId)
     ]);
     const childIdList = uniqueObjectIdStrings([...(req.member.childMemberIds || []), ...(spouse?.childMemberIds || [])]);
     const childQueries = [
@@ -443,6 +523,9 @@ memberRoutes.post(
       if (!spouse.anniversaryDate && req.member.anniversaryDate) {
         spouse.anniversaryDate = req.member.anniversaryDate;
       }
+      if (spouse.anniversaryDate && !req.member.anniversaryDate) {
+        memberUpdates.anniversaryDate = spouse.anniversaryDate;
+      }
       await spouse.save();
       created.spouse = spouse;
     }
@@ -450,9 +533,7 @@ memberRoutes.post(
     created.children = [];
     const spouseForChildLinks =
       created.spouse ||
-      (req.member.spouseMemberId
-        ? await FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } })
-        : null);
+      findLinkedSpouse(req.member, req.familyId);
 
     for (const childProfile of body.children) {
       if (!childProfile.displayName) continue;
@@ -487,9 +568,9 @@ memberRoutes.post(
 
       const spouseToSync =
         created.spouse ||
-        (req.member.spouseMemberId
-          ? await FamilyMember.findOne({ _id: req.member.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } })
-          : null);
+        (memberUpdates.spouseMemberId
+          ? await FamilyMember.findOne({ _id: memberUpdates.spouseMemberId, familyId: req.familyId, status: { $ne: "removed" } })
+          : await findLinkedSpouse(req.member, req.familyId));
 
       if (spouseToSync) {
         const spouseChildIds = uniqueObjectIdStrings([...(spouseToSync.childMemberIds || []), ...nextChildIds]);

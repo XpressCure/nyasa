@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpenText, CircleUserRound, HeartPulse, Network } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
-import { apiGet } from "../lib/api.js";
+import { apiGet, apiPost } from "../lib/api.js";
 
 const treeModes = [
   { id: "general", label: "General", icon: Network },
@@ -101,9 +101,19 @@ export function FamilyTreePage() {
   const [mode, setMode] = useState("general");
   const [members, setMembers] = useState([]);
   const [links, setLinks] = useState([]);
+  const [historyEvents, setHistoryEvents] = useState([]);
   const [selfMemberId, setSelfMemberId] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [historyForm, setHistoryForm] = useState({
+    title: "",
+    eventDate: "",
+    eventYear: "",
+    location: "",
+    category: "family",
+    description: "",
+    sourceNote: ""
+  });
 
   const memberById = useMemo(() => new Map(validMembers(members).map((member) => [member._id, member])), [members]);
   const selfMember = memberById.get(selfMemberId) || members[0] || null;
@@ -168,10 +178,12 @@ export function FamilyTreePage() {
       }
 
       const response = await apiGet(`/members/family/${familyId}/tree?mode=${nextMode}`);
+      const historyResponse = await apiGet(`/family-hub/family/${familyId}/history`);
       const treeData = response.data || {};
       const nextMembers = validMembers(treeData.members);
       setMembers(nextMembers);
       setLinks(treeData.links || []);
+      setHistoryEvents(historyResponse.data || []);
       setSelfMemberId(String(treeData.selfMemberId || ""));
       setMessage(nextMembers.length ? "Tree data loaded." : "No family members found yet.");
     } catch (error) {
@@ -197,6 +209,33 @@ export function FamilyTreePage() {
     if (mode === "education") return educationLine(member);
     if (mode === "health") return healthLine(member);
     return member?.placeOfResidence || member?.city || member?.relationLabel || "Relationship details pending";
+  }
+
+  async function saveHistoryEvent(event) {
+    event.preventDefault();
+    try {
+      const familyId = await ensureFamilyId();
+      if (!familyId) return;
+
+      await apiPost(`/family-hub/family/${familyId}/history`, {
+        ...historyForm,
+        eventYear: historyForm.eventYear || undefined,
+        eventDate: historyForm.eventDate || undefined
+      });
+      setHistoryForm({
+        title: "",
+        eventDate: "",
+        eventYear: "",
+        location: "",
+        category: "family",
+        description: "",
+        sourceNote: ""
+      });
+      await loadTree(mode);
+      setMessage("Family history event added.");
+    } catch (error) {
+      setMessage(error.message);
+    }
   }
 
   useEffect(() => {
@@ -295,6 +334,74 @@ export function FamilyTreePage() {
           ))}
         </div>
         {message ? <p className="form-message">{message}</p> : null}
+      </section>
+
+      <section className="content-band spaced-band">
+        <div className="tree-register-header">
+          <div>
+            <h2>Family History</h2>
+            <p>Chronological memories, milestones, migration notes, village events, and family achievements.</p>
+          </div>
+          <span>{historyEvents.length} event{historyEvents.length === 1 ? "" : "s"}</span>
+        </div>
+        <div className="history-timeline">
+          {historyEvents.length ? (
+            historyEvents.map((event) => (
+              <article className="history-event" key={event.id}>
+                <time>{event.eventDate ? formatDate(event.eventDate) : event.eventYear}</time>
+                <div>
+                  <strong>{event.title}</strong>
+                  <span>{event.category}{event.location ? ` - ${event.location}` : ""}</span>
+                  {event.description ? <p>{event.description}</p> : null}
+                  {event.sourceNote ? <small>{event.sourceNote}</small> : null}
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="empty-copy">No family history events yet. Add the first remembered year or date.</p>
+          )}
+        </div>
+        <form className="form-grid compact-form" onSubmit={saveHistoryEvent}>
+          <label>
+            Event title
+            <input value={historyForm.title} onChange={(event) => setHistoryForm((current) => ({ ...current, title: event.target.value }))} />
+          </label>
+          <label>
+            Exact date if known
+            <input type="date" value={historyForm.eventDate} onChange={(event) => setHistoryForm((current) => ({ ...current, eventDate: event.target.value }))} />
+          </label>
+          <label>
+            Year if exact date is unknown
+            <input type="number" min="1600" max="2200" value={historyForm.eventYear} onChange={(event) => setHistoryForm((current) => ({ ...current, eventYear: event.target.value }))} />
+          </label>
+          <label>
+            Category
+            <select value={historyForm.category} onChange={(event) => setHistoryForm((current) => ({ ...current, category: event.target.value }))}>
+              <option value="family">Family</option>
+              <option value="village">Village</option>
+              <option value="education">Education</option>
+              <option value="migration">Migration</option>
+              <option value="property">Property</option>
+              <option value="spiritual">Spiritual</option>
+              <option value="achievement">Achievement</option>
+              <option value="memory">Memory</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>
+            Location
+            <input value={historyForm.location} onChange={(event) => setHistoryForm((current) => ({ ...current, location: event.target.value }))} />
+          </label>
+          <label className="wide-field">
+            Description
+            <textarea value={historyForm.description} onChange={(event) => setHistoryForm((current) => ({ ...current, description: event.target.value }))} rows="3" />
+          </label>
+          <label className="wide-field">
+            Source or memory note
+            <input value={historyForm.sourceNote} onChange={(event) => setHistoryForm((current) => ({ ...current, sourceNote: event.target.value }))} />
+          </label>
+          <button type="submit">Add History Event</button>
+        </form>
       </section>
     </section>
   );

@@ -13,10 +13,11 @@ import {
   Users
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import familyHouse from "../assets/family-house.jpeg";
 import familyPhoto from "../assets/family-photo.jpeg";
 import nyasaLogo from "../assets/nyasa-logo.png";
+import { apiGet } from "../lib/api.js";
 
 const launchItems = [
   {
@@ -94,7 +95,14 @@ const launchMessageHighlights = [
 
 export function HomePage() {
   const [activeView, setActiveView] = useState("member");
+  const [snapshot, setSnapshot] = useState(null);
   const active = walkthrough[activeView];
+
+  useEffect(() => {
+    apiGet("/families/public/nyasa-summary")
+      .then((response) => setSnapshot(response.data))
+      .catch(() => setSnapshot(null));
+  }, []);
 
   return (
     <main className="home-page">
@@ -235,6 +243,38 @@ export function HomePage() {
             <strong>Implement</strong>
             <span>Owners create missions, track budgets, review bills, and show progress.</span>
           </div>
+        </div>
+      </section>
+
+      <section className="home-section home-snapshot-section">
+        <div className="home-section-heading">
+          <span>Family snapshot</span>
+          <h2>A quick view of the family network as profiles are completed.</h2>
+        </div>
+        <div className="home-snapshot-grid">
+          <div>
+            <span>Family profiles</span>
+            <strong>{snapshot?.memberCount ?? "..."}</strong>
+          </div>
+          <div>
+            <span>Known locations</span>
+            <strong>{snapshot?.locationCount ?? "..."}</strong>
+          </div>
+          <div>
+            <span>Root</span>
+            <strong>Alahdadpur</strong>
+          </div>
+        </div>
+        <div className="home-location-strip">
+          {snapshot?.locations?.length ? (
+            snapshot.locations.map((location) => (
+              <span key={location.location}>
+                {location.location} <strong>{location.count}</strong>
+              </span>
+            ))
+          ) : (
+            <span>Locations will grow as members fill their profiles.</span>
+          )}
         </div>
       </section>
 

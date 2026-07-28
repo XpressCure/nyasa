@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
-import { apiGet } from "../lib/api.js";
+import { apiGet, apiPost } from "../lib/api.js";
 
 function formatMoney(value) {
   return new Intl.NumberFormat("en-IN", {
@@ -9,6 +9,17 @@ function formatMoney(value) {
     maximumFractionDigits: 0,
     style: "currency"
   }).format(value || 0);
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function celebrationLabel(item) {
+  if (item.daysUntil === 0) return "Today";
+  if (item.daysUntil === 1) return "Tomorrow";
+  return `In ${item.daysUntil} days`;
 }
 
 async function getSelectedFamilyId() {
@@ -28,6 +39,20 @@ async function getSelectedFamilyId() {
 
 export function DashboardPage() {
   const [dashboard, setDashboard] = useState(null);
+  const [hub, setHub] = useState(null);
+  const [calendarForm, setCalendarForm] = useState({
+    title: "",
+    eventType: "puja",
+    startsAt: "",
+    location: "",
+    description: ""
+  });
+  const [featureForm, setFeatureForm] = useState({
+    title: "",
+    featureType: "read",
+    url: "",
+    summary: ""
+  });
   const [message, setMessage] = useState("");
 
   async function loadDashboard() {
@@ -40,8 +65,42 @@ export function DashboardPage() {
         return;
       }
 
-      const response = await apiGet(`/families/${familyId}/dashboard`);
-      setDashboard(response.data);
+      const [dashboardResponse, hubResponse] = await Promise.all([
+        apiGet(`/families/${familyId}/dashboard`),
+        apiGet(`/family-hub/family/${familyId}/overview`)
+      ]);
+      setDashboard(dashboardResponse.data);
+      setHub(hubResponse.data);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function saveCalendarEvent(event) {
+    event.preventDefault();
+    const familyId = await getSelectedFamilyId();
+    if (!familyId) return;
+
+    try {
+      await apiPost(`/family-hub/family/${familyId}/calendar-events`, calendarForm);
+      setCalendarForm({ title: "", eventType: "puja", startsAt: "", location: "", description: "" });
+      await loadDashboard();
+      setMessage("Family calendar event added.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function saveWeeklyFeature(event) {
+    event.preventDefault();
+    const familyId = await getSelectedFamilyId();
+    if (!familyId) return;
+
+    try {
+      await apiPost(`/family-hub/family/${familyId}/weekly-feature`, featureForm);
+      setFeatureForm({ title: "", featureType: "read", url: "", summary: "" });
+      await loadDashboard();
+      setMessage("Read/video of the week added.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -75,6 +134,141 @@ export function DashboardPage() {
           </article>
         ))}
       </div>
+      <section className="dashboard-grid">
+        <article className="content-band">
+          <h2>Celebrations</h2>
+          <p className="section-note">Birthdays and anniversaries appear one week in advance. Multiple family events can share the same date.</p>
+          <div className="stack-list">
+            {hub?.celebrations?.length ? (
+              hub.celebrations.map((item) => (
+                <div className="timeline-row compact-row" key={`${item.memberId}-${item.type}-${item.date}`}>
+                  <strong>{item.memberName}</strong>
+                  <span>{item.type === "birthday" ? "Birthday" : "Anniversary"} - {celebrationLabel(item)} - {formatDate(item.date)}</span>
+                </div>
+              ))
+            ) : (
+              <p className="empty-copy">No birthday or anniversary in the next week.</p>
+            )}
+          </div>
+        </article>
+
+        <article className="content-band">
+          <h2>Family Snapshot</h2>
+          <div className="snapshot-grid">
+            <div>
+              <span>Profiles</span>
+              <strong>{hub?.snapshot?.memberCount ?? metrics?.memberCount ?? 0}</strong>
+            </div>
+            <div>
+              <span>Living members</span>
+              <strong>{hub?.snapshot?.livingMembers ?? 0}</strong>
+            </div>
+            <div>
+              <span>Locations</span>
+              <strong>{hub?.snapshot?.locationCount ?? 0}</strong>
+            </div>
+          </div>
+          <div className="location-list">
+            {hub?.snapshot?.locations?.length ? (
+              hub.snapshot.locations.map((location) => (
+                <span key={location.location}>
+                  {location.location} <strong>{location.count}</strong>
+                </span>
+              ))
+            ) : (
+              <p className="empty-copy">Locations will appear as profiles are completed.</p>
+            )}
+          </div>
+        </article>
+      </section>
+
+      <section className="dashboard-grid">
+        <article className="content-band">
+          <h2>{hub?.weeklyFeature?.featureType === "video" ? "Video of the Week" : "Read of the Week"}</h2>
+          {hub?.weeklyFeature ? (
+            <div className="feature-card">
+              <strong>{hub.weeklyFeature.title}</strong>
+              {hub.weeklyFeature.summary ? <p>{hub.weeklyFeature.summary}</p> : null}
+              {hub.weeklyFeature.url ? (
+                <a className="text-link" href={hub.weeklyFeature.url} target="_blank" rel="noreferrer">
+                  Open {hub.weeklyFeature.featureType}
+                </a>
+              ) : null}
+            </div>
+          ) : (
+            <p className="empty-copy">Add one article, speech, memory, or video for the family this week.</p>
+          )}
+          <form className="form-grid compact-form" onSubmit={saveWeeklyFeature}>
+            <label>
+              Type
+              <select value={featureForm.featureType} onChange={(event) => setFeatureForm((current) => ({ ...current, featureType: event.target.value }))}>
+                <option value="read">Read</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+            <label>
+              Title
+              <input value={featureForm.title} onChange={(event) => setFeatureForm((current) => ({ ...current, title: event.target.value }))} />
+            </label>
+            <label className="wide-field">
+              Link
+              <input value={featureForm.url} onChange={(event) => setFeatureForm((current) => ({ ...current, url: event.target.value }))} />
+            </label>
+            <label className="wide-field">
+              Why this week?
+              <textarea value={featureForm.summary} onChange={(event) => setFeatureForm((current) => ({ ...current, summary: event.target.value }))} rows="3" />
+            </label>
+            <button type="submit">Save Weekly Feature</button>
+          </form>
+        </article>
+
+        <article className="content-band">
+          <h2>Event Calendar</h2>
+          <p className="section-note">Any member can add upcoming puja, fast, gathering, or family date.</p>
+          <div className="stack-list">
+            {hub?.calendarEvents?.length ? (
+              hub.calendarEvents.map((item) => (
+                <div className="timeline-row compact-row" key={item.id}>
+                  <strong>{item.title}</strong>
+                  <span>{item.eventType} - {formatDate(item.startsAt)}{item.location ? ` - ${item.location}` : ""}</span>
+                </div>
+              ))
+            ) : (
+              <p className="empty-copy">No upcoming family calendar events yet.</p>
+            )}
+          </div>
+          <form className="form-grid compact-form" onSubmit={saveCalendarEvent}>
+            <label>
+              Event
+              <input value={calendarForm.title} onChange={(event) => setCalendarForm((current) => ({ ...current, title: event.target.value }))} />
+            </label>
+            <label>
+              Type
+              <select value={calendarForm.eventType} onChange={(event) => setCalendarForm((current) => ({ ...current, eventType: event.target.value }))}>
+                <option value="puja">Puja</option>
+                <option value="fast">Fast</option>
+                <option value="gathering">Gathering</option>
+                <option value="meeting">Meeting</option>
+                <option value="ritual">Ritual</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label>
+              Date
+              <input type="date" value={calendarForm.startsAt} onChange={(event) => setCalendarForm((current) => ({ ...current, startsAt: event.target.value }))} />
+            </label>
+            <label>
+              Location
+              <input value={calendarForm.location} onChange={(event) => setCalendarForm((current) => ({ ...current, location: event.target.value }))} />
+            </label>
+            <label className="wide-field">
+              Notes
+              <textarea value={calendarForm.description} onChange={(event) => setCalendarForm((current) => ({ ...current, description: event.target.value }))} rows="3" />
+            </label>
+            <button type="submit">Add Calendar Event</button>
+          </form>
+        </article>
+      </section>
       <section className="content-band">
         <h2>Launch Workspace</h2>
         <p>

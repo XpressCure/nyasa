@@ -22,6 +22,50 @@ const createFamilySchema = z.object({
   primaryLocation: z.string().optional()
 });
 
+familyRoutes.get(
+  "/public/nyasa-summary",
+  asyncHandler(async (_req, res) => {
+    const family = await Family.findOne({ slug: "nyasa-trust-alahdadpur" });
+
+    if (!family) {
+      res.json({ data: { memberCount: 0, locationCount: 0, locations: [] } });
+      return;
+    }
+
+    const normalizedFamilyId = new mongoose.Types.ObjectId(String(family._id));
+    const [memberCount, locationRows] = await Promise.all([
+      FamilyMember.countDocuments({ familyId: family._id, status: { $ne: "removed" } }),
+      FamilyMember.aggregate([
+        { $match: { familyId: normalizedFamilyId, status: { $ne: "removed" } } },
+        {
+          $project: {
+            location: {
+              $ifNull: [
+                "$city",
+                {
+                  $ifNull: ["$placeOfResidence", "$country"]
+                }
+              ]
+            }
+          }
+        },
+        { $match: { location: { $nin: [null, ""] } } },
+        { $group: { _id: "$location", count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $limit: 6 }
+      ])
+    ]);
+
+    res.json({
+      data: {
+        memberCount,
+        locationCount: locationRows.length,
+        locations: locationRows.map((row) => ({ location: row._id, count: row.count }))
+      }
+    });
+  })
+);
+
 familyRoutes.use(requireAuth);
 
 familyRoutes.post(
