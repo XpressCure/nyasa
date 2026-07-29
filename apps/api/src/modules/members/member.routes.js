@@ -73,7 +73,8 @@ const updateProfileSchema = z.object({
 });
 
 const relativeProfileSchema = updateProfileSchema.extend({
-  displayName: z.string().min(2)
+  displayName: z.string().min(2),
+  existingMemberId: z.string().optional()
 });
 
 const immediateFamilySchema = z.object({
@@ -196,9 +197,12 @@ function normalizeProfileUpdate(body) {
 }
 
 function normalizeRelativeProfile(body) {
+  const profileBody = { ...body };
+  delete profileBody.existingMemberId;
+
   return normalizeProfileUpdate({
-    ...body,
-    childrenCount: body.childrenCount === "" ? undefined : body.childrenCount
+    ...profileBody,
+    childrenCount: profileBody.childrenCount === "" ? undefined : profileBody.childrenCount
   });
 }
 
@@ -325,8 +329,34 @@ async function findExistingRelative({ familyId, displayName, dateOfBirth }) {
   return FamilyMember.findOne(query);
 }
 
+function fillMissingFields(member, values) {
+  Object.entries(values).forEach(([key, value]) => {
+    if (value === undefined || value === "") return;
+    if (member[key] === undefined || member[key] === "" || member[key] === null) {
+      member[key] = value;
+    }
+  });
+}
+
 async function upsertRelative({ familyId, profile, defaults = {} }) {
   const normalized = normalizeRelativeProfile({ ...profile, ...defaults });
+
+  if (profile.existingMemberId) {
+    const existing = await FamilyMember.findOne({
+      _id: profile.existingMemberId,
+      familyId,
+      status: { $ne: "removed" }
+    });
+
+    if (!existing) {
+      throw httpError(404, "Selected Kul member was not found.", "MEMBER_NOT_FOUND");
+    }
+
+    fillMissingFields(existing, normalized);
+    await existing.save();
+    return existing;
+  }
+
   const existing = await findExistingRelative({
     familyId,
     displayName: normalized.displayName,
@@ -334,11 +364,7 @@ async function upsertRelative({ familyId, profile, defaults = {} }) {
   });
 
   if (existing) {
-    Object.entries(normalized).forEach(([key, value]) => {
-      if (value !== undefined && value !== "" && existing[key] === undefined) {
-        existing[key] = value;
-      }
-    });
+    fillMissingFields(existing, normalized);
     await existing.save();
     return existing;
   }
@@ -426,6 +452,34 @@ memberRoutes.get(
       familyId: req.familyId,
       status: { $ne: "removed" }
     }).sort({ displayName: 1 });
+
+    res.json({ data: members.map((member) => serializeMember(member)) });
+  })
+);
+
+memberRoutes.get(
+  "/family/:familyId/search",
+  requireFamilyPermission(permissions.workspaceView),
+  asyncHandler(async (req, res) => {
+    const query = String(req.query.q || "").trim();
+
+    if (query.length < 2) {
+      res.json({ data: [] });
+      return;
+    }
+
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const members = await FamilyMember.find({
+      familyId: req.familyId,
+      status: { $ne: "removed" },
+      $or: [
+        { displayName: new RegExp(escapedQuery, "i") },
+        { placeOfResidence: new RegExp(escapedQuery, "i") },
+        { city: new RegExp(escapedQuery, "i") }
+      ]
+    })
+      .sort({ displayName: 1 })
+      .limit(12);
 
     res.json({ data: members.map((member) => serializeMember(member)) });
   })

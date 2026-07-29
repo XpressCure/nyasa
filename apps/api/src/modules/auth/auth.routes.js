@@ -61,14 +61,48 @@ function sortNameMatches(fullName, members) {
   });
 }
 
+function normalizeNameForMatch(value = "") {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function nameSimilarity(left = "", right = "") {
+  const source = normalizeNameForMatch(left);
+  const target = normalizeNameForMatch(right);
+  if (!source || !target) return 0;
+  if (source === target) return 1;
+  if (source.includes(target) || target.includes(source)) return 0.9;
+
+  const distances = Array.from({ length: source.length + 1 }, (_, index) => [index]);
+  for (let column = 1; column <= target.length; column += 1) {
+    distances[0][column] = column;
+  }
+
+  for (let row = 1; row <= source.length; row += 1) {
+    for (let column = 1; column <= target.length; column += 1) {
+      const cost = source[row - 1] === target[column - 1] ? 0 : 1;
+      distances[row][column] = Math.min(
+        distances[row - 1][column] + 1,
+        distances[row][column - 1] + 1,
+        distances[row - 1][column - 1] + cost
+      );
+    }
+  }
+
+  return 1 - distances[source.length][target.length] / Math.max(source.length, target.length);
+}
+
 async function findProfileMatches(familyId, fullName) {
+  const nameParts = fullName.trim().split(/\s+/).filter((part) => part.length >= 3);
+  const searchTerms = nameParts.length ? nameParts : [fullName.trim()];
+  const queryRegexes = searchTerms.map((term) => new RegExp(escapeRegex(term), "i"));
   const members = await FamilyMember.find({
     familyId,
-    displayName: new RegExp(escapeRegex(fullName.trim()), "i"),
+    $or: queryRegexes.map((regex) => ({ displayName: regex })),
     status: { $ne: "removed" }
-  }).limit(6);
+  }).limit(40);
 
-  return sortNameMatches(fullName, members);
+  const closeMatches = members.filter((member) => nameSimilarity(fullName, member.displayName) >= 0.72);
+  return sortNameMatches(fullName, closeMatches).slice(0, 6);
 }
 
 async function updateUserLoginFields(user, body) {
@@ -124,6 +158,14 @@ function copyMissingMemberFields(sourceMember, targetMember) {
   ];
 }
 
+async function rewireMemberReferences({ familyId, fromMemberId, toMemberId }) {
+  await FamilyMember.updateMany({ familyId, fatherMemberId: fromMemberId }, { $set: { fatherMemberId: toMemberId } });
+  await FamilyMember.updateMany({ familyId, motherMemberId: fromMemberId }, { $set: { motherMemberId: toMemberId } });
+  await FamilyMember.updateMany({ familyId, spouseMemberId: fromMemberId }, { $set: { spouseMemberId: toMemberId } });
+  await FamilyMember.updateMany({ familyId, childMemberIds: fromMemberId }, { $addToSet: { childMemberIds: toMemberId } });
+  await FamilyMember.updateMany({ familyId, childMemberIds: fromMemberId }, { $pull: { childMemberIds: fromMemberId } });
+}
+
 async function findOrCreateLoginUser(body) {
   if (!body.phone && !body.email) {
     return User.create({
@@ -162,26 +204,29 @@ async function ensureLaunchFamilyMembership(user, { family, isNewFamily, profile
 
   if (existingMembership) {
     if (profileToClaim && String(profileToClaim._id) !== String(existingMembership._id)) {
-      copyMissingMemberFields(existingMembership, profileToClaim);
-      profileToClaim.userId = user._id;
-      profileToClaim.status = "active";
-      profileToClaim.joinedAt = profileToClaim.joinedAt || existingMembership.joinedAt || new Date();
-      await profileToClaim.save();
+      const keepExistingMembership = ["owner", "admin"].includes(existingMembership.role);
+      const keeper = keepExistingMembership ? existingMembership : profileToClaim;
+      const duplicate = keepExistingMembership ? profileToClaim : existingMembership;
 
-      if (existingMembership.role !== "owner") {
-        await FamilyMember.updateMany({ familyId: family._id, fatherMemberId: existingMembership._id }, { $set: { fatherMemberId: profileToClaim._id } });
-        await FamilyMember.updateMany({ familyId: family._id, motherMemberId: existingMembership._id }, { $set: { motherMemberId: profileToClaim._id } });
-        await FamilyMember.updateMany({ familyId: family._id, spouseMemberId: existingMembership._id }, { $set: { spouseMemberId: profileToClaim._id } });
-        await FamilyMember.updateMany({ familyId: family._id, childMemberIds: existingMembership._id }, { $addToSet: { childMemberIds: profileToClaim._id } });
-        await FamilyMember.updateMany({ familyId: family._id, childMemberIds: existingMembership._id }, { $pull: { childMemberIds: existingMembership._id } });
+      copyMissingMemberFields(duplicate, keeper);
+      keeper.userId = user._id;
+      keeper.status = "active";
+      keeper.joinedAt = keeper.joinedAt || duplicate.joinedAt || new Date();
+      await keeper.save();
 
-        existingMembership.status = "removed";
-        await existingMembership.save();
-      }
+      await rewireMemberReferences({
+        familyId: family._id,
+        fromMemberId: duplicate._id,
+        toMemberId: keeper._id
+      });
+
+      duplicate.status = "removed";
+      duplicate.userId = undefined;
+      await duplicate.save();
 
       return {
         family,
-        member: profileToClaim
+        member: keeper
       };
     }
 

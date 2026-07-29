@@ -1593,6 +1593,40 @@ button:disabled {
   padding: 14px;
 }
 
+.relative-search {
+  align-items: end;
+  background: #ffffff;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.relative-search-results {
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.relative-search-results button {
+  align-items: center;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  color: #17211c;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  text-align: left;
+}
+
+.relative-search-results span {
+  color: #4e5b53;
+}
+
 .relative-actions {
   align-items: center;
   background: #ffffff;
@@ -2146,6 +2180,16 @@ button:disabled {
 
   .relative-card {
     grid-template-columns: 1fr;
+  }
+
+  .relative-search {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .relative-search-results button {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .tree-grid {

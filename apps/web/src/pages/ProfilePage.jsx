@@ -141,6 +141,7 @@ function hydrateRelative(member, fallback = emptyRelative) {
 function relativePayload(relative) {
   if (!relative.displayName.trim()) return null;
   return {
+    existingMemberId: relative._id || undefined,
     displayName: relative.displayName,
     gender: relative.gender,
     dateOfBirth: relative.dateOfBirth,
@@ -180,6 +181,7 @@ export function ProfilePage() {
   const [profilePhotoFile, setProfilePhotoFile] = useState(null);
   const [immediateFamily, setImmediateFamily] = useState(initialImmediateFamily);
   const [relativePhotoFiles, setRelativePhotoFiles] = useState({});
+  const [relativeSearch, setRelativeSearch] = useState({});
   const [message, setMessage] = useState("");
 
   function getFamilyId() {
@@ -229,6 +231,46 @@ export function ProfilePage() {
       delete next[relativePhotoKey("children", index)];
       return next;
     });
+  }
+
+  function searchKey(group, index = null) {
+    return group === "children" ? `children-${index}` : group;
+  }
+
+  async function searchExistingRelative(group, index = null) {
+    const familyId = getFamilyId();
+    const key = searchKey(group, index);
+    const query = relativeSearch[key]?.query?.trim() || "";
+
+    if (!familyId || query.length < 2) {
+      setRelativeSearch((current) => ({ ...current, [key]: { query, results: [] } }));
+      return;
+    }
+
+    try {
+      const response = await apiGet(`/members/family/${familyId}/search?q=${encodeURIComponent(query)}`);
+      setRelativeSearch((current) => ({ ...current, [key]: { query, results: response.data || [] } }));
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  function updateRelativeSearchQuery(group, value, index = null) {
+    const key = searchKey(group, index);
+    setRelativeSearch((current) => ({ ...current, [key]: { ...(current[key] || {}), query: value } }));
+  }
+
+  function selectExistingRelative(group, member, index = null) {
+    const hydrate = hydrateRelative(member, group === "children" ? emptyRelative : initialImmediateFamily[group]);
+    setImmediateFamily((current) => {
+      if (group === "children") {
+        const children = current.children.map((child, childIndex) => (childIndex === index ? hydrate : child));
+        return { ...current, children };
+      }
+
+      return { ...current, [group]: hydrate };
+    });
+    setRelativeSearch((current) => ({ ...current, [searchKey(group, index)]: { query: member.displayName, results: [] } }));
   }
 
   async function uploadMemberPhoto(memberId, file) {
@@ -384,21 +426,16 @@ export function ProfilePage() {
     try {
       let savedMember = null;
 
-      if (relative._id) {
-        const response = await apiPatch(`/members/family/${familyId}/${relative._id}/profile`, payload);
-        savedMember = response.data;
-      } else {
-        const response = await apiPost(`/members/family/${familyId}/immediate-family`, {
-          father: group === "father" ? payload : undefined,
-          mother: group === "mother" ? payload : undefined,
-          spouse: group === "spouse" ? payload : undefined,
-          children: group === "children" ? [payload] : []
-        });
-        savedMember = group === "children" ? response.data.children?.[0] : response.data[group];
-        if (response.data.member) {
-          setProfile(response.data.member);
-          setForm(hydrateForm(response.data.member));
-        }
+      const response = await apiPost(`/members/family/${familyId}/immediate-family`, {
+        father: group === "father" ? payload : undefined,
+        mother: group === "mother" ? payload : undefined,
+        spouse: group === "spouse" ? payload : undefined,
+        children: group === "children" ? [payload] : []
+      });
+      savedMember = group === "children" ? response.data.children?.[0] : response.data[group];
+      if (response.data.member) {
+        setProfile(response.data.member);
+        setForm(hydrateForm(response.data.member));
       }
 
       const key = relativePhotoKey(group, index);
@@ -639,44 +676,68 @@ export function ProfilePage() {
         <form className="form-grid profile-form" onSubmit={saveImmediateFamily}>
           <h3 className="form-section-title">Father</h3>
           <RelativeFields
+            group="father"
             label="Father"
             relative={immediateFamily.father}
             onChange={(field, value) => updateRelative("father", field, value)}
             onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, father: file }))}
             onSave={() => saveRelative("father")}
             photoFile={relativePhotoFiles.father}
+            searchQuery={relativeSearch.father?.query || ""}
+            searchResults={relativeSearch.father?.results || []}
+            onSearchChange={(value) => updateRelativeSearchQuery("father", value)}
+            onSearch={() => searchExistingRelative("father")}
+            onSelectExisting={(member) => selectExistingRelative("father", member)}
           />
 
           <h3 className="form-section-title">Mother</h3>
           <RelativeFields
+            group="mother"
             label="Mother"
             relative={immediateFamily.mother}
             onChange={(field, value) => updateRelative("mother", field, value)}
             onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, mother: file }))}
             onSave={() => saveRelative("mother")}
             photoFile={relativePhotoFiles.mother}
+            searchQuery={relativeSearch.mother?.query || ""}
+            searchResults={relativeSearch.mother?.results || []}
+            onSearchChange={(value) => updateRelativeSearchQuery("mother", value)}
+            onSearch={() => searchExistingRelative("mother")}
+            onSelectExisting={(member) => selectExistingRelative("mother", member)}
           />
 
           <h3 className="form-section-title">Spouse</h3>
           <RelativeFields
+            group="spouse"
             label="Spouse"
             relative={immediateFamily.spouse}
             onChange={(field, value) => updateRelative("spouse", field, value)}
             onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, spouse: file }))}
             onSave={() => saveRelative("spouse")}
             photoFile={relativePhotoFiles.spouse}
+            searchQuery={relativeSearch.spouse?.query || ""}
+            searchResults={relativeSearch.spouse?.results || []}
+            onSearchChange={(value) => updateRelativeSearchQuery("spouse", value)}
+            onSearch={() => searchExistingRelative("spouse")}
+            onSelectExisting={(member) => selectExistingRelative("spouse", member)}
           />
 
           <h3 className="form-section-title">Children</h3>
           {immediateFamily.children.map((child, index) => (
             <div className="relative-card" key={`child-${index}`}>
               <RelativeFields
+                group="children"
                 label={`Child ${index + 1}`}
                 relative={child}
                 onChange={(field, value) => updateRelative("children", field, value, index)}
                 onPhoto={(file) => setRelativePhotoFiles((current) => ({ ...current, [`child-${index}`]: file }))}
                 onSave={() => saveRelative("children", index)}
                 photoFile={relativePhotoFiles[relativePhotoKey("children", index)]}
+                searchQuery={relativeSearch[searchKey("children", index)]?.query || ""}
+                searchResults={relativeSearch[searchKey("children", index)]?.results || []}
+                onSearchChange={(value) => updateRelativeSearchQuery("children", value, index)}
+                onSearch={() => searchExistingRelative("children", index)}
+                onSelectExisting={(member) => selectExistingRelative("children", member, index)}
               />
               {immediateFamily.children.length > 1 ? (
                 <button type="button" className="secondary-button" onClick={() => removeChildRow(index)}>
@@ -697,9 +758,44 @@ export function ProfilePage() {
   );
 }
 
-function RelativeFields({ label, relative, onChange, onPhoto, onSave, photoFile }) {
+function RelativeFields({
+  label,
+  relative,
+  onChange,
+  onPhoto,
+  onSave,
+  photoFile,
+  searchQuery,
+  searchResults,
+  onSearchChange,
+  onSearch,
+  onSelectExisting
+}) {
   return (
     <>
+      <div className="relative-search wide-field">
+        <label>
+          Search existing Kul member
+          <input
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={`Search existing ${label.toLowerCase()} by name`}
+          />
+        </label>
+        <button type="button" className="secondary-button" onClick={onSearch}>
+          Search
+        </button>
+        {searchResults.length ? (
+          <div className="relative-search-results">
+            {searchResults.map((member) => (
+              <button key={member._id} type="button" onClick={() => onSelectExisting(member)}>
+                <strong>{member.displayName}</strong>
+                <span>{member.placeOfResidence || member.city || member.relationLabel || "Details pending"}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
       <label>
         Full name
         <input value={relative.displayName} onChange={(event) => onChange("displayName", event.target.value)} />
