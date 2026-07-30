@@ -213,7 +213,7 @@ async function assertCanManageProject(req, project) {
     (memberId) => String(memberId || "") === String(req.member._id)
   );
 
-  if (roleHasPermission(req.member.role, permissions.projectsManageAssigned) && assignedDirectly) return;
+  if (assignedDirectly) return;
 
   const assignment = await ProjectMember.findOne({
     familyId: req.familyId,
@@ -223,7 +223,7 @@ async function assertCanManageProject(req, project) {
     status: "active"
   });
 
-  if (roleHasPermission(req.member.role, permissions.projectsManageAssigned) && assignment) return;
+  if (assignment) return;
 
   throw httpError(403, "You can manage only Sankalp assigned to you.", "PROJECT_ASSIGNMENT_REQUIRED");
 }

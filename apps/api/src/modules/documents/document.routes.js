@@ -5,6 +5,7 @@ import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Document } from "../../models/Document.js";
 import { Expense } from "../../models/Expense.js";
 import { Project } from "../../models/Project.js";
+import { ProjectMember } from "../../models/ProjectMember.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
@@ -86,7 +87,17 @@ async function assertCanUploadProjectDocument(req, project) {
     (memberId) => String(memberId || "") === String(req.member._id)
   );
 
-  if (roleHasPermission(req.member.role, permissions.projectsManageAssigned) && assignedDirectly) return;
+  if (assignedDirectly) return;
+
+  const assignment = await ProjectMember.findOne({
+    familyId: req.familyId,
+    projectId: project._id,
+    memberId: req.member._id,
+    role: { $in: ["project_manager", "progress_auditor", "implementation_lead", "lead"] },
+    status: "active"
+  });
+
+  if (assignment) return;
 
   throw httpError(403, "You can upload Sankalp documents only for assigned Sankalp.", "PROJECT_DOCUMENT_UPLOAD_NOT_ALLOWED");
 }

@@ -75,6 +75,12 @@ function firstLiveStageForProject(projectType) {
   return projectType === "research" || projectType === "business_study" ? "research" : "estimate_pending";
 }
 
+function getMemberId(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return String(value.id || value._id || "");
+}
+
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -145,11 +151,12 @@ export function ProjectsPage() {
   const [rejectionReason, setRejectionReason] = useState("Needs more detail before approval");
 
   const canCreateProjects = hasPermission(session, "projects.create");
-  const canManageProjects = hasPermission(session, "projects.manage") || hasPermission(session, "projects.manage_assigned");
+  const canManageAllProjects = hasPermission(session, "projects.manage");
   const canViewExpenses = hasPermission(session, "expenses.view");
   const canSubmitExpenses = hasPermission(session, "expenses.submit");
   const canApproveExpenses = hasPermission(session, "expenses.approve");
   const selectedProject = projects.find((project) => project.id === selectedProjectId) || selectedDetails?.project;
+  const canManageSelectedProject = canManageProject(selectedProject, selectedDetails?.projectMembers);
   const canSubmitForSelectedProject =
     canSubmitExpenses && selectedProject && (!selectedProject.budgetRequired || selectedProject.isFullyFunded) && selectedProject.availableToSpendPaise > 0;
 
@@ -171,6 +178,20 @@ export function ProjectsPage() {
       [field]: value,
       ...(field === "title" ? { slug: slugify(value) } : {})
     }));
+  }
+
+  function canManageProject(project, projectMembers = []) {
+    if (!project || !session?.member?.id) return false;
+    if (canManageAllProjects) return true;
+
+    const currentMemberId = String(session.member.id);
+    const assignedIds = [project.projectLeadMember, project.auditorMember, project.implementationLeadMember].map(getMemberId);
+    if (assignedIds.includes(currentMemberId)) return true;
+
+    return projectMembers.some((projectMember) => {
+      const projectMemberId = getMemberId(projectMember.memberId);
+      return projectMemberId === currentMemberId && ["project_manager", "progress_auditor", "implementation_lead", "lead"].includes(projectMember.role);
+    });
   }
 
   async function loadProjects() {
@@ -665,7 +686,7 @@ export function ProjectsPage() {
                   <button type="button" className="secondary-button" onClick={() => loadProjectDetails(project.id)}>
                     Open Workspace
                   </button>
-                  {canManageProjects && project.isDraft ? (
+                  {canManageProject(project) && project.isDraft ? (
                     <button
                       type="button"
                       className="secondary-button"
@@ -679,7 +700,7 @@ export function ProjectsPage() {
                       Publish Live
                     </button>
                   ) : null}
-                  {canManageProjects && !project.isDraft ? (
+                  {canManageProject(project) && !project.isDraft ? (
                     <button
                       type="button"
                       className="secondary-button"
@@ -770,7 +791,7 @@ export function ProjectsPage() {
             </div>
           </div>
 
-          {canManageProjects ? (
+          {canManageSelectedProject ? (
             <form
               className="form-grid"
               onSubmit={(event) => {
@@ -851,7 +872,7 @@ export function ProjectsPage() {
             )}
           </div>
 
-          {canManageProjects ? (
+          {canManageSelectedProject ? (
             <form className="form-grid" onSubmit={uploadProjectDocument}>
               <label className="wide-field">
                 Upload estimate / document
@@ -880,7 +901,7 @@ export function ProjectsPage() {
                       {formatLabel(milestone.status)} {milestone.dueDate ? `- due ${toInputDate(milestone.dueDate)}` : ""}
                     </small>
                   </div>
-                  {canManageProjects ? (
+                  {canManageSelectedProject ? (
                     <div className="row-actions">
                       <button type="button" className="secondary-button" onClick={() => updateMilestone(milestone._id, { status: "in_progress" })}>
                         Start
@@ -897,7 +918,7 @@ export function ProjectsPage() {
             )}
           </div>
 
-          {canManageProjects ? (
+          {canManageSelectedProject ? (
             <form className="form-grid" onSubmit={createMilestone}>
               <label>
                 Milestone title
@@ -942,7 +963,7 @@ export function ProjectsPage() {
             )}
           </div>
 
-          {canManageProjects ? (
+          {canManageSelectedProject ? (
             <form className="form-grid" onSubmit={createProgressUpdate}>
               <label>
                 Update type
