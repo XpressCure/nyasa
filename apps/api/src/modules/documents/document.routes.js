@@ -4,10 +4,11 @@ import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Document } from "../../models/Document.js";
 import { Expense } from "../../models/Expense.js";
+import { Project } from "../../models/Project.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
-import { permissions } from "../permissions/permissions.js";
+import { permissions, roleHasPermission } from "../permissions/permissions.js";
 import { getDocumentObject, saveDocumentFile } from "./document-storage.service.js";
 
 export const documentRoutes = Router();
@@ -76,6 +77,83 @@ documentRoutes.get(
 );
 
 documentRoutes.use(requireAuth);
+
+async function assertCanUploadProjectDocument(req, project) {
+  if (String(project.createdBy || "") === String(req.user._id || "")) return;
+  if (roleHasPermission(req.member.role, permissions.projectsManage)) return;
+
+  const assignedDirectly = [project.projectLeadMemberId, project.auditorMemberId, project.implementationLeadMemberId].some(
+    (memberId) => String(memberId || "") === String(req.member._id)
+  );
+
+  if (roleHasPermission(req.member.role, permissions.projectsManageAssigned) && assignedDirectly) return;
+
+  throw httpError(403, "You can upload Sankalp documents only for assigned Sankalp.", "PROJECT_DOCUMENT_UPLOAD_NOT_ALLOWED");
+}
+
+documentRoutes.post(
+  "/family/:familyId/projects/:projectId",
+  requireFamilyPermission(permissions.projectsView),
+  asyncHandler(async (req, res) => {
+    const body = uploadExpenseDocumentSchema.parse(req.body);
+    const project = await Project.findOne({ _id: req.params.projectId, familyId: req.familyId });
+
+    if (!project) {
+      throw httpError(404, "Sankalp not found.", "PROJECT_NOT_FOUND");
+    }
+
+    await assertCanUploadProjectDocument(req, project);
+
+    const fileBuffer = Buffer.from(body.dataBase64, "base64");
+
+    if (fileBuffer.length !== body.sizeBytes || fileBuffer.length > MAX_UPLOAD_BYTES) {
+      throw httpError(400, "Uploaded file size is invalid.", "INVALID_UPLOAD_SIZE");
+    }
+
+    const storedFile = await saveDocumentFile({
+      familyId: req.familyId,
+      folder: `projects/${project._id}`,
+      originalName: body.originalName,
+      mimeType: body.mimeType,
+      fileBuffer
+    });
+
+    const document = await Document.create({
+      familyId: req.familyId,
+      projectId: project._id,
+      originalName: body.originalName,
+      storedName: storedFile.storedName,
+      mimeType: body.mimeType,
+      sizeBytes: body.sizeBytes,
+      storageDriver: storedFile.storageDriver,
+      storagePath: storedFile.storagePath,
+      storageKey: storedFile.storageKey,
+      bucketName: storedFile.bucketName,
+      region: storedFile.region,
+      category: "project_document",
+      uploadedBy: req.member._id
+    });
+
+    await writeAuditLog({
+      familyId: req.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: req.member._id,
+      action: "document.project_document_uploaded",
+      entityType: "Document",
+      entityId: String(document._id),
+      summary: `Uploaded Sankalp document ${document.originalName}`,
+      after: {
+        projectId: project._id,
+        documentId: document._id,
+        originalName: document.originalName,
+        sizeBytes: document.sizeBytes
+      },
+      req
+    });
+
+    res.status(201).json({ data: serializeDocument(document) });
+  })
+);
 
 documentRoutes.post(
   "/family/:familyId/expenses/:expenseId",
@@ -149,7 +227,7 @@ documentRoutes.post(
 
 documentRoutes.get(
   "/family/:familyId/:documentId/download",
-  requireFamilyPermission(permissions.expensesView),
+  requireFamilyPermission(permissions.projectsView),
   asyncHandler(async (req, res) => {
     const document = await Document.findOne({ _id: req.params.documentId, familyId: req.familyId, status: "active" });
 

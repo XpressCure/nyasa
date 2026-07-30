@@ -703,6 +703,35 @@ select {
   color: #7a5410;
 }
 
+.next-step-card {
+  background: #fff8e8;
+  border: 1px solid #e3c986;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 14px;
+}
+
+.next-step-card strong {
+  color: #17211c;
+  font-size: 1rem;
+}
+
+.next-step-card span {
+  color: #3f4d45;
+}
+
+.next-step-card ol {
+  color: #526158;
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.next-step-card li {
+  margin: 4px 0;
+}
+
 .project-card-header {
   align-items: flex-start;
   display: flex;

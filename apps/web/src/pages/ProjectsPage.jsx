@@ -140,6 +140,8 @@ export function ProjectsPage() {
   });
   const [billFile, setBillFile] = useState(null);
   const [billInputKey, setBillInputKey] = useState(0);
+  const [projectDocumentFile, setProjectDocumentFile] = useState(null);
+  const [projectDocumentInputKey, setProjectDocumentInputKey] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("Needs more detail before approval");
 
   const canCreateProjects = hasPermission(session, "projects.create");
@@ -344,6 +346,48 @@ export function ProjectsPage() {
     return payload;
   }
 
+  async function uploadProjectDocument(event) {
+    event.preventDefault();
+    const familyId = getFamilyId();
+    if (!familyId || !selectedProjectId || !projectDocumentFile) return;
+
+    if (projectDocumentFile.size > 8 * 1024 * 1024) {
+      setMessage("Estimate file must be 8 MB or smaller.");
+      return;
+    }
+
+    const token = localStorage.getItem("nyasa_token");
+    const dataBase64 = await readFileAsBase64(projectDocumentFile);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/family/${familyId}/projects/${selectedProjectId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          originalName: projectDocumentFile.name,
+          mimeType: projectDocumentFile.type,
+          sizeBytes: projectDocumentFile.size,
+          dataBase64
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error?.message || `Document upload failed: ${response.status}`);
+      }
+
+      setProjectDocumentFile(null);
+      setProjectDocumentInputKey((current) => current + 1);
+      setMessage("Estimate or Sankalp document uploaded. Now update the estimated budget and move the stage forward.");
+      await loadProjectDetails(selectedProjectId);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   async function submitExpense(event) {
     event.preventDefault();
     const familyId = getFamilyId();
@@ -419,6 +463,20 @@ export function ProjectsPage() {
 
   function renderMemberOption(member) {
     return `${member.displayName} (${formatLabel(member.role)})`;
+  }
+
+  function getNextStep(project) {
+    if (!project) return null;
+    if (project.isDraft) return "This is a draft sample. Review rules, team, budget and timeline, then click Publish Live.";
+    if (["concept", "research", "estimate_pending"].includes(project.lifecycleStage)) {
+      return "Next: upload the estimate or supporting document, enter the estimated budget, and set stage to Estimate Received.";
+    }
+    if (project.lifecycleStage === "estimate_received") return "Next: confirm the budget and move stage to Kosh Sangrah so members can allocate funds.";
+    if (project.lifecycleStage === "fundraising") return "Next: ask members to add money in Kosh and allocate it to this Sankalp.";
+    if (project.lifecycleStage === "ready_for_implementation") return "Next: once funds are ready, move to Karya and start milestone reporting.";
+    if (project.lifecycleStage === "implementation") return "Next: update milestones, progress percentage, expense receipts, and completion notes.";
+    if (project.lifecycleStage === "completed") return "This Sankalp is complete. Keep final reports and learnings attached for future reference.";
+    return "Review the current stage and update the workspace with the next decision.";
   }
 
   return (
@@ -651,6 +709,17 @@ export function ProjectsPage() {
             </span>
           </div>
 
+          <div className="next-step-card">
+            <strong>What to do now</strong>
+            <span>{getNextStep(selectedDetails.project)}</span>
+            <ol>
+              <li>Open this workspace and confirm rules, team and tentative timeline.</li>
+              <li>Upload estimate or supporting document when received.</li>
+              <li>Enter the actual estimated budget and move the stage forward.</li>
+              <li>After Kosh allocation is complete, start Karya and report milestones with receipts.</li>
+            </ol>
+          </div>
+
           <div className="mission-financials">
             <div>
               <span>Tentative</span>
@@ -757,6 +826,45 @@ export function ProjectsPage() {
                   Publish Live
                 </button>
               ) : null}
+            </form>
+          ) : null}
+
+          <h3>Estimate and Sankalp Documents</h3>
+          <div className="list-stack">
+            {selectedDetails.projectDocuments?.length ? (
+              selectedDetails.projectDocuments.map((document) => (
+                <div className="ledger-row" key={document.id || document._id}>
+                  <div>
+                    <strong>{document.originalName}</strong>
+                    <span>
+                      Uploaded by {document.uploadedBy?.displayName || "Sadasya"} on {new Date(document.createdAt).toLocaleDateString("en-IN")}
+                    </span>
+                    <small>{formatLabel(document.category || "project_document")}</small>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => downloadDocument(document)}>
+                    Download
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p>No estimate or Sankalp document uploaded yet.</p>
+            )}
+          </div>
+
+          {canManageProjects ? (
+            <form className="form-grid" onSubmit={uploadProjectDocument}>
+              <label className="wide-field">
+                Upload estimate / document
+                <input
+                  key={projectDocumentInputKey}
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  type="file"
+                  onChange={(event) => setProjectDocumentFile(event.target.files?.[0] || null)}
+                />
+              </label>
+              <button type="submit" disabled={!projectDocumentFile}>
+                Upload Document
+              </button>
             </form>
           ) : null}
 

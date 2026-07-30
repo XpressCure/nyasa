@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Expense } from "../../models/Expense.js";
+import { Document } from "../../models/Document.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
 import { Milestone } from "../../models/Milestone.js";
 import { Project } from "../../models/Project.js";
@@ -423,7 +424,7 @@ projectRoutes.get(
       await assertCanManageProject(req, project);
     }
 
-    const [milestones, updates, projectMembers, financials] = await Promise.all([
+    const [milestones, updates, projectMembers, projectDocuments, financials] = await Promise.all([
       Milestone.find({ projectId: project._id }).sort({ sortOrder: 1, createdAt: 1 }),
       ProjectUpdate.find({ projectId: project._id })
         .populate("createdByMember", "displayName role")
@@ -431,6 +432,9 @@ projectRoutes.get(
         .sort({ createdAt: -1 })
         .limit(20),
       ProjectMember.find({ projectId: project._id, status: "active" }).populate("memberId", "displayName role"),
+      Document.find({ familyId: req.familyId, projectId: project._id, category: "project_document", status: "active" })
+        .populate("uploadedBy", "displayName role")
+        .sort({ createdAt: -1 }),
       getProjectFinancials(req.familyId, [project._id])
     ]);
 
@@ -439,6 +443,7 @@ projectRoutes.get(
         project: serializeProject(project, financials.get(String(project._id))),
         milestones,
         updates,
+        projectDocuments,
         projectMembers
       }
     });
