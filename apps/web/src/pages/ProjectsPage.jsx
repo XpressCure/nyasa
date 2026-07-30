@@ -500,6 +500,26 @@ export function ProjectsPage() {
     return "Review the current stage and update the workspace with the next decision.";
   }
 
+  function getManagementRoles(project) {
+    return [
+      {
+        label: "Project Manager",
+        member: project?.projectLeadMember,
+        note: "Full Sankalp control: stage, estimate, documents, milestones, progress and completion."
+      },
+      {
+        label: "Progress Auditor",
+        member: project?.auditorMember,
+        note: "Reviews progress, documents, bills and transparency."
+      },
+      {
+        label: "Karya Lead",
+        member: project?.implementationLeadMember,
+        note: "Handles implementation updates, milestones and work reports."
+      }
+    ];
+  }
+
   return (
     <section>
       <PageHeader
@@ -768,10 +788,13 @@ export function ProjectsPage() {
             <div>
               <h3>Team</h3>
               <div className="list-stack">
-                {(selectedDetails.projectMembers || []).map((projectMember) => (
-                  <div className="compact-row" key={projectMember._id}>
-                    <strong>{projectMember.memberId?.displayName || "Member"}</strong>
-                    <span>{formatLabel(projectMember.role)}</span>
+                {getManagementRoles(selectedDetails.project).map((role) => (
+                  <div className="compact-row management-row" key={role.label}>
+                    <div>
+                      <strong>{role.member?.displayName || "Pending"}</strong>
+                      <small>{role.note}</small>
+                    </div>
+                    <span>{role.label}</span>
                   </div>
                 ))}
               </div>
@@ -884,7 +907,7 @@ export function ProjectsPage() {
                 />
               </label>
               <button type="submit" disabled={!projectDocumentFile}>
-                Upload Document
+                {projectDocumentFile ? "Upload Document" : "Choose File First"}
               </button>
             </form>
           ) : null}

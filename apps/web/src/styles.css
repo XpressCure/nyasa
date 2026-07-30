@@ -687,6 +687,20 @@ select {
   text-align: right;
 }
 
+.management-row {
+  align-items: flex-start;
+}
+
+.management-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.management-row small {
+  color: #637066;
+  line-height: 1.35;
+}
+
 .status-pill {
   background: #17211c;
   border-radius: 999px;
