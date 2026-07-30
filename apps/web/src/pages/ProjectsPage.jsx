@@ -152,6 +152,7 @@ export function ProjectsPage() {
       .then(setSession)
       .catch((error) => setMessage(error.message));
     loadProjects();
+    loadMembers();
   }, []);
 
   function getFamilyId() {
@@ -188,8 +189,9 @@ export function ProjectsPage() {
 
     try {
       const response = await apiGet(`/members/family/${familyId}`);
-      setMembers(response.data);
-      setMessage("Sadasya loaded for Sankalp role selection.");
+      const livingMembers = response.data.filter((member) => (member.livingStatus || "living") === "living");
+      setMembers(livingMembers);
+      setMessage("Living Sadasya loaded for Sankalp role selection.");
     } catch (error) {
       setMessage(error.message);
     }
