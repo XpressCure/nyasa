@@ -49,6 +49,10 @@ async function getSelectedFamilyId() {
 export function DashboardPage() {
   const [dashboard, setDashboard] = useState(null);
   const [hub, setHub] = useState(null);
+  const [koshAnalytics, setKoshAnalytics] = useState(null);
+  const [analyticsRange, setAnalyticsRange] = useState("3m");
+  const [analyticsDateFrom, setAnalyticsDateFrom] = useState("");
+  const [analyticsDateTo, setAnalyticsDateTo] = useState("");
   const [calendarForm, setCalendarForm] = useState({
     title: "",
     eventType: "puja",
@@ -74,12 +78,22 @@ export function DashboardPage() {
         return;
       }
 
-      const [dashboardResponse, hubResponse] = await Promise.all([
+      const params = new URLSearchParams();
+      if (analyticsDateFrom || analyticsDateTo) {
+        if (analyticsDateFrom) params.set("dateFrom", analyticsDateFrom);
+        if (analyticsDateTo) params.set("dateTo", analyticsDateTo);
+      } else {
+        params.set("range", analyticsRange);
+      }
+
+      const [dashboardResponse, hubResponse, koshResponse] = await Promise.all([
         apiGet(`/families/${familyId}/dashboard`),
-        apiGet(`/family-hub/family/${familyId}/overview`)
+        apiGet(`/family-hub/family/${familyId}/overview`),
+        apiGet(`/treasury/family/${familyId}/analytics?${params.toString()}`)
       ]);
       setDashboard(dashboardResponse.data);
       setHub(hubResponse.data);
+      setKoshAnalytics(koshResponse.data);
     } catch (error) {
       setMessage(error.message);
     }
@@ -164,6 +178,72 @@ export function DashboardPage() {
           </article>
         ))}
       </div>
+      <section className="content-band kosh-darshan-band">
+        <div className="tree-register-header">
+          <div>
+            <h2>Kosh Darshan</h2>
+            <p className="section-note">A quick money picture for contribution, allocation, implementation, and spending.</p>
+          </div>
+          <div className="button-row">
+            <Link className="secondary-button" to="/treasury">
+              Add or Allocate Kosh
+            </Link>
+            <Link className="secondary-button" to="/projects">
+              View Sankalp
+            </Link>
+          </div>
+        </div>
+        <div className="kosh-filter-row">
+          <label>
+            Range
+            <select
+              value={analyticsRange}
+              onChange={(event) => {
+                setAnalyticsRange(event.target.value);
+                setAnalyticsDateFrom("");
+                setAnalyticsDateTo("");
+              }}
+            >
+              <option value="3m">Last 3 months</option>
+              <option value="6m">Last 6 months</option>
+              <option value="12m">Last 12 months</option>
+            </select>
+          </label>
+          <label>
+            From
+            <input type="date" value={analyticsDateFrom} onChange={(event) => setAnalyticsDateFrom(event.target.value)} />
+          </label>
+          <label>
+            To
+            <input type="date" value={analyticsDateTo} onChange={(event) => setAnalyticsDateTo(event.target.value)} />
+          </label>
+          <button type="button" onClick={loadDashboard}>
+            Apply
+          </button>
+        </div>
+        <div className="mission-financials kosh-analytics-grid">
+          <div>
+            <span>Total collected</span>
+            <strong>{formatMoney(koshAnalytics?.totalCollected?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>Allotted</span>
+            <strong>{formatMoney(koshAnalytics?.totalAllocated?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>Still in Kosh</span>
+            <strong>{formatMoney(koshAnalytics?.unallocated?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>Implementation</span>
+            <strong>{formatMoney(koshAnalytics?.implementationAllocated?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>Spent</span>
+            <strong>{formatMoney(koshAnalytics?.totalSpent?.amountRupees || 0)}</strong>
+          </div>
+        </div>
+      </section>
       <section className="content-band age-band">
         <div className="tree-register-header">
           <div>

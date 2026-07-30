@@ -547,6 +547,41 @@ select {
   font-size: 18px;
 }
 
+.kosh-filter-row {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  margin-top: 18px;
+}
+
+.kosh-filter-row label {
+  display: grid;
+  gap: 8px;
+}
+
+.kosh-filter-row input,
+.kosh-filter-row select {
+  border: 1px solid #cfc8bc;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.kosh-filter-row button {
+  background: #17211c;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  min-height: 45px;
+  padding: 12px 16px;
+}
+
+.kosh-analytics-grid {
+  margin-top: 14px;
+}
+
 .project-list {
   display: grid;
   gap: 16px;
@@ -2193,7 +2228,8 @@ button:disabled {
   }
 
   .lifecycle-strip,
-  .sankalp-detail-grid {
+  .sankalp-detail-grid,
+  .kosh-filter-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2273,7 +2309,8 @@ button:disabled {
   }
 
   .lifecycle-strip,
-  .sankalp-detail-grid {
+  .sankalp-detail-grid,
+  .kosh-filter-row {
     grid-template-columns: 1fr;
   }
 
@@ -2505,7 +2542,8 @@ button:disabled {
   }
 
   .row-actions select,
-  .row-actions button {
+  .row-actions button,
+  .kosh-filter-row button {
     width: 100%;
   }
 

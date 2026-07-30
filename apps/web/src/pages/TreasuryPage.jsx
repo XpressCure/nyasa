@@ -32,6 +32,10 @@ function loadRazorpayCheckout() {
 
 export function TreasuryPage() {
   const [summary, setSummary] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsRange, setAnalyticsRange] = useState("3m");
+  const [analyticsDateFrom, setAnalyticsDateFrom] = useState("");
+  const [analyticsDateTo, setAnalyticsDateTo] = useState("");
   const [transactions, setTransactions] = useState([]);
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
@@ -53,6 +57,10 @@ export function TreasuryPage() {
     loadCurrentSession()
       .then(setSession)
       .catch((error) => setMessage(error.message));
+    loadTreasury();
+    loadProjects();
+    loadMembers();
+    loadKoshAnalytics();
   }, []);
 
   function getFamilyId() {
@@ -74,6 +82,26 @@ export function TreasuryPage() {
       setSummary(summaryResponse.data);
       setTransactions(transactionResponse.data);
       setMessage("Kosh loaded.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function loadKoshAnalytics() {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    const params = new URLSearchParams();
+    if (analyticsDateFrom || analyticsDateTo) {
+      if (analyticsDateFrom) params.set("dateFrom", analyticsDateFrom);
+      if (analyticsDateTo) params.set("dateTo", analyticsDateTo);
+    } else {
+      params.set("range", analyticsRange);
+    }
+
+    try {
+      const response = await apiGet(`/treasury/family/${familyId}/analytics?${params.toString()}`);
+      setAnalytics(response.data);
     } catch (error) {
       setMessage(error.message);
     }
@@ -104,8 +132,8 @@ export function TreasuryPage() {
 
     try {
       const response = await apiGet(`/members/family/${familyId}`);
-      setMembers(response.data);
-      setMessage("Loaded members for contribution entry.");
+      setMembers(response.data.filter((member) => (member.livingStatus || "living") === "living"));
+      setMessage("Loaded living Sadasya for contribution entry.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -126,7 +154,7 @@ export function TreasuryPage() {
         memberId: contributionMemberId || undefined
       });
       setMessage("Manual contribution recorded.");
-      await loadTreasury();
+      await Promise.all([loadTreasury(), loadKoshAnalytics()]);
     } catch (error) {
       setMessage(error.message);
     }
@@ -174,6 +202,7 @@ export function TreasuryPage() {
             });
             setMessage("Payment verified. Money added to your wallet.");
             await loadTreasury();
+            await loadKoshAnalytics();
           } catch (error) {
             setMessage(error.message);
           }
@@ -212,8 +241,7 @@ export function TreasuryPage() {
         description: allocationDescription
       });
       setMessage("Funds allocated to Sankalp.");
-      await loadTreasury();
-      await loadProjects();
+      await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
     } catch (error) {
       setMessage(error.message);
     }
@@ -240,6 +268,68 @@ export function TreasuryPage() {
           <strong>{formatMoney(summary?.contributionThisYearRupees || 0)}</strong>
         </article>
       </div>
+
+      <section className="content-band">
+        <div className="section-heading-row">
+          <div>
+            <h2>Kosh Darshan</h2>
+            <p className="section-note">Track collected family money, what is still in Kosh, what is allotted, and what has been spent.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={loadKoshAnalytics}>
+            Refresh
+          </button>
+        </div>
+        <div className="kosh-filter-row">
+          <label>
+            Quick range
+            <select
+              value={analyticsRange}
+              onChange={(event) => {
+                setAnalyticsRange(event.target.value);
+                setAnalyticsDateFrom("");
+                setAnalyticsDateTo("");
+              }}
+            >
+              <option value="3m">Last 3 months</option>
+              <option value="6m">Last 6 months</option>
+              <option value="12m">Last 12 months</option>
+            </select>
+          </label>
+          <label>
+            From
+            <input type="date" value={analyticsDateFrom} onChange={(event) => setAnalyticsDateFrom(event.target.value)} />
+          </label>
+          <label>
+            To
+            <input type="date" value={analyticsDateTo} onChange={(event) => setAnalyticsDateTo(event.target.value)} />
+          </label>
+          <button type="button" onClick={loadKoshAnalytics}>
+            Apply Dates
+          </button>
+        </div>
+        <div className="mission-financials kosh-analytics-grid">
+          <div>
+            <span>Total collected</span>
+            <strong>{formatMoney(analytics?.totalCollected?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>Allotted to Sankalp</span>
+            <strong>{formatMoney(analytics?.totalAllocated?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>Still in Kosh</span>
+            <strong>{formatMoney(analytics?.unallocated?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>In implementation</span>
+            <strong>{formatMoney(analytics?.implementationAllocated?.amountRupees || 0)}</strong>
+          </div>
+          <div>
+            <span>Spent</span>
+            <strong>{formatMoney(analytics?.totalSpent?.amountRupees || 0)}</strong>
+          </div>
+        </div>
+      </section>
 
       <section className="content-band">
         <h2>Add To My Wallet</h2>

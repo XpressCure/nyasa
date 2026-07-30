@@ -1,7 +1,9 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
+import { Expense } from "../../models/Expense.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
 import { Project } from "../../models/Project.js";
 import { asyncHandler } from "../../utils/async-handler.js";
@@ -24,6 +26,36 @@ const allocationSchema = z.object({
   amountRupees: z.coerce.number().positive(),
   description: z.string().max(280).optional()
 });
+
+function parseDateFilter(query) {
+  const today = new Date();
+  const dateTo = query.dateTo ? new Date(query.dateTo) : today;
+  let dateFrom = query.dateFrom ? new Date(query.dateFrom) : null;
+
+  if (!dateFrom) {
+    dateFrom = new Date(dateTo);
+    const range = query.range || "3m";
+    if (range === "6m") {
+      dateFrom.setMonth(dateFrom.getMonth() - 6);
+    } else if (range === "12m") {
+      dateFrom.setFullYear(dateFrom.getFullYear() - 1);
+    } else {
+      dateFrom.setMonth(dateFrom.getMonth() - 3);
+    }
+  }
+
+  dateFrom.setHours(0, 0, 0, 0);
+  dateTo.setHours(23, 59, 59, 999);
+
+  return { dateFrom, dateTo };
+}
+
+function serializeMoney(amountPaise = 0) {
+  return {
+    amountPaise,
+    amountRupees: paiseToRupees(amountPaise)
+  };
+}
 
 async function createContributionTransaction({ familyId, userId, memberId, amountPaise, description, source }) {
   const treasury = await getOrCreateMainTreasury({ familyId, userId });
@@ -111,6 +143,118 @@ treasuryRoutes.get(
         member: transaction.memberId,
         createdAt: transaction.createdAt
       }))
+    });
+  })
+);
+
+treasuryRoutes.get(
+  "/family/:familyId/analytics",
+  requireFamilyPermission(permissions.treasuryViewSummary),
+  asyncHandler(async (req, res) => {
+    const { dateFrom, dateTo } = parseDateFilter(req.query);
+    const dateMatch = { $gte: dateFrom, $lte: dateTo };
+    const familyObjectId = new mongoose.Types.ObjectId(req.familyId);
+
+    const [contributionRows, allocationRows, spentRows, implementationAllocationRows, projectRows] = await Promise.all([
+      LedgerTransaction.aggregate([
+        {
+          $match: {
+            familyId: familyObjectId,
+            type: "contribution",
+            direction: "credit",
+            status: "posted",
+            createdAt: dateMatch
+          }
+        },
+        { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
+      ]),
+      LedgerTransaction.aggregate([
+        {
+          $match: {
+            familyId: familyObjectId,
+            type: "allocation",
+            direction: "debit",
+            status: "posted",
+            createdAt: dateMatch
+          }
+        },
+        { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
+      ]),
+      Expense.aggregate([
+        {
+          $match: {
+            familyId: familyObjectId,
+            status: { $in: ["submitted", "approved"] },
+            expenseDate: dateMatch
+          }
+        },
+        { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
+      ]),
+      LedgerTransaction.aggregate([
+        {
+          $match: {
+            familyId: familyObjectId,
+            type: "allocation",
+            direction: "debit",
+            status: "posted",
+            createdAt: dateMatch
+          }
+        },
+        {
+          $lookup: {
+            from: "projects",
+            localField: "projectId",
+            foreignField: "_id",
+            as: "project"
+          }
+        },
+        { $unwind: "$project" },
+        {
+          $match: {
+            $or: [{ "project.status": "implementation" }, { "project.lifecycleStage": "implementation" }]
+          }
+        },
+        { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
+      ]),
+      Project.aggregate([
+        {
+          $match: {
+            familyId: familyObjectId,
+            status: { $ne: "archived" }
+          }
+        },
+        {
+          $group: {
+            _id: "$lifecycleStage",
+            count: { $sum: 1 },
+            targetBudgetPaise: { $sum: "$targetBudgetPaise" }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ])
+    ]);
+
+    const totalCollectedPaise = contributionRows[0]?.amountPaise || 0;
+    const totalAllocatedPaise = allocationRows[0]?.amountPaise || 0;
+    const totalSpentPaise = spentRows[0]?.amountPaise || 0;
+    const implementationAllocatedPaise = implementationAllocationRows[0]?.amountPaise || 0;
+
+    res.json({
+      data: {
+        dateFrom,
+        dateTo,
+        totalCollected: serializeMoney(totalCollectedPaise),
+        totalAllocated: serializeMoney(totalAllocatedPaise),
+        unallocated: serializeMoney(Math.max(totalCollectedPaise - totalAllocatedPaise, 0)),
+        implementationAllocated: serializeMoney(implementationAllocatedPaise),
+        totalSpent: serializeMoney(totalSpentPaise),
+        projectStages: projectRows.map((row) => ({
+          stage: row._id || "concept",
+          count: row.count,
+          targetBudgetPaise: row.targetBudgetPaise,
+          targetBudgetRupees: paiseToRupees(row.targetBudgetPaise)
+        }))
+      }
     });
   })
 );
@@ -209,7 +353,7 @@ treasuryRoutes.post(
     const project = await Project.findOne({
       _id: body.projectId,
       familyId: req.familyId,
-      status: { $in: ["active", "paused", "proposed"] }
+      status: { $in: ["active", "paused", "proposed", "estimate_received", "fundraising", "implementation"] }
     });
 
     if (!project) {
