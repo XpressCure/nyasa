@@ -57,7 +57,7 @@ function healthLine(member) {
 }
 
 function validMembers(value) {
-  return Array.isArray(value) ? value.filter((member) => member && member._id) : [];
+  return Array.isArray(value) ? value.filter((member) => member && member._id && (member.status || "active") === "active") : [];
 }
 
 function lifeLine(member) {
