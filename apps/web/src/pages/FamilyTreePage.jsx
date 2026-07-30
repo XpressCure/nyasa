@@ -154,6 +154,7 @@ function buildRelationshipGraph(members, memberById, selfMemberId = "") {
   const validMemberList = validMembers(members);
   const relationships = buildRelationshipMap(validMemberList, memberById);
   const generationByMember = new Map();
+  const componentByMember = new Map();
   const memberIds = new Set(validMemberList.map((member) => member._id));
 
   function neighborLinksFor(member) {
@@ -172,11 +173,12 @@ function buildRelationshipGraph(members, memberById, selfMemberId = "") {
     return links;
   }
 
-  function assignConnectedGenerations(seedMemberId, seedGeneration) {
+  function assignConnectedGenerations(seedMemberId, seedGeneration, componentId) {
     if (!memberIds.has(seedMemberId) || generationByMember.has(seedMemberId)) return;
 
     const queue = [seedMemberId];
     generationByMember.set(seedMemberId, seedGeneration);
+    componentByMember.set(seedMemberId, componentId);
 
     while (queue.length) {
       const memberId = queue.shift();
@@ -187,83 +189,100 @@ function buildRelationshipGraph(members, memberById, selfMemberId = "") {
       neighborLinksFor(member).forEach((link) => {
         if (generationByMember.has(link.memberId)) return;
         generationByMember.set(link.memberId, memberGeneration + link.generationDelta);
+        componentByMember.set(link.memberId, componentId);
         queue.push(link.memberId);
       });
     }
   }
 
-  assignConnectedGenerations(String(selfMemberId || validMemberList[0]?._id || ""), 0);
-  validMemberList.forEach((member) => assignConnectedGenerations(member._id, 0));
-
-  const minimumGeneration = generationByMember.size ? Math.min(...generationByMember.values()) : 0;
-  if (minimumGeneration < 0) {
-    generationByMember.forEach((generation, memberId) => {
-      generationByMember.set(memberId, generation - minimumGeneration);
-    });
-  }
-
-  const generations = validMemberList.reduce((groups, member) => {
-    const generation = generationByMember.get(member._id) || 0;
-    return { ...groups, [generation]: [...(groups[generation] || []), member] };
-  }, {});
+  const selfSeedId = String(selfMemberId || validMemberList[0]?._id || "");
+  let nextComponentId = 0;
+  assignConnectedGenerations(selfSeedId, 0, nextComponentId);
+  if (generationByMember.has(selfSeedId)) nextComponentId += 1;
+  validMemberList.forEach((member) => {
+    if (generationByMember.has(member._id)) return;
+    assignConnectedGenerations(member._id, 0, nextComponentId);
+    nextComponentId += 1;
+  });
 
   const nodeWidth = 238;
   const nodeHeight = 126;
   const columnGap = 34;
+  const componentGap = 84;
   const generationGap = 124;
   const padding = 34;
   const nodes = [];
-  let previousGenerationOrder = new Map();
+  let componentOffsetX = padding;
 
-  Object.entries(generations)
+  const membersByComponent = validMemberList.reduce((groups, member) => {
+    const componentId = componentByMember.get(member._id) || 0;
+    return { ...groups, [componentId]: [...(groups[componentId] || []), member] };
+  }, {});
+
+  Object.entries(membersByComponent)
     .sort(([left], [right]) => Number(left) - Number(right))
-    .forEach(([generation, generationMembers]) => {
-      const orderedMembers = [];
-      const usedIds = new Set();
+    .forEach(([, componentMembers]) => {
+      const minimumGeneration = Math.min(...componentMembers.map((member) => generationByMember.get(member._id) || 0));
+      const generations = componentMembers.reduce((groups, member) => {
+        const generation = (generationByMember.get(member._id) || 0) - minimumGeneration;
+        return { ...groups, [generation]: [...(groups[generation] || []), member] };
+      }, {});
+      let previousGenerationOrder = new Map();
+      let componentWidth = nodeWidth;
 
-      function directParentScore(member) {
-        const parentIndexes = parentIdsFor(member)
-          .map((parentId) => previousGenerationOrder.get(parentId))
-          .filter((value) => Number.isFinite(value));
+      Object.entries(generations)
+        .sort(([left], [right]) => Number(left) - Number(right))
+        .forEach(([generation, generationMembers]) => {
+          const orderedMembers = [];
+          const usedIds = new Set();
 
-        if (!parentIndexes.length) return Number.POSITIVE_INFINITY;
-        return parentIndexes.reduce((total, value) => total + value, 0) / parentIndexes.length;
-      }
+          function directParentScore(member) {
+            const parentIndexes = parentIdsFor(member)
+              .map((parentId) => previousGenerationOrder.get(parentId))
+              .filter((value) => Number.isFinite(value));
 
-      function sortScore(member) {
-        const parentScore = directParentScore(member);
-        if (Number.isFinite(parentScore)) return parentScore;
-
-        const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
-        if (!spouse) return Number.POSITIVE_INFINITY;
-
-        const spouseParentScore = directParentScore(spouse);
-        return Number.isFinite(spouseParentScore) ? spouseParentScore + 0.1 : Number.POSITIVE_INFINITY;
-      }
-
-      [...generationMembers]
-        .sort((left, right) => sortScore(left) - sortScore(right) || left.displayName.localeCompare(right.displayName))
-        .forEach((member) => {
-          if (usedIds.has(member._id)) return;
-          const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
-          orderedMembers.push(member);
-          usedIds.add(member._id);
-          if (spouse && generationMembers.some((item) => item._id === spouse._id) && !usedIds.has(spouse._id)) {
-            orderedMembers.push(spouse);
-            usedIds.add(spouse._id);
+            if (!parentIndexes.length) return Number.POSITIVE_INFINITY;
+            return parentIndexes.reduce((total, value) => total + value, 0) / parentIndexes.length;
           }
+
+          function sortScore(member) {
+            const parentScore = directParentScore(member);
+            if (Number.isFinite(parentScore)) return parentScore;
+
+            const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
+            if (!spouse) return Number.POSITIVE_INFINITY;
+
+            const spouseParentScore = directParentScore(spouse);
+            return Number.isFinite(spouseParentScore) ? spouseParentScore + 0.1 : Number.POSITIVE_INFINITY;
+          }
+
+          [...generationMembers]
+            .sort((left, right) => sortScore(left) - sortScore(right) || left.displayName.localeCompare(right.displayName))
+            .forEach((member) => {
+              if (usedIds.has(member._id)) return;
+              const spouse = spouseForMember(member, memberById, relationships.spousesByMember);
+              orderedMembers.push(member);
+              usedIds.add(member._id);
+              if (spouse && generationMembers.some((item) => item._id === spouse._id) && !usedIds.has(spouse._id)) {
+                orderedMembers.push(spouse);
+                usedIds.add(spouse._id);
+              }
+            });
+
+          previousGenerationOrder = new Map(orderedMembers.map((member, index) => [member._id, index]));
+          componentWidth = Math.max(componentWidth, orderedMembers.length * nodeWidth + Math.max(orderedMembers.length - 1, 0) * columnGap);
+
+          orderedMembers.forEach((member, index) => {
+            nodes.push({
+              id: member._id,
+              member,
+              x: componentOffsetX + index * (nodeWidth + columnGap),
+              y: padding + Number(generation) * (nodeHeight + generationGap)
+            });
+          });
         });
 
-      previousGenerationOrder = new Map(orderedMembers.map((member, index) => [member._id, index]));
-
-      orderedMembers.forEach((member, index) => {
-        nodes.push({
-          id: member._id,
-          member,
-          x: padding + index * (nodeWidth + columnGap),
-          y: padding + Number(generation) * (nodeHeight + generationGap)
-        });
-      });
+      componentOffsetX += componentWidth + componentGap;
     });
 
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
@@ -559,7 +578,10 @@ export function FamilyTreePage() {
             <div className="tree-register-header">
               <div>
                 <h2>Whole Kul Map</h2>
-                <p>One connected Kul map. Solid gold lines show parent-child links; dashed brown lines show spouse or co-parent couples.</p>
+                <p>
+                  Connected relatives stay in one tree. Branches without a shared ancestor remain separate until father, mother, or grandparent links
+                  are added.
+                </p>
               </div>
               <div className="button-row">
                 <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
