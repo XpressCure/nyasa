@@ -5,7 +5,11 @@ const projectMemberSchema = new mongoose.Schema(
     familyId: { type: mongoose.Schema.Types.ObjectId, ref: "Family", required: true, index: true },
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true, index: true },
     memberId: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember", required: true, index: true },
-    role: { type: String, enum: ["lead", "member", "advisor", "viewer"], default: "member" },
+    role: {
+      type: String,
+      enum: ["project_manager", "progress_auditor", "implementation_lead", "researcher", "member", "advisor", "viewer", "lead"],
+      default: "member"
+    },
     status: { type: String, enum: ["active", "removed"], default: "active" },
     addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember", required: true },
     addedAt: { type: Date, default: Date.now }

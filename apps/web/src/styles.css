@@ -560,6 +560,106 @@ select {
   padding: 18px;
 }
 
+.lifecycle-strip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 18px 0 12px;
+}
+
+.lifecycle-strip div {
+  align-items: center;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px;
+}
+
+.lifecycle-strip strong {
+  align-items: center;
+  background: #dba945;
+  border-radius: 999px;
+  color: #17211c;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.lifecycle-strip span,
+.sankalp-team-row span {
+  color: #4e5b53;
+}
+
+.section-heading-row {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.sadasya-sankalp-note {
+  align-items: flex-start;
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.sankalp-board {
+  display: grid;
+  gap: 14px;
+}
+
+.sankalp-card {
+  display: grid;
+  gap: 14px;
+}
+
+.sankalp-team-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sankalp-workspace h3 {
+  margin: 24px 0 10px;
+}
+
+.sankalp-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.compact-row {
+  align-items: center;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.compact-row span {
+  color: #4e5b53;
+  text-align: right;
+}
+
+.status-pill {
+  background: #17211c;
+  border-radius: 999px;
+  color: #fff;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+}
+
 .project-card-header {
   align-items: flex-start;
   display: flex;
@@ -2092,6 +2192,15 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .lifecycle-strip,
+  .sankalp-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sankalp-team-row {
+    grid-template-columns: 1fr;
+  }
+
   .tree-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2161,6 +2270,21 @@ button:disabled {
 
   .mission-financials {
     grid-template-columns: 1fr;
+  }
+
+  .lifecycle-strip,
+  .sankalp-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading-row,
+  .compact-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .compact-row span {
+    text-align: left;
   }
 
   .member-row,

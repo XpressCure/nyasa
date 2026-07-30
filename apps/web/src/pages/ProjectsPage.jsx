@@ -4,6 +4,48 @@ import { PageHeader } from "../components/PageHeader.jsx";
 import { API_BASE_URL, apiGet, apiPatch, apiPost } from "../lib/api.js";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
+const lifecycleStages = [
+  ["concept", "Vichar"],
+  ["research", "Khoj"],
+  ["estimate_pending", "Estimate Pending"],
+  ["estimate_received", "Estimate Received"],
+  ["fundraising", "Kosh Sangrah"],
+  ["ready_for_implementation", "Ready"],
+  ["implementation", "Karya"],
+  ["completed", "Poorn"],
+  ["paused", "Paused"]
+];
+
+const projectTypes = [
+  ["implementation", "Implementation"],
+  ["research", "Research"],
+  ["business_study", "Business Study"],
+  ["asset_management", "Asset Management"],
+  ["community", "Community"],
+  ["event", "Event"],
+  ["other", "Other"]
+];
+
+const categories = [
+  ["renovation", "Renovation"],
+  ["education", "Education"],
+  ["health", "Health"],
+  ["event", "Event"],
+  ["asset_maintenance", "Asset Maintenance"],
+  ["community", "Community"],
+  ["other", "Other"]
+];
+
+const expenseCategories = [
+  ["material", "Material"],
+  ["labor", "Labor"],
+  ["travel", "Travel"],
+  ["professional_fee", "Professional Fee"],
+  ["maintenance", "Maintenance"],
+  ["document", "Document"],
+  ["other", "Other"]
+];
+
 function formatMoney(amountRupees = 0) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
@@ -16,45 +58,112 @@ function formatLabel(value = "") {
   return value.replaceAll("_", " ");
 }
 
+function toInputDate(value) {
+  if (!value) return "";
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(new Error("Could not read selected file."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ProjectsPage() {
+  const [session, setSession] = useState(null);
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
-  const [title, setTitle] = useState("Ancestral House Renovation");
-  const [slug, setSlug] = useState("ancestral-house-renovation");
-  const [description, setDescription] = useState("Repair and modernize the Kul ancestral house.");
-  const [category, setCategory] = useState("renovation");
-  const [targetBudgetRupees, setTargetBudgetRupees] = useState("800000");
-  const [projectLeadMemberId, setProjectLeadMemberId] = useState("");
-  const [session, setSession] = useState(null);
-  const [message, setMessage] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedDetails, setSelectedDetails] = useState(null);
   const [expenses, setExpenses] = useState([]);
-  const [expenseAmountRupees, setExpenseAmountRupees] = useState("25000");
-  const [expenseCategory, setExpenseCategory] = useState("material");
-  const [expenseVendorName, setExpenseVendorName] = useState("Local vendor");
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [expenseDescription, setExpenseDescription] = useState("Sankalp implementation expense");
+  const [message, setMessage] = useState("");
+
+  const [draft, setDraft] = useState({
+    title: "Alahdadpur House Repair Sankalp",
+    slug: "alahdadpur-house-repair",
+    description: "Repair scope, estimate, funding, implementation and bills for the ancestral house.",
+    rules: "Only approved repair material, labour, travel for inspection, and documented vendor payments are covered.",
+    category: "renovation",
+    projectType: "implementation",
+    budgetRequired: true,
+    tentativeBudgetRupees: "800000",
+    estimatedBudgetRupees: "",
+    projectLeadMemberId: "",
+    auditorMemberId: "",
+    implementationLeadMemberId: "",
+    startDate: "",
+    targetCompletionDate: ""
+  });
+
+  const [projectPatch, setProjectPatch] = useState({
+    lifecycleStage: "estimate_pending",
+    estimatedBudgetRupees: "",
+    completionPercent: "0"
+  });
+
+  const [milestoneForm, setMilestoneForm] = useState({
+    title: "Estimate received",
+    description: "Upload and verify vendor estimate before fundraising starts.",
+    dueDate: "",
+    budgetRupees: ""
+  });
+
+  const [updateForm, setUpdateForm] = useState({
+    title: "Progress update",
+    updateType: "progress",
+    progressPercent: "",
+    milestoneId: "",
+    body: "Work update, decision, blocker, or completed milestone details."
+  });
+
+  const [expenseForm, setExpenseForm] = useState({
+    amountRupees: "25000",
+    category: "material",
+    vendorName: "Local vendor",
+    expenseDate: new Date().toISOString().slice(0, 10),
+    description: "Sankalp implementation expense"
+  });
   const [billFile, setBillFile] = useState(null);
   const [billInputKey, setBillInputKey] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("Needs more detail before approval");
+
   const canCreateProjects = hasPermission(session, "projects.create");
-  const canManageProjects = hasPermission(session, "projects.manage");
-  const canLoadMembers = canCreateProjects || canManageProjects;
+  const canManageProjects = hasPermission(session, "projects.manage") || hasPermission(session, "projects.manage_assigned");
   const canViewExpenses = hasPermission(session, "expenses.view");
   const canSubmitExpenses = hasPermission(session, "expenses.submit");
   const canApproveExpenses = hasPermission(session, "expenses.approve");
-  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) || selectedDetails?.project;
   const canSubmitForSelectedProject =
-    canSubmitExpenses && selectedProject && selectedProject.isFullyFunded && selectedProject.availableToSpendPaise > 0;
+    canSubmitExpenses && selectedProject && (!selectedProject.budgetRequired || selectedProject.isFullyFunded) && selectedProject.availableToSpendPaise > 0;
 
   useEffect(() => {
     loadCurrentSession()
       .then(setSession)
       .catch((error) => setMessage(error.message));
+    loadProjects();
   }, []);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
+  }
+
+  function updateDraft(field, value) {
+    setDraft((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === "title" ? { slug: slugify(value) } : {})
+    }));
   }
 
   async function loadProjects() {
@@ -67,7 +176,7 @@ export function ProjectsPage() {
     try {
       const response = await apiGet(`/projects/family/${familyId}`);
       setProjects(response.data);
-      setMessage(response.data.length ? "Loaded Sankalp." : "No Sankalp yet.");
+      setMessage(response.data.length ? "Sankalp loaded." : "No Sankalp yet.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -75,15 +184,12 @@ export function ProjectsPage() {
 
   async function loadMembers() {
     const familyId = getFamilyId();
-    if (!familyId) {
-      setMessage("Create or select a Kul first.");
-      return;
-    }
+    if (!familyId) return;
 
     try {
       const response = await apiGet(`/members/family/${familyId}`);
       setMembers(response.data);
-      setMessage("Loaded members for Sankalp lead selection.");
+      setMessage("Sadasya loaded for Sankalp role selection.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -92,23 +198,44 @@ export function ProjectsPage() {
   async function createProject(event) {
     event.preventDefault();
     const familyId = getFamilyId();
-    if (!familyId) {
-      setMessage("Create or select a Kul first.");
-      return;
-    }
+    if (!familyId) return;
 
     try {
       await apiPost(`/projects/family/${familyId}`, {
-        title,
-        slug,
-        description,
-        category,
-        status: "active",
-        targetBudgetRupees,
-        projectLeadMemberId: projectLeadMemberId || undefined
+        ...draft,
+        budgetRequired: Boolean(draft.budgetRequired),
+        projectLeadMemberId: draft.projectLeadMemberId || undefined,
+        auditorMemberId: draft.auditorMemberId || undefined,
+        implementationLeadMemberId: draft.implementationLeadMemberId || undefined,
+        estimatedBudgetRupees: draft.estimatedBudgetRupees || undefined,
+        lifecycleStage: draft.projectType === "research" || draft.projectType === "business_study" ? "research" : "estimate_pending",
+        status: "proposed"
       });
-      setMessage("Sankalp created.");
+      setMessage("Sankalp created. Members can now see its purpose, rules, team and stage.");
       await loadProjects();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function loadProjectDetails(projectId) {
+    const familyId = getFamilyId();
+    if (!familyId || !projectId) return;
+
+    try {
+      const [detailsResponse, expensesResponse] = await Promise.all([
+        apiGet(`/projects/family/${familyId}/${projectId}`),
+        canViewExpenses ? apiGet(`/expenses/family/${familyId}/project/${projectId}`) : Promise.resolve({ data: [] })
+      ]);
+      setSelectedProjectId(projectId);
+      setSelectedDetails(detailsResponse.data);
+      setExpenses(expensesResponse.data);
+      setProjectPatch({
+        lifecycleStage: detailsResponse.data.project.lifecycleStage || "estimate_pending",
+        estimatedBudgetRupees: detailsResponse.data.project.estimatedBudgetRupees || "",
+        completionPercent: detailsResponse.data.project.completionPercent || "0"
+      });
+      setMessage("Sankalp workspace loaded.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -116,62 +243,61 @@ export function ProjectsPage() {
 
   async function updateProject(projectId, patch) {
     const familyId = getFamilyId();
-    if (!familyId) {
-      setMessage("Create or select a Kul first.");
-      return;
-    }
+    if (!familyId) return;
 
     try {
       await apiPatch(`/projects/family/${familyId}/${projectId}`, patch);
       setMessage("Sankalp updated.");
       await loadProjects();
+      await loadProjectDetails(projectId);
     } catch (error) {
       setMessage(error.message);
     }
   }
 
-  async function loadExpenses(projectId = selectedProjectId) {
-    const familyId = getFamilyId();
-    if (!familyId || !projectId) {
-      setMessage("Select a Sankalp first.");
-      return;
-    }
-
-    try {
-      const response = await apiGet(`/expenses/family/${familyId}/project/${projectId}`);
-      setSelectedProjectId(projectId);
-      setExpenses(response.data);
-      setMessage(response.data.length ? "Loaded expenses." : "No expenses recorded for this Sankalp.");
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }
-
-  async function submitExpense(event) {
+  async function createMilestone(event) {
     event.preventDefault();
     const familyId = getFamilyId();
-    if (!familyId || !selectedProjectId) {
-      setMessage("Select a Sankalp first.");
-      return;
-    }
+    if (!familyId || !selectedProjectId) return;
 
     try {
-      const response = await apiPost(`/expenses/family/${familyId}/project/${selectedProjectId}`, {
-        amountRupees: expenseAmountRupees,
-        category: expenseCategory,
-        vendorName: expenseVendorName,
-        expenseDate,
-        description: expenseDescription
+      await apiPost(`/projects/family/${familyId}/${selectedProjectId}/milestones`, {
+        ...milestoneForm,
+        budgetRupees: milestoneForm.budgetRupees || undefined
       });
+      setMessage("Milestone added.");
+      await loadProjectDetails(selectedProjectId);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
 
-      if (billFile) {
-        await uploadExpenseBill({ familyId, expenseId: response.data.id, file: billFile });
-        setBillFile(null);
-        setBillInputKey((current) => current + 1);
-      }
+  async function updateMilestone(milestoneId, patch) {
+    const familyId = getFamilyId();
+    if (!familyId || !selectedProjectId) return;
 
-      await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
-      setMessage(billFile ? "Expense submitted with bill for approval." : "Expense submitted for approval.");
+    try {
+      await apiPatch(`/projects/family/${familyId}/${selectedProjectId}/milestones/${milestoneId}`, patch);
+      setMessage("Milestone updated.");
+      await loadProjectDetails(selectedProjectId);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function createProgressUpdate(event) {
+    event.preventDefault();
+    const familyId = getFamilyId();
+    if (!familyId || !selectedProjectId) return;
+
+    try {
+      await apiPost(`/projects/family/${familyId}/${selectedProjectId}/updates`, {
+        ...updateForm,
+        milestoneId: updateForm.milestoneId || undefined,
+        progressPercent: updateForm.progressPercent === "" ? undefined : Number(updateForm.progressPercent)
+      });
+      setMessage("Progress report added.");
+      await Promise.all([loadProjects(), loadProjectDetails(selectedProjectId)]);
     } catch (error) {
       setMessage(error.message);
     }
@@ -206,13 +332,51 @@ export function ProjectsPage() {
     return payload;
   }
 
-  function readFileAsBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).split(",")[1]);
-      reader.onerror = () => reject(new Error("Could not read bill file."));
-      reader.readAsDataURL(file);
-    });
+  async function submitExpense(event) {
+    event.preventDefault();
+    const familyId = getFamilyId();
+    if (!familyId || !selectedProjectId) return;
+
+    try {
+      const response = await apiPost(`/expenses/family/${familyId}/project/${selectedProjectId}`, expenseForm);
+
+      if (billFile) {
+        await uploadExpenseBill({ familyId, expenseId: response.data.id, file: billFile });
+        setBillFile(null);
+        setBillInputKey((current) => current + 1);
+      }
+
+      setMessage(billFile ? "Expense submitted with bill for approval." : "Expense submitted for approval.");
+      await Promise.all([loadProjects(), loadProjectDetails(selectedProjectId)]);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function approveExpense(expenseId) {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    try {
+      await apiPost(`/expenses/family/${familyId}/${expenseId}/approve`, {});
+      setMessage("Expense approved and posted.");
+      await Promise.all([loadProjects(), loadProjectDetails(selectedProjectId)]);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function rejectExpense(expenseId) {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    try {
+      await apiPost(`/expenses/family/${familyId}/${expenseId}/reject`, { rejectionReason });
+      setMessage("Expense rejected.");
+      await loadProjectDetails(selectedProjectId);
+    } catch (error) {
+      setMessage(error.message);
+    }
   }
 
   async function downloadDocument(document) {
@@ -227,15 +391,13 @@ export function ProjectsPage() {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Document download failed: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Document download failed: ${response.status}`);
 
       const blob = await response.blob();
       const downloadUrl = URL.createObjectURL(blob);
       const link = window.document.createElement("a");
       link.href = downloadUrl;
-      link.download = document.originalName || "expense-bill";
+      link.download = document.originalName || "sankalp-document";
       link.click();
       URL.revokeObjectURL(downloadUrl);
     } catch (error) {
@@ -243,319 +405,517 @@ export function ProjectsPage() {
     }
   }
 
-  async function approveExpense(expenseId) {
-    const familyId = getFamilyId();
-    if (!familyId) return;
-
-    try {
-      await apiPost(`/expenses/family/${familyId}/${expenseId}/approve`, {});
-      setMessage("Expense approved and posted to Sankalp spending.");
-      await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }
-
-  async function rejectExpense(expenseId) {
-    const familyId = getFamilyId();
-    if (!familyId) return;
-
-    try {
-      await apiPost(`/expenses/family/${familyId}/${expenseId}/reject`, {
-        rejectionReason
-      });
-      setMessage("Expense rejected.");
-      await Promise.all([loadExpenses(selectedProjectId), loadProjects()]);
-    } catch (error) {
-      setMessage(error.message);
-    }
+  function renderMemberOption(member) {
+    return `${member.displayName} (${formatLabel(member.role)})`;
   }
 
   return (
     <section>
       <PageHeader
         eyebrow="Sankalp"
-        title="Sankalp"
-        description="Every Sankalp records purpose, funds, progress, expenses, documents, photos, and decisions."
+        title="Sankalp Prabandhan"
+        description="Create, estimate, fund, implement, audit, and close every Kul Sankalp with visible rules and progress."
       />
+
       <section className="content-band">
-        <h2>{canCreateProjects ? "Create Sankalp" : "Sadasya Sankalp View"}</h2>
-        {canCreateProjects ? (
-          <form className="form-grid" onSubmit={createProject}>
-            <label>
-              Title
-              <input value={title} onChange={(event) => setTitle(event.target.value)} />
-            </label>
-            <label>
-              Slug
-              <input value={slug} onChange={(event) => setSlug(event.target.value)} />
-            </label>
-            <label>
-              Category
-              <select value={category} onChange={(event) => setCategory(event.target.value)}>
-                <option value="renovation">Renovation</option>
-                <option value="education">Education</option>
-                <option value="health">Health</option>
-                <option value="event">Event</option>
-                <option value="asset_maintenance">Asset Maintenance</option>
-                <option value="community">Community</option>
-                <option value="other">Other</option>
-              </select>
-            </label>
-            <label>
-              Target Budget
-              <input value={targetBudgetRupees} onChange={(event) => setTargetBudgetRupees(event.target.value)} type="number" min="0" />
-            </label>
-            <label>
-              Sankalp Lead
-              <select value={projectLeadMemberId} onChange={(event) => setProjectLeadMemberId(event.target.value)}>
-                <option value="">Select lead</option>
-                {members.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.displayName} ({formatLabel(member.role)})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Description
-              <input value={description} onChange={(event) => setDescription(event.target.value)} />
-            </label>
-            <button type="submit">Create Sankalp</button>
-          </form>
-        ) : (
-          <>
-            <p>
-              A general Sadasya can follow every Sankalp, see the target, allocated amount, spent amount, funding gap, and current
-              progress. Owners/admins create Sankalp and assign leads. Members contribute from Kosh and allocate their own wallet balance
-              to the Sankalp they want to support.
-            </p>
-            <div className="button-row">
-              <Link className="secondary-button" to="/treasury">
-                Add or Allocate Kosh
-              </Link>
-              <button type="button" className="secondary-button" onClick={loadProjects}>
-                Load Sankalp
-              </button>
+        <h2>Sankalp Lifecycle</h2>
+        <div className="lifecycle-strip">
+          {lifecycleStages.slice(0, 8).map(([stage, label], index) => (
+            <div key={stage}>
+              <strong>{index + 1}</strong>
+              <span>{label}</span>
             </div>
-          </>
-        )}
-        {canCreateProjects ? (
+          ))}
+        </div>
+        <p className="section-note">
+          Every member can see the Sankalp from the first day. Fundraising and expenses open only when the rules, estimate, and budget path
+          are clear.
+        </p>
+      </section>
+
+      <section className="content-band spaced-band">
+        <div className="section-heading-row">
+          <div>
+            <h2>{canCreateProjects ? "Create Sankalp" : "Sadasya View"}</h2>
+            <p>{canCreateProjects ? "Define purpose, rules, roles, tentative budget, and timeline." : "Follow each Sankalp, progress, rules, Kosh, and expenses."}</p>
+          </div>
           <div className="button-row">
             <button type="button" className="secondary-button" onClick={loadProjects}>
-              Load Sankalp
+              Refresh
             </button>
-            {canLoadMembers ? (
+            {canCreateProjects ? (
               <button type="button" className="secondary-button" onClick={loadMembers}>
                 Load Sadasya
               </button>
             ) : null}
           </div>
-        ) : null}
+        </div>
+
+        {canCreateProjects ? (
+          <form className="form-grid sankalp-create-form" onSubmit={createProject}>
+            <label>
+              Sankalp name
+              <input value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
+            </label>
+            <label>
+              Slug
+              <input value={draft.slug} onChange={(event) => updateDraft("slug", event.target.value)} />
+            </label>
+            <label>
+              Category
+              <select value={draft.category} onChange={(event) => updateDraft("category", event.target.value)}>
+                {categories.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Sankalp type
+              <select value={draft.projectType} onChange={(event) => updateDraft("projectType", event.target.value)}>
+                {projectTypes.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Tentative budget
+              <input type="number" min="0" value={draft.tentativeBudgetRupees} onChange={(event) => updateDraft("tentativeBudgetRupees", event.target.value)} />
+            </label>
+            <label>
+              Budget required?
+              <select value={draft.budgetRequired ? "yes" : "no"} onChange={(event) => updateDraft("budgetRequired", event.target.value === "yes")}>
+                <option value="yes">Yes</option>
+                <option value="no">No / research only</option>
+              </select>
+            </label>
+            <label>
+              Tentative start
+              <input type="date" value={draft.startDate} onChange={(event) => updateDraft("startDate", event.target.value)} />
+            </label>
+            <label>
+              Tentative finish
+              <input type="date" value={draft.targetCompletionDate} onChange={(event) => updateDraft("targetCompletionDate", event.target.value)} />
+            </label>
+            <label>
+              Project manager
+              <select value={draft.projectLeadMemberId} onChange={(event) => updateDraft("projectLeadMemberId", event.target.value)}>
+                <option value="">Select manager</option>
+                {members.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {renderMemberOption(member)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Progress auditor
+              <select value={draft.auditorMemberId} onChange={(event) => updateDraft("auditorMemberId", event.target.value)}>
+                <option value="">Select auditor</option>
+                {members.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {renderMemberOption(member)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Implementation lead
+              <select value={draft.implementationLeadMemberId} onChange={(event) => updateDraft("implementationLeadMemberId", event.target.value)}>
+                <option value="">Select implementation lead</option>
+                {members.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {renderMemberOption(member)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="wide-field">
+              Description
+              <textarea rows="3" value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} />
+            </label>
+            <label className="wide-field">
+              Sankalp rules
+              <textarea rows="4" value={draft.rules} onChange={(event) => updateDraft("rules", event.target.value)} />
+            </label>
+            <button type="submit">Create Sankalp</button>
+          </form>
+        ) : (
+          <div className="sadasya-sankalp-note">
+            <p>
+              You can see all Sankalp, rules, team, funding status, milestones, progress reports, and submitted bills. To support a
+              Sankalp, add money in Kosh and allocate your wallet balance.
+            </p>
+            <Link className="secondary-button" to="/treasury">
+              Open Kosh
+            </Link>
+          </div>
+        )}
         {message ? <p className="form-message">{message}</p> : null}
       </section>
 
       <section className="content-band spaced-band">
-        <h2>Sankalp</h2>
+        <h2>All Sankalp</h2>
         {projects.length ? (
-          <div className="project-list">
+          <div className="sankalp-board">
             {projects.map((project) => (
-              <article className="project-card" key={project.id}>
+              <article className="project-card sankalp-card" key={project.id}>
                 <div className="project-card-header">
                   <div>
                     <h3>{project.title}</h3>
                     <p>{project.description || "No description added."}</p>
                   </div>
-                  <span>{formatLabel(project.status)}</span>
+                  <span>{formatLabel(project.lifecycleStage || project.status)}</span>
                 </div>
                 <div className="project-summary">
-                  <span>Target {formatMoney(project.targetBudgetRupees)}</span>
+                  <span>Type {formatLabel(project.projectType || "implementation")}</span>
+                  <span>Tentative {formatMoney(project.tentativeBudgetRupees)}</span>
+                  <span>Estimate {formatMoney(project.estimatedBudgetRupees || project.targetBudgetRupees)}</span>
                   <span>Allocated {formatMoney(project.allocatedRupees)}</span>
-                  <span>Funding {project.fundingPercent || 0}%</span>
                   <span>Spent {formatMoney(project.spentRupees)}</span>
-                  <span>Budget Gap {formatMoney(project.targetRemainingRupees)}</span>
-                  <span>Available {formatMoney(project.availableToSpendRupees)}</span>
-                  <span>{formatLabel(project.implementationStatus)}</span>
-                  <span>Completion {project.completionPercent}%</span>
+                  <span>Progress {project.completionPercent || 0}%</span>
                 </div>
                 <div className="progress-track">
-                  <div style={{ width: `${project.fundingPercent || 0}%` }} />
+                  <div style={{ width: `${project.budgetRequired ? project.fundingPercent || 0 : project.completionPercent || 0}%` }} />
                 </div>
-                {canManageProjects ? (
-                  <div className="row-actions">
-                    <select value={project.status} onChange={(event) => updateProject(project.id, { status: event.target.value })}>
-                      <option value="draft">Draft</option>
-                      <option value="proposed">Proposed</option>
-                      <option value="active">Active</option>
-                      <option value="implementation">Implementation</option>
-                      <option value="paused">Paused</option>
-                      <option value="completed">Completed</option>
-                      <option value="archived">Archived</option>
-                    </select>
+                <div className="sankalp-team-row">
+                  <span>PM: {project.projectLeadMember?.displayName || "Pending"}</span>
+                  <span>Audit: {project.auditorMember?.displayName || "Pending"}</span>
+                  <span>Karya: {project.implementationLeadMember?.displayName || "Pending"}</span>
+                </div>
+                <div className="button-row">
+                  <button type="button" className="secondary-button" onClick={() => loadProjectDetails(project.id)}>
+                    Open Workspace
+                  </button>
+                  {canManageProjects ? (
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => updateProject(project.id, { completionPercent: Math.min(project.completionPercent + 10, 100) })}
+                      onClick={() => updateProject(project.id, { lifecycleStage: "implementation" })}
                     >
-                      +10%
+                      Start Karya
                     </button>
-                  </div>
-                ) : null}
-                {canViewExpenses ? (
-                  <div className="button-row">
-                    <button type="button" className="secondary-button" onClick={() => loadExpenses(project.id)}>
-                      Load Expenses
-                    </button>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </article>
             ))}
           </div>
         ) : (
-          <p>Load Sankalp or create your first Kul Sankalp.</p>
+          <p>Load Sankalp or create the first Kul Sankalp.</p>
         )}
       </section>
 
-      {canViewExpenses ? (
-        <section className="content-band spaced-band">
-          <h2>Sankalp Expenses</h2>
-          {selectedProject ? (
-            <p>
-              Reviewing expenses for <strong>{selectedProject.title}</strong>.
-            </p>
-          ) : (
-            <p>Select a Sankalp to load its expenses.</p>
-          )}
+      {selectedDetails ? (
+        <section className="content-band spaced-band sankalp-workspace">
+          <div className="section-heading-row">
+            <div>
+              <h2>{selectedDetails.project.title}</h2>
+              <p>{selectedDetails.project.rules || "Rules are pending. Add scope clearly before estimate and fundraising."}</p>
+            </div>
+            <span className="status-pill">{formatLabel(selectedDetails.project.lifecycleStage)}</span>
+          </div>
 
-          {selectedProject ? (
-            <div className="mission-financials">
-              <div>
-                <span>Target</span>
-                <strong>{formatMoney(selectedProject.targetBudgetRupees)}</strong>
-              </div>
-              <div>
-                <span>Allocated</span>
-                <strong>{formatMoney(selectedProject.allocatedRupees)}</strong>
-              </div>
-              <div>
-                <span>Spent</span>
-                <strong>{formatMoney(selectedProject.spentRupees)}</strong>
-              </div>
-              <div>
-                <span>Available</span>
-                <strong>{formatMoney(selectedProject.availableToSpendRupees)}</strong>
-              </div>
-              <div>
-                <span>Budget Gap</span>
-                <strong>{formatMoney(selectedProject.targetRemainingRupees)}</strong>
+          <div className="mission-financials">
+            <div>
+              <span>Tentative</span>
+              <strong>{formatMoney(selectedDetails.project.tentativeBudgetRupees)}</strong>
+            </div>
+            <div>
+              <span>Estimate</span>
+              <strong>{formatMoney(selectedDetails.project.estimatedBudgetRupees || selectedDetails.project.targetBudgetRupees)}</strong>
+            </div>
+            <div>
+              <span>Allocated</span>
+              <strong>{formatMoney(selectedDetails.project.allocatedRupees)}</strong>
+            </div>
+            <div>
+              <span>Spent</span>
+              <strong>{formatMoney(selectedDetails.project.spentRupees)}</strong>
+            </div>
+            <div>
+              <span>Available</span>
+              <strong>{formatMoney(selectedDetails.project.availableToSpendRupees)}</strong>
+            </div>
+          </div>
+
+          <div className="sankalp-detail-grid">
+            <div>
+              <h3>Team</h3>
+              <div className="list-stack">
+                {(selectedDetails.projectMembers || []).map((projectMember) => (
+                  <div className="compact-row" key={projectMember._id}>
+                    <strong>{projectMember.memberId?.displayName || "Member"}</strong>
+                    <span>{formatLabel(projectMember.role)}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          ) : null}
+            <div>
+              <h3>Timeline</h3>
+              <div className="list-stack">
+                <div className="compact-row">
+                  <strong>Start</strong>
+                  <span>{toInputDate(selectedDetails.project.startDate) || "Tentative date pending"}</span>
+                </div>
+                <div className="compact-row">
+                  <strong>Finish</strong>
+                  <span>{toInputDate(selectedDetails.project.targetCompletionDate) || "Tentative date pending"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          {selectedProject && !selectedProject.isFullyFunded ? (
-            <p className="section-note">
-              This Sankalp is still collecting contributions. Expenses can be submitted after the target budget is fully allocated.
-            </p>
-          ) : null}
-
-          {canSubmitForSelectedProject ? (
-            <form className="form-grid" onSubmit={submitExpense}>
+          {canManageProjects ? (
+            <form
+              className="form-grid"
+              onSubmit={(event) => {
+                event.preventDefault();
+                updateProject(selectedProjectId, {
+                  lifecycleStage: projectPatch.lifecycleStage,
+                  estimatedBudgetRupees: projectPatch.estimatedBudgetRupees || undefined,
+                  completionPercent: projectPatch.completionPercent === "" ? undefined : Number(projectPatch.completionPercent)
+                });
+              }}
+            >
               <label>
-                Amount
-                <input
-                  value={expenseAmountRupees}
-                  onChange={(event) => setExpenseAmountRupees(event.target.value)}
-                  type="number"
-                  min="1"
-                />
-              </label>
-              <label>
-                Category
-                <select value={expenseCategory} onChange={(event) => setExpenseCategory(event.target.value)}>
-                  <option value="material">Material</option>
-                  <option value="labor">Labor</option>
-                  <option value="travel">Travel</option>
-                  <option value="professional_fee">Professional Fee</option>
-                  <option value="maintenance">Maintenance</option>
-                  <option value="document">Document</option>
-                  <option value="other">Other</option>
+                Stage
+                <select value={projectPatch.lifecycleStage} onChange={(event) => setProjectPatch((current) => ({ ...current, lifecycleStage: event.target.value }))}>
+                  {lifecycleStages.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
-                Vendor
-                <input value={expenseVendorName} onChange={(event) => setExpenseVendorName(event.target.value)} />
-              </label>
-              <label>
-                Date
-                <input value={expenseDate} onChange={(event) => setExpenseDate(event.target.value)} type="date" />
-              </label>
-              <label>
-                Description
-                <input value={expenseDescription} onChange={(event) => setExpenseDescription(event.target.value)} />
-              </label>
-              <label>
-                Bill or Photo
+                Estimated budget
                 <input
-                  key={billInputKey}
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                  onChange={(event) => setBillFile(event.target.files?.[0] || null)}
-                  type="file"
+                  type="number"
+                  min="0"
+                  value={projectPatch.estimatedBudgetRupees}
+                  onChange={(event) => setProjectPatch((current) => ({ ...current, estimatedBudgetRupees: event.target.value }))}
                 />
               </label>
-              <button type="submit">Submit Expense</button>
+              <label>
+                Completion %
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={projectPatch.completionPercent}
+                  onChange={(event) => setProjectPatch((current) => ({ ...current, completionPercent: event.target.value }))}
+                />
+              </label>
+              <button type="submit">Update Sankalp</button>
             </form>
           ) : null}
 
-          {selectedProject && canSubmitForSelectedProject ? (
-            <p className="section-note">Submitted expenses appear in Sankalp spent totals and wait for owner/admin approval.</p>
-          ) : null}
-
-          {canApproveExpenses && selectedProject ? (
-            <label className="reject-reason">
-              Rejection reason
-              <input value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} />
-            </label>
-          ) : null}
-
-          {expenses.length ? (
-            <div className="list-stack">
-              {expenses.map((expense) => (
-                <div className="ledger-row" key={expense.id}>
+          <h3>Milestones</h3>
+          <div className="list-stack">
+            {selectedDetails.milestones?.length ? (
+              selectedDetails.milestones.map((milestone) => (
+                <div className="ledger-row" key={milestone._id}>
                   <div>
-                    <strong>{formatMoney(expense.amountRupees)}</strong>
-                    <span>
-                      {formatLabel(expense.category)} - {expense.vendorName || "No vendor"} - {formatLabel(expense.status)}
-                    </span>
-                    <small>{expense.description || "No description added."}</small>
-                    {expense.billDocuments?.length ? (
-                      <div className="document-list">
-                        {expense.billDocuments.map((document) => (
-                          <button key={document.id || document._id} type="button" onClick={() => downloadDocument(document)}>
-                            {document.originalName}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <small>No bill attached.</small>
-                    )}
+                    <strong>{milestone.title}</strong>
+                    <span>{milestone.description || "No description added."}</span>
+                    <small>
+                      {formatLabel(milestone.status)} {milestone.dueDate ? `- due ${toInputDate(milestone.dueDate)}` : ""}
+                    </small>
                   </div>
-                  <div className="ledger-member">
-                    <strong>{expense.submittedBy?.displayName || "Member"}</strong>
-                    <span>{new Date(expense.expenseDate).toLocaleDateString("en-IN")}</span>
-                  </div>
-                  {canApproveExpenses && expense.status === "submitted" ? (
+                  {canManageProjects ? (
                     <div className="row-actions">
-                      <button type="button" className="secondary-button" onClick={() => approveExpense(expense.id)}>
-                        Approve
+                      <button type="button" className="secondary-button" onClick={() => updateMilestone(milestone._id, { status: "in_progress" })}>
+                        Start
                       </button>
-                      <button type="button" className="secondary-button" onClick={() => rejectExpense(expense.id)}>
-                        Reject
+                      <button type="button" className="secondary-button" onClick={() => updateMilestone(milestone._id, { status: "completed" })}>
+                        Complete
                       </button>
                     </div>
                   ) : null}
                 </div>
-              ))}
-            </div>
+              ))
+            ) : (
+              <p>No milestones yet.</p>
+            )}
+          </div>
+
+          {canManageProjects ? (
+            <form className="form-grid" onSubmit={createMilestone}>
+              <label>
+                Milestone title
+                <input value={milestoneForm.title} onChange={(event) => setMilestoneForm((current) => ({ ...current, title: event.target.value }))} />
+              </label>
+              <label>
+                Due date
+                <input type="date" value={milestoneForm.dueDate} onChange={(event) => setMilestoneForm((current) => ({ ...current, dueDate: event.target.value }))} />
+              </label>
+              <label>
+                Milestone budget
+                <input type="number" min="0" value={milestoneForm.budgetRupees} onChange={(event) => setMilestoneForm((current) => ({ ...current, budgetRupees: event.target.value }))} />
+              </label>
+              <label className="wide-field">
+                Description
+                <textarea rows="2" value={milestoneForm.description} onChange={(event) => setMilestoneForm((current) => ({ ...current, description: event.target.value }))} />
+              </label>
+              <button type="submit">Add Milestone</button>
+            </form>
+          ) : null}
+
+          <h3>Progress Reports</h3>
+          <div className="list-stack">
+            {selectedDetails.updates?.length ? (
+              selectedDetails.updates.map((update) => (
+                <div className="ledger-row" key={update._id}>
+                  <div>
+                    <strong>{update.title || formatLabel(update.updateType)}</strong>
+                    <span>{update.body}</span>
+                    <small>
+                      {formatLabel(update.updateType)} {update.progressPercent !== undefined ? `- ${update.progressPercent}%` : ""}
+                    </small>
+                  </div>
+                  <div className="ledger-member">
+                    <strong>{update.createdByMember?.displayName || "Sadasya"}</strong>
+                    <span>{new Date(update.createdAt).toLocaleDateString("en-IN")}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p>No progress report yet.</p>
+            )}
+          </div>
+
+          {canManageProjects ? (
+            <form className="form-grid" onSubmit={createProgressUpdate}>
+              <label>
+                Update type
+                <select value={updateForm.updateType} onChange={(event) => setUpdateForm((current) => ({ ...current, updateType: event.target.value }))}>
+                  {["note", "research", "estimate", "progress", "risk", "decision", "completion"].map((value) => (
+                    <option key={value} value={value}>
+                      {formatLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Linked milestone
+                <select value={updateForm.milestoneId} onChange={(event) => setUpdateForm((current) => ({ ...current, milestoneId: event.target.value }))}>
+                  <option value="">No milestone</option>
+                  {(selectedDetails.milestones || []).map((milestone) => (
+                    <option key={milestone._id} value={milestone._id}>
+                      {milestone.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Progress %
+                <input type="number" min="0" max="100" value={updateForm.progressPercent} onChange={(event) => setUpdateForm((current) => ({ ...current, progressPercent: event.target.value }))} />
+              </label>
+              <label>
+                Title
+                <input value={updateForm.title} onChange={(event) => setUpdateForm((current) => ({ ...current, title: event.target.value }))} />
+              </label>
+              <label className="wide-field">
+                Report
+                <textarea rows="4" value={updateForm.body} onChange={(event) => setUpdateForm((current) => ({ ...current, body: event.target.value }))} />
+              </label>
+              <button type="submit">Add Progress Report</button>
+            </form>
+          ) : null}
+
+          {canViewExpenses ? (
+            <>
+              <h3>Expenses</h3>
+              {selectedProject && !canSubmitForSelectedProject ? (
+                <p className="section-note">
+                  Expenses open after the Sankalp is fully funded. Research Sankalp may be marked as no-budget by admins if only ideas are being collected.
+                </p>
+              ) : null}
+              {canSubmitForSelectedProject ? (
+                <form className="form-grid" onSubmit={submitExpense}>
+                  <label>
+                    Amount
+                    <input type="number" min="1" value={expenseForm.amountRupees} onChange={(event) => setExpenseForm((current) => ({ ...current, amountRupees: event.target.value }))} />
+                  </label>
+                  <label>
+                    Category
+                    <select value={expenseForm.category} onChange={(event) => setExpenseForm((current) => ({ ...current, category: event.target.value }))}>
+                      {expenseCategories.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Vendor
+                    <input value={expenseForm.vendorName} onChange={(event) => setExpenseForm((current) => ({ ...current, vendorName: event.target.value }))} />
+                  </label>
+                  <label>
+                    Date
+                    <input type="date" value={expenseForm.expenseDate} onChange={(event) => setExpenseForm((current) => ({ ...current, expenseDate: event.target.value }))} />
+                  </label>
+                  <label>
+                    Bill or photo
+                    <input key={billInputKey} accept="application/pdf,image/jpeg,image/png,image/webp" type="file" onChange={(event) => setBillFile(event.target.files?.[0] || null)} />
+                  </label>
+                  <label className="wide-field">
+                    Description
+                    <input value={expenseForm.description} onChange={(event) => setExpenseForm((current) => ({ ...current, description: event.target.value }))} />
+                  </label>
+                  <button type="submit">Submit Expense</button>
+                </form>
+              ) : null}
+              {canApproveExpenses ? (
+                <label className="reject-reason">
+                  Rejection reason
+                  <input value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} />
+                </label>
+              ) : null}
+              <div className="list-stack">
+                {expenses.length ? (
+                  expenses.map((expense) => (
+                    <div className="ledger-row" key={expense.id}>
+                      <div>
+                        <strong>{formatMoney(expense.amountRupees)}</strong>
+                        <span>
+                          {formatLabel(expense.category)} - {expense.vendorName || "No vendor"} - {formatLabel(expense.status)}
+                        </span>
+                        <small>{expense.description || "No description added."}</small>
+                        {expense.billDocuments?.length ? (
+                          <div className="document-list">
+                            {expense.billDocuments.map((document) => (
+                              <button key={document.id || document._id} type="button" onClick={() => downloadDocument(document)}>
+                                {document.originalName}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="ledger-member">
+                        <strong>{expense.submittedBy?.displayName || "Sadasya"}</strong>
+                        <span>{new Date(expense.expenseDate).toLocaleDateString("en-IN")}</span>
+                      </div>
+                      {canApproveExpenses && expense.status === "submitted" ? (
+                        <div className="row-actions">
+                          <button type="button" className="secondary-button" onClick={() => approveExpense(expense.id)}>
+                            Approve
+                          </button>
+                          <button type="button" className="secondary-button" onClick={() => rejectExpense(expense.id)}>
+                            Reject
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <p>No expenses yet.</p>
+                )}
+              </div>
+            </>
           ) : null}
         </section>
       ) : null}

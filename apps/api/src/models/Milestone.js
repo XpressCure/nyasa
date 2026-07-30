@@ -8,7 +8,11 @@ const milestoneSchema = new mongoose.Schema(
     description: String,
     status: { type: String, enum: ["pending", "in_progress", "completed", "blocked"], default: "pending" },
     dueDate: Date,
+    budgetPaise: { type: Number, default: 0, min: 0 },
+    actualSpendPaise: { type: Number, default: 0, min: 0 },
+    completionNote: String,
     completedAt: Date,
+    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember" },
     sortOrder: { type: Number, default: 0 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
   },
