@@ -50,6 +50,7 @@ module.exports = (_env, argv) => {
   },
   plugins: [
     new HtmlWebpackPlugin({
+      favicon: path.resolve(__dirname, "src/assets/favicon.png"),
       template: path.resolve(__dirname, "index.html")
     }),
     new webpack.DefinePlugin({
