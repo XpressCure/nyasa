@@ -135,7 +135,7 @@ export function MembersPage() {
 
     try {
       await apiPatch(`/members/family/${familyId}/${memberId}/status`, { status });
-      setMessage(status === "removed" ? "Member removed." : "Member status updated.");
+      setMessage(status === "removed" ? "Duplicate entry hidden from Kul." : "Member status updated.");
       await loadMembers();
     } catch (error) {
       setMessage(error.message);
@@ -260,7 +260,7 @@ export function MembersPage() {
                   </select>
                   {member.status === "active" ? (
                     <button type="button" className="secondary-button" onClick={() => updateMemberStatus(member._id, "inactive")}>
-                      Deactivate
+                      Deactivate Login
                     </button>
                   ) : (
                     <button type="button" className="secondary-button" onClick={() => updateMemberStatus(member._id, "active")}>
@@ -268,7 +268,7 @@ export function MembersPage() {
                     </button>
                   )}
                   <button type="button" className="secondary-button" onClick={() => updateMemberStatus(member._id, "removed")}>
-                    Remove
+                    Mark Duplicate
                   </button>
                 </div>
               </div>

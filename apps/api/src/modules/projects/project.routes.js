@@ -269,8 +269,10 @@ async function getProjectFinancials(familyId, projectIds) {
     const projectId = String(row._id.projectId);
     const current = map.get(projectId) || { allocatedPaise: 0, spentPaise: 0 };
 
-    if (row._id.type === "allocation" && row._id.direction === "debit") {
+    if (["allocation", "refund", "reversal"].includes(row._id.type) && row._id.direction === "debit") {
       current.allocatedPaise += row.amountPaise;
+    } else if (["refund", "reversal"].includes(row._id.type) && row._id.direction === "credit") {
+      current.allocatedPaise -= row.amountPaise;
     }
 
     map.set(projectId, current);

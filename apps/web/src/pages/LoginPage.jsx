@@ -36,8 +36,8 @@ export function LoginPage() {
     <main className="login-page">
       <section className="login-panel">
         <span className="brand-mark">N</span>
-        <h1>Welcome to Nyasa</h1>
-        <p>Enter your name. If Nyasa finds one clear family profile, it will open it directly.</p>
+        <h1>न्यास में स्वागत है</h1>
+        <p>अपना नाम लिखिए। अगर न्यास को एक साफ परिवार प्रोफाइल मिलती है, तो वह सीधे खुल जाएगी।</p>
         <form className="form-stack" onSubmit={handleSubmit}>
           <label>
             Full name

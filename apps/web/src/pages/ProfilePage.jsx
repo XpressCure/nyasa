@@ -464,7 +464,7 @@ export function ProfilePage() {
       <PageHeader
         eyebrow="My Account"
         title="Parichay"
-        description="Fill what you know today. Nyasa will keep improving each Parichay as the Kul adds more details."
+        description="Fill what you know today. न्यास will keep improving each Parichay as the Kul adds more details."
       />
       <section className="content-band">
         <h2>My Parichay</h2>

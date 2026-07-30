@@ -166,7 +166,7 @@ export function DashboardPage() {
   return (
     <section>
       <PageHeader
-        eyebrow={dashboard?.family?.name || "Nyasa Trust - Alahdadpur"}
+        eyebrow={dashboard?.family?.name || "न्यास Trust - Alahdadpur"}
         title="Darshan"
         description="A live overview of the Alahdadpur Kul workspace, Kosh, Sankalp, decisions, and legacy."
       />
@@ -269,8 +269,8 @@ export function DashboardPage() {
       <section className="content-band rally-band">
         <div className="tree-register-header">
           <div>
-            <h2>Nyasa Rally</h2>
-            <p className="section-note">A weekly coordination game. Cars move when the Kul completes useful work inside Nyasa.</p>
+            <h2>न्यास Rally</h2>
+            <p className="section-note">A weekly coordination game. Cars move when the Kul completes useful work inside न्यास.</p>
           </div>
           <span>
             <Trophy size={16} />

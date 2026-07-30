@@ -27,6 +27,11 @@ const allocationSchema = z.object({
   description: z.string().max(280).optional()
 });
 
+const allocationReductionSchema = z.object({
+  amountRupees: z.coerce.number().positive(),
+  description: z.string().max(280).optional()
+});
+
 function parseDateFilter(query) {
   const today = new Date();
   const dateTo = query.dateTo ? new Date(query.dateTo) : today;
@@ -57,6 +62,10 @@ function serializeMoney(amountPaise = 0) {
   };
 }
 
+function netDebitCreditRows(rows = []) {
+  return rows.reduce((total, row) => (row._id === "debit" ? total + row.amountPaise : total - row.amountPaise), 0);
+}
+
 async function createContributionTransaction({ familyId, userId, memberId, amountPaise, description, source }) {
   const treasury = await getOrCreateMainTreasury({ familyId, userId });
   const wallet = await getOrCreateWallet({ familyId, memberId });
@@ -75,6 +84,74 @@ async function createContributionTransaction({ familyId, userId, memberId, amoun
     metadata: { source },
     createdBy: userId
   });
+}
+
+async function calculateNetProjectAllocationPaise({ familyId, projectId }) {
+  const normalizedFamilyId =
+    typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+  const normalizedProjectId =
+    typeof projectId === "string" && mongoose.Types.ObjectId.isValid(projectId) ? new mongoose.Types.ObjectId(projectId) : projectId;
+
+  const rows = await LedgerTransaction.aggregate([
+    {
+      $match: {
+        familyId: normalizedFamilyId,
+        projectId: normalizedProjectId,
+        status: "posted",
+        type: { $in: ["allocation", "refund", "reversal"] }
+      }
+    },
+    {
+      $group: {
+        _id: "$direction",
+        amountPaise: { $sum: "$amountPaise" }
+      }
+    }
+  ]);
+
+  return rows.reduce((total, row) => {
+    return row._id === "debit" ? total + row.amountPaise : total - row.amountPaise;
+  }, 0);
+}
+
+async function calculateProjectExpensePaise({ familyId, projectId }) {
+  const normalizedFamilyId =
+    typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+  const normalizedProjectId =
+    typeof projectId === "string" && mongoose.Types.ObjectId.isValid(projectId) ? new mongoose.Types.ObjectId(projectId) : projectId;
+
+  const rows = await Expense.aggregate([
+    {
+      $match: {
+        familyId: normalizedFamilyId,
+        projectId: normalizedProjectId,
+        status: { $in: ["submitted", "approved"] }
+      }
+    },
+    { $group: { _id: "$projectId", amountPaise: { $sum: "$amountPaise" } } }
+  ]);
+
+  return rows[0]?.amountPaise || 0;
+}
+
+async function calculateReductionAlreadyPostedPaise({ familyId, transactionId }) {
+  const normalizedFamilyId =
+    typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+
+  const rows = await LedgerTransaction.aggregate([
+    {
+      $match: {
+        familyId: normalizedFamilyId,
+        referenceTransactionId: new mongoose.Types.ObjectId(transactionId),
+        status: "posted",
+        type: { $in: ["refund", "reversal"] },
+        direction: "credit"
+      }
+    },
+    { $group: { _id: "$referenceTransactionId", amountPaise: { $sum: "$amountPaise" } } }
+  ]);
+
+  return rows[0]?.amountPaise || 0;
 }
 
 treasuryRoutes.use(requireAuth);
@@ -140,6 +217,8 @@ treasuryRoutes.get(
         amountRupees: paiseToRupees(transaction.amountPaise),
         description: transaction.description,
         status: transaction.status,
+        projectId: transaction.projectId,
+        referenceTransactionId: transaction.referenceTransactionId,
         member: transaction.memberId,
         createdAt: transaction.createdAt
       }))
@@ -172,13 +251,12 @@ treasuryRoutes.get(
         {
           $match: {
             familyId: familyObjectId,
-            type: "allocation",
-            direction: "debit",
+            type: { $in: ["allocation", "refund", "reversal"] },
             status: "posted",
             createdAt: dateMatch
           }
         },
-        { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
+        { $group: { _id: "$direction", amountPaise: { $sum: "$amountPaise" } } }
       ]),
       Expense.aggregate([
         {
@@ -194,8 +272,7 @@ treasuryRoutes.get(
         {
           $match: {
             familyId: familyObjectId,
-            type: "allocation",
-            direction: "debit",
+            type: { $in: ["allocation", "refund", "reversal"] },
             status: "posted",
             createdAt: dateMatch
           }
@@ -214,7 +291,7 @@ treasuryRoutes.get(
             $or: [{ "project.status": "implementation" }, { "project.lifecycleStage": "implementation" }]
           }
         },
-        { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
+        { $group: { _id: "$direction", amountPaise: { $sum: "$amountPaise" } } }
       ]),
       Project.aggregate([
         {
@@ -235,9 +312,9 @@ treasuryRoutes.get(
     ]);
 
     const totalCollectedPaise = contributionRows[0]?.amountPaise || 0;
-    const totalAllocatedPaise = allocationRows[0]?.amountPaise || 0;
+    const totalAllocatedPaise = Math.max(netDebitCreditRows(allocationRows), 0);
     const totalSpentPaise = spentRows[0]?.amountPaise || 0;
-    const implementationAllocatedPaise = implementationAllocationRows[0]?.amountPaise || 0;
+    const implementationAllocatedPaise = Math.max(netDebitCreditRows(implementationAllocationRows), 0);
 
     res.json({
       data: {
@@ -360,11 +437,19 @@ treasuryRoutes.post(
       throw httpError(404, "Mission not found or not open for allocation.", "PROJECT_NOT_ALLOCATABLE");
     }
 
+    const allocatedPaise = await calculateNetProjectAllocationPaise({ familyId: req.familyId, projectId: project._id });
+    const remainingNeedPaise = project.budgetRequired ? Math.max((project.targetBudgetPaise || 0) - allocatedPaise, 0) : amountPaise;
+    const effectiveAmountPaise = project.budgetRequired ? Math.min(amountPaise, remainingNeedPaise) : amountPaise;
+
+    if (effectiveAmountPaise <= 0) {
+      throw httpError(400, "This Sankalp is already fully funded.", "PROJECT_FULLY_FUNDED");
+    }
+
     const treasury = await getOrCreateMainTreasury({ familyId: req.familyId, userId: req.user._id });
     const wallet = await getOrCreateWallet({ familyId: req.familyId, memberId: req.member._id });
     const walletBalancePaise = await calculatePostedBalance({ familyId: req.familyId, walletId: wallet._id });
 
-    if (walletBalancePaise < amountPaise) {
+    if (walletBalancePaise < effectiveAmountPaise) {
       throw httpError(400, "Wallet balance is not enough for this allocation.", "INSUFFICIENT_WALLET_BALANCE");
     }
 
@@ -376,12 +461,14 @@ treasuryRoutes.post(
       projectId: project._id,
       type: "allocation",
       direction: "debit",
-      amountPaise,
+      amountPaise: effectiveAmountPaise,
       description: body.description || `Allocated to ${project.title}`,
       status: "posted",
       postedAt: new Date(),
       metadata: {
-        projectTitle: project.title
+        projectTitle: project.title,
+        requestedAmountPaise: amountPaise,
+        cappedToRemainingNeed: effectiveAmountPaise < amountPaise
       },
       createdBy: req.user._id
     });
@@ -393,15 +480,184 @@ treasuryRoutes.post(
       action: "treasury.project_allocation_recorded",
       entityType: "LedgerTransaction",
       entityId: String(transaction._id),
-      summary: `Allocated INR ${paiseToRupees(amountPaise)} to ${project.title}`,
+      summary: `Allocated INR ${paiseToRupees(effectiveAmountPaise)} to ${project.title}`,
       after: {
         projectId: project._id,
-        amountPaise,
+        requestedAmountPaise: amountPaise,
+        amountPaise: effectiveAmountPaise,
         transactionId: transaction._id
       },
       req
     });
 
-    res.status(201).json({ data: transaction });
+    res.status(201).json({
+      data: transaction,
+      message:
+        effectiveAmountPaise < amountPaise
+          ? `Only INR ${paiseToRupees(effectiveAmountPaise)} was needed, so the remaining amount stayed in your wallet.`
+          : "Funds allocated to Sankalp."
+    });
+  })
+);
+
+treasuryRoutes.post(
+  "/family/:familyId/allocations/:transactionId/reduce",
+  requireFamilyPermission(permissions.treasuryAllocateOwn),
+  asyncHandler(async (req, res) => {
+    const body = allocationReductionSchema.parse(req.body);
+    const amountPaise = rupeesToPaise(body.amountRupees);
+    const allocation = await LedgerTransaction.findOne({
+      _id: req.params.transactionId,
+      familyId: req.familyId,
+      type: "allocation",
+      direction: "debit",
+      status: "posted"
+    });
+
+    if (!allocation) {
+      throw httpError(404, "Allocation not found.", "ALLOCATION_NOT_FOUND");
+    }
+
+    const isOwnerOrAdmin = ["owner", "admin"].includes(req.member.role);
+    const isOwnAllocation = String(allocation.memberId || "") === String(req.member._id);
+
+    if (!isOwnerOrAdmin && !isOwnAllocation) {
+      throw httpError(403, "You can reduce only your own allocation.", "ALLOCATION_REDUCTION_NOT_ALLOWED");
+    }
+
+    const [alreadyReducedPaise, netAllocatedPaise, spentPaise] = await Promise.all([
+      calculateReductionAlreadyPostedPaise({ familyId: req.familyId, transactionId: allocation._id }),
+      calculateNetProjectAllocationPaise({ familyId: req.familyId, projectId: allocation.projectId }),
+      calculateProjectExpensePaise({ familyId: req.familyId, projectId: allocation.projectId })
+    ]);
+    const remainingOnThisAllocationPaise = Math.max(allocation.amountPaise - alreadyReducedPaise, 0);
+    const reducibleProjectPaise = Math.max(netAllocatedPaise - spentPaise, 0);
+    const effectiveAmountPaise = Math.min(amountPaise, remainingOnThisAllocationPaise, reducibleProjectPaise);
+
+    if (effectiveAmountPaise <= 0) {
+      throw httpError(400, "This allocation cannot be reduced because funds are already spent or reversed.", "ALLOCATION_NOT_REDUCIBLE");
+    }
+
+    const refund = await LedgerTransaction.create({
+      familyId: req.familyId,
+      treasuryAccountId: allocation.treasuryAccountId,
+      walletId: allocation.walletId,
+      memberId: allocation.memberId,
+      projectId: allocation.projectId,
+      type: "refund",
+      direction: "credit",
+      amountPaise: effectiveAmountPaise,
+      description: body.description || "Sankalp allocation reduced and returned to member wallet",
+      status: "posted",
+      postedAt: new Date(),
+      referenceTransactionId: allocation._id,
+      metadata: {
+        requestedAmountPaise: amountPaise,
+        projectSpentPaise: spentPaise
+      },
+      createdBy: req.user._id
+    });
+
+    await writeAuditLog({
+      familyId: req.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: req.member._id,
+      action: "treasury.project_allocation_reduced",
+      entityType: "LedgerTransaction",
+      entityId: String(refund._id),
+      summary: `Reduced Sankalp allocation by INR ${paiseToRupees(effectiveAmountPaise)}`,
+      after: {
+        originalTransactionId: allocation._id,
+        refundTransactionId: refund._id,
+        amountPaise: effectiveAmountPaise
+      },
+      req
+    });
+
+    res.status(201).json({
+      data: refund,
+      message:
+        effectiveAmountPaise < amountPaise
+          ? `Only INR ${paiseToRupees(effectiveAmountPaise)} could be returned because of project spending or prior reductions.`
+          : "Allocation reduced and money returned to wallet."
+    });
+  })
+);
+
+treasuryRoutes.post(
+  "/family/:familyId/transactions/:transactionId/reverse",
+  requireFamilyPermission(permissions.treasuryViewLedger),
+  asyncHandler(async (req, res) => {
+    if (!["owner", "admin"].includes(req.member.role)) {
+      throw httpError(403, "Only owner/admin can reverse Kosh entries.", "TREASURY_REVERSAL_NOT_ALLOWED");
+    }
+
+    const transaction = await LedgerTransaction.findOne({
+      _id: req.params.transactionId,
+      familyId: req.familyId,
+      status: "posted"
+    });
+
+    if (!transaction) {
+      throw httpError(404, "Transaction not found.", "TRANSACTION_NOT_FOUND");
+    }
+
+    const existingReversal = await LedgerTransaction.findOne({
+      familyId: req.familyId,
+      referenceTransactionId: transaction._id,
+      type: "reversal",
+      status: "posted"
+    });
+
+    if (existingReversal) {
+      throw httpError(400, "This transaction has already been reversed.", "TRANSACTION_ALREADY_REVERSED");
+    }
+
+    if (transaction.direction === "credit" && transaction.walletId) {
+      const walletBalancePaise = await calculatePostedBalance({ familyId: req.familyId, walletId: transaction.walletId });
+      if (walletBalancePaise < transaction.amountPaise) {
+        throw httpError(400, "Wallet balance is not enough to reverse this credit.", "INSUFFICIENT_WALLET_BALANCE");
+      }
+    }
+
+    const reversal = await LedgerTransaction.create({
+      familyId: req.familyId,
+      treasuryAccountId: transaction.treasuryAccountId,
+      walletId: transaction.walletId,
+      memberId: transaction.memberId,
+      projectId: transaction.projectId,
+      expenseId: transaction.expenseId,
+      type: "reversal",
+      direction: transaction.direction === "credit" ? "debit" : "credit",
+      amountPaise: transaction.amountPaise,
+      description: `Reversal: ${transaction.description || transaction.type}`,
+      status: "posted",
+      postedAt: new Date(),
+      referenceTransactionId: transaction._id,
+      metadata: {
+        reversedType: transaction.type
+      },
+      createdBy: req.user._id
+    });
+
+    transaction.status = "reversed";
+    await transaction.save();
+
+    await writeAuditLog({
+      familyId: req.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: req.member._id,
+      action: "treasury.transaction_reversed",
+      entityType: "LedgerTransaction",
+      entityId: String(transaction._id),
+      summary: `Reversed Kosh entry INR ${paiseToRupees(transaction.amountPaise)}`,
+      after: {
+        originalTransactionId: transaction._id,
+        reversalTransactionId: reversal._id
+      },
+      req
+    });
+
+    res.status(201).json({ data: reversal, message: "Kosh entry reversed." });
   })
 );

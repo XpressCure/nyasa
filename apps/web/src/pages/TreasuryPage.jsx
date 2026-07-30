@@ -47,11 +47,13 @@ export function TreasuryPage() {
   const [allocationAmountRupees, setAllocationAmountRupees] = useState("1000");
   const [allocationProjectId, setAllocationProjectId] = useState("");
   const [allocationDescription, setAllocationDescription] = useState("Allocated from Kosh wallet");
+  const [reductionAmounts, setReductionAmounts] = useState({});
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
   const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
+  const canReverseLedger = ["owner", "admin"].includes(session?.member?.role);
 
   useEffect(() => {
     loadCurrentSession()
@@ -236,12 +238,47 @@ export function TreasuryPage() {
     }
 
     try {
-      await apiPost(`/treasury/family/${familyId}/allocations`, {
+      const response = await apiPost(`/treasury/family/${familyId}/allocations`, {
         projectId: allocationProjectId,
         amountRupees: allocationAmountRupees,
         description: allocationDescription
       });
-      setMessage("Funds allocated to Sankalp.");
+      setMessage(response.message || "Funds allocated to Sankalp.");
+      await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function reduceAllocation(transactionId) {
+    const familyId = getFamilyId();
+    const amountRupees = reductionAmounts[transactionId];
+
+    if (!familyId || !amountRupees) {
+      setMessage("Enter the amount to return from Sankalp allocation.");
+      return;
+    }
+
+    try {
+      const response = await apiPost(`/treasury/family/${familyId}/allocations/${transactionId}/reduce`, {
+        amountRupees,
+        description: "Reduced Sankalp allocation"
+      });
+      setReductionAmounts((current) => ({ ...current, [transactionId]: "" }));
+      setMessage(response.message || "Allocation reduced and returned to wallet.");
+      await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function reverseTransaction(transactionId) {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    try {
+      const response = await apiPost(`/treasury/family/${familyId}/transactions/${transactionId}/reverse`, {});
+      setMessage(response.message || "Kosh entry reversed.");
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
     } catch (error) {
       setMessage(error.message);
@@ -459,6 +496,25 @@ export function TreasuryPage() {
                   <strong>{transaction.member?.displayName || "Kul"}</strong>
                   <span>{formatRole(transaction.member?.role || "")}</span>
                 </div>
+                {transaction.type === "allocation" && transaction.direction === "debit" && transaction.status === "posted" ? (
+                  <div className="row-actions allocation-adjustment">
+                    <input
+                      min="1"
+                      placeholder="Return amount"
+                      type="number"
+                      value={reductionAmounts[transaction.id] || ""}
+                      onChange={(event) => setReductionAmounts((current) => ({ ...current, [transaction.id]: event.target.value }))}
+                    />
+                    <button type="button" className="secondary-button" onClick={() => reduceAllocation(transaction.id)}>
+                      Return to Wallet
+                    </button>
+                  </div>
+                ) : null}
+                {canReverseLedger && transaction.status === "posted" ? (
+                  <button type="button" className="secondary-button" onClick={() => reverseTransaction(transaction.id)}>
+                    Reverse Entry
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>

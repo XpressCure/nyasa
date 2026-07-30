@@ -56,7 +56,7 @@ const walkthrough = {
 const todaySteps = [
   {
     title: "1. Sign in",
-    text: "Use your name and phone number. If your name is already in the Kul tree, Nyasa will try to connect you to that profile."
+    text: "Use your name and phone number. If your name is already in the Kul tree, न्यास will try to connect you to that profile."
   },
   {
     title: "2. Complete Parichay",
@@ -127,9 +127,9 @@ export function HomePage() {
     <main className="home-page">
       <nav className="home-nav">
         <div className="home-brand">
-          <img className="home-brand-logo" src={nyasaLogo} alt="Nyasa Trust logo" />
+          <img className="home-brand-logo" src={nyasaLogo} alt="न्यास Trust logo" />
           <div>
-            <strong>Nyasa Trust</strong>
+            <strong>न्यास Trust</strong>
             <small>Kul OS</small>
           </div>
         </div>
@@ -148,14 +148,14 @@ export function HomePage() {
 
       <section className="home-hero">
         <div className="home-hero-copy">
-          <img className="home-hero-logo" src={nyasaLogo} alt="Nyasa Trust logo" />
+          <img className="home-hero-logo" src={nyasaLogo} alt="न्यास Trust logo" />
           <span className="home-kicker">
             <MapPin size={16} />
             Rooted in Alahdadpur
           </span>
           <h1>Ek gaon. Ek parivar. Ek vishwas. Ek virasat.</h1>
           <p>
-            Nyasa Trust is being built around Alahdadpur: a shared Kul platform to preserve our roots, coordinate village Sankalp, pool money
+            न्यास Trust is being built around Alahdadpur: a shared Kul platform to preserve our roots, coordinate village Sankalp, pool money
             into Kosh, and keep a transparent record of work, decisions, and legacy.
           </p>
           <p className="home-blessing-line">परिवार के सभी बड़े-बुजुर्गों, भाइयों, बहनों और बच्चों को सादर प्रणाम।</p>
@@ -216,7 +216,7 @@ export function HomePage() {
       <section className="home-section today-start-section" id="start">
         <div className="home-section-heading">
           <span>For every family member today</span>
-          <h2>Join Nyasa, fill your Parichay, and check the Kul tree.</h2>
+          <h2>न्यास से जुड़ें, Parichay भरें, और Kul tree देखें.</h2>
           <p>
             This first launch is about collecting correct family data. Do not worry if you do not know every date or detail. Add what you know,
             and the tree will become stronger as parents, siblings, spouses, and children update their own profiles.
@@ -235,7 +235,7 @@ export function HomePage() {
           <div>
             <strong>What should you tell relatives?</strong>
             <span>
-              "Please open Nyasa, sign in with your name and phone number, complete your Parichay, add immediate family, upload photos if
+              "Please open न्यास, sign in with your name and phone number, complete your Parichay, add immediate family, upload photos if
               available, and then check the Kul Map."
             </span>
           </div>

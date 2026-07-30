@@ -119,7 +119,10 @@ export function ProjectsPage() {
   const [projectPatch, setProjectPatch] = useState({
     lifecycleStage: "estimate_pending",
     estimatedBudgetRupees: "",
-    completionPercent: "0"
+    completionPercent: "0",
+    projectLeadMemberId: "",
+    auditorMemberId: "",
+    implementationLeadMemberId: ""
   });
 
   const [milestoneForm, setMilestoneForm] = useState({
@@ -268,7 +271,10 @@ export function ProjectsPage() {
       setProjectPatch({
         lifecycleStage: detailsResponse.data.project.lifecycleStage || "estimate_pending",
         estimatedBudgetRupees: detailsResponse.data.project.estimatedBudgetRupees || "",
-        completionPercent: detailsResponse.data.project.completionPercent || "0"
+        completionPercent: detailsResponse.data.project.completionPercent || "0",
+        projectLeadMemberId: getMemberId(detailsResponse.data.project.projectLeadMember),
+        auditorMemberId: getMemberId(detailsResponse.data.project.auditorMember),
+        implementationLeadMemberId: getMemberId(detailsResponse.data.project.implementationLeadMember)
       });
       setMessage("Sankalp workspace loaded.");
     } catch (error) {
@@ -822,7 +828,10 @@ export function ProjectsPage() {
                 updateProject(selectedProjectId, {
                   lifecycleStage: projectPatch.lifecycleStage,
                   estimatedBudgetRupees: projectPatch.estimatedBudgetRupees || undefined,
-                  completionPercent: projectPatch.completionPercent === "" ? undefined : Number(projectPatch.completionPercent)
+                  completionPercent: projectPatch.completionPercent === "" ? undefined : Number(projectPatch.completionPercent),
+                  projectLeadMemberId: projectPatch.projectLeadMemberId || undefined,
+                  auditorMemberId: projectPatch.auditorMemberId || undefined,
+                  implementationLeadMemberId: projectPatch.implementationLeadMemberId || undefined
                 });
               }}
             >
@@ -854,6 +863,48 @@ export function ProjectsPage() {
                   value={projectPatch.completionPercent}
                   onChange={(event) => setProjectPatch((current) => ({ ...current, completionPercent: event.target.value }))}
                 />
+              </label>
+              <label>
+                Project Manager
+                <select
+                  value={projectPatch.projectLeadMemberId}
+                  onChange={(event) => setProjectPatch((current) => ({ ...current, projectLeadMemberId: event.target.value }))}
+                >
+                  <option value="">Select Project Manager</option>
+                  {members.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {renderMemberOption(member)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Progress Auditor
+                <select
+                  value={projectPatch.auditorMemberId}
+                  onChange={(event) => setProjectPatch((current) => ({ ...current, auditorMemberId: event.target.value }))}
+                >
+                  <option value="">Select Auditor</option>
+                  {members.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {renderMemberOption(member)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Karya Lead
+                <select
+                  value={projectPatch.implementationLeadMemberId}
+                  onChange={(event) => setProjectPatch((current) => ({ ...current, implementationLeadMemberId: event.target.value }))}
+                >
+                  <option value="">Select Karya Lead</option>
+                  {members.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {renderMemberOption(member)}
+                    </option>
+                  ))}
+                </select>
               </label>
               <button type="submit">Update Sankalp</button>
               {selectedDetails.project.isDraft ? (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpenText, CircleUserRound, HeartPulse, Network } from "lucide-react";
+import { BookOpenText, CircleUserRound, Download, HeartPulse, Network } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
@@ -367,6 +367,30 @@ export function FamilyTreePage() {
   }, [memberById, members, selfMember]);
 
   const relationshipGraph = useMemo(() => buildRelationshipGraph(members, memberById, selfMemberId), [memberById, members, selfMemberId]);
+  function downloadKulMapImage() {
+    const mapElement = document.querySelector(".expanded-family-map .relationship-graph");
+    if (!mapElement) {
+      setMessage("Open Kul Map first, then download the image.");
+      return;
+    }
+
+    const clonedMap = mapElement.cloneNode(true);
+    const width = Math.ceil(relationshipGraph.width || mapElement.scrollWidth || 1200);
+    const height = Math.ceil(relationshipGraph.height || mapElement.scrollHeight || 800);
+    const styles = Array.from(document.querySelectorAll("style"))
+      .map((style) => style.textContent || "")
+      .join("\n");
+    const html = new XMLSerializer().serializeToString(clonedMap);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${styles}</style>${html}</div></foreignObject></svg>`;
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nyas-kul-map-${new Date().toISOString().slice(0, 10)}.svg`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage("Kul Map image downloaded.");
+  }
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -537,7 +561,13 @@ export function FamilyTreePage() {
                 <h2>Whole Kul Map</h2>
                 <p>One connected Kul map. Solid gold lines show parent-child links; dashed brown lines show spouse or co-parent couples.</p>
               </div>
-              <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
+              <div className="button-row">
+                <span>{members.length} profile{members.length === 1 ? "" : "s"} mapped</span>
+                <button type="button" className="secondary-button" onClick={downloadKulMapImage}>
+                  <Download size={16} />
+                  Download Image
+                </button>
+              </div>
             </div>
             <div className="expanded-family-map">
               {relationshipGraph.nodes.length ? (

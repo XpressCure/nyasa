@@ -71,20 +71,21 @@ async function calculateProjectAllocatedPaise({ familyId, projectId }) {
       $match: {
         familyId: normalizedFamilyId,
         projectId,
-        type: "allocation",
-        direction: "debit",
-        status: "posted"
+          type: { $in: ["allocation", "refund", "reversal"] },
+          status: "posted"
+        }
+      },
+      {
+        $group: {
+          _id: { projectId: "$projectId", direction: "$direction" },
+          amountPaise: { $sum: "$amountPaise" }
+        }
       }
-    },
-    {
-      $group: {
-        _id: "$projectId",
-        amountPaise: { $sum: "$amountPaise" }
-      }
-    }
-  ]);
+    ]);
 
-  return rows[0]?.amountPaise || 0;
+  return rows.reduce((total, row) => {
+    return row._id.direction === "debit" ? total + row.amountPaise : total - row.amountPaise;
+  }, 0);
 }
 
 async function calculateProjectExpensePaise({ familyId, projectId, statuses }) {

@@ -19,7 +19,7 @@ export class AppErrorBoundary extends React.Component {
       return (
         <main className="app-error-page">
           <section className="content-band app-error-panel">
-            <h1>Nyasa hit a screen error</h1>
+            <h1>न्यास में screen error आया</h1>
             <p>The app is still running, but this page could not render.</p>
             <pre>{this.state.error.message}</pre>
             <button type="button" onClick={() => window.location.reload()}>

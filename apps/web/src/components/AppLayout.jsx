@@ -46,7 +46,7 @@ export function AppLayout() {
         <div className="brand">
           <span className="brand-mark">N</span>
           <div>
-            <strong>Nyasa</strong>
+            <strong>न्यास</strong>
             <small>Kul OS</small>
           </div>
         </div>
