@@ -695,6 +695,14 @@ select {
   padding: 8px 12px;
 }
 
+.draft-pill,
+.status-pill.draft-pill,
+.project-card-header > span.draft-pill {
+  background: #fff4d7;
+  border: 1px solid #d9a642;
+  color: #7a5410;
+}
+
 .project-card-header {
   align-items: flex-start;
   display: flex;

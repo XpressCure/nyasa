@@ -23,7 +23,7 @@ const createProjectSchema = z.object({
   description: z.string().optional(),
   category: z.enum(["renovation", "education", "health", "event", "asset_maintenance", "community", "other"]).default("other"),
   projectType: z.enum(["implementation", "research", "business_study", "asset_management", "community", "event", "other"]).default("implementation"),
-  status: z.enum(["draft", "proposed", "active", "estimate_received", "fundraising", "implementation", "paused"]).default("proposed"),
+  status: z.enum(["draft", "proposed", "active", "estimate_received", "fundraising", "implementation", "paused"]).default("draft"),
   lifecycleStage: z
     .enum(["concept", "research", "estimate_pending", "estimate_received", "fundraising", "ready_for_implementation", "implementation", "paused"])
     .default("concept"),
@@ -114,6 +114,8 @@ function serializeProject(project, financials = {}) {
     category: project.category,
     projectType: project.projectType,
     status: project.status,
+    isDraft: project.status === "draft",
+    isLive: project.status !== "draft" && project.status !== "archived",
     lifecycleStage: project.lifecycleStage,
     rules: project.rules,
     budgetRequired: project.budgetRequired,
@@ -202,6 +204,8 @@ async function upsertProjectMember({ familyId, projectId, memberId, role, addedB
 }
 
 async function assertCanManageProject(req, project) {
+  if (String(project.createdBy || "") === String(req.user._id || "")) return;
+
   if (roleHasPermission(req.member.role, permissions.projectsManage)) return;
 
   const assignedDirectly = [project.projectLeadMemberId, project.auditorMemberId, project.implementationLeadMemberId].some(
@@ -288,7 +292,22 @@ projectRoutes.get(
   "/family/:familyId",
   requireFamilyPermission(permissions.projectsView),
   asyncHandler(async (req, res) => {
-    const projects = await Project.find({ familyId: req.familyId, status: { $ne: "archived" } })
+    const canSeeDrafts = roleHasPermission(req.member.role, permissions.projectsManage);
+    const projectQuery = canSeeDrafts
+      ? { familyId: req.familyId, status: { $ne: "archived" } }
+      : {
+          familyId: req.familyId,
+          status: { $ne: "archived" },
+          $or: [
+            { status: { $ne: "draft" } },
+            { createdBy: req.user._id },
+            { projectLeadMemberId: req.member._id },
+            { auditorMemberId: req.member._id },
+            { implementationLeadMemberId: req.member._id }
+          ]
+        };
+
+    const projects = await Project.find(projectQuery)
       .populate("projectLeadMemberId", "displayName role")
       .populate("auditorMemberId", "displayName role")
       .populate("implementationLeadMemberId", "displayName role")
@@ -398,6 +417,10 @@ projectRoutes.get(
 
     if (!project) {
       throw httpError(404, "Mission not found.", "PROJECT_NOT_FOUND");
+    }
+
+    if (project.status === "draft") {
+      await assertCanManageProject(req, project);
     }
 
     const [milestones, updates, projectMembers, financials] = await Promise.all([

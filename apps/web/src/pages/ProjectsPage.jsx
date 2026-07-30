@@ -71,6 +71,10 @@ function slugify(value) {
     .replace(/^-|-$/g, "");
 }
 
+function firstLiveStageForProject(projectType) {
+  return projectType === "research" || projectType === "business_study" ? "research" : "estimate_pending";
+}
+
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -202,6 +206,8 @@ export function ProjectsPage() {
     const familyId = getFamilyId();
     if (!familyId) return;
 
+    const publishNow = event.nativeEvent?.submitter?.value === "publish";
+
     try {
       await apiPost(`/projects/family/${familyId}`, {
         ...draft,
@@ -210,10 +216,14 @@ export function ProjectsPage() {
         auditorMemberId: draft.auditorMemberId || undefined,
         implementationLeadMemberId: draft.implementationLeadMemberId || undefined,
         estimatedBudgetRupees: draft.estimatedBudgetRupees || undefined,
-        lifecycleStage: draft.projectType === "research" || draft.projectType === "business_study" ? "research" : "estimate_pending",
-        status: "proposed"
+        lifecycleStage: publishNow ? firstLiveStageForProject(draft.projectType) : "concept",
+        status: publishNow ? "proposed" : "draft"
       });
-      setMessage("Sankalp created. Members can now see its purpose, rules, team and stage.");
+      setMessage(
+        publishNow
+          ? "Sankalp is live. Members can now see its purpose, rules, team and stage."
+          : "Draft Sankalp saved. It is not live for all members yet."
+      );
       await loadProjects();
     } catch (error) {
       setMessage(error.message);
@@ -430,8 +440,8 @@ export function ProjectsPage() {
           ))}
         </div>
         <p className="section-note">
-          Every member can see the Sankalp from the first day. Fundraising and expenses open only when the rules, estimate, and budget path
-          are clear.
+          Create a sample in Draft first, refine the purpose, rules, roles and budget, then publish it live for all members. Fundraising and
+          expenses open only when the rules, estimate, and budget path are clear.
         </p>
       </section>
 
@@ -543,7 +553,12 @@ export function ProjectsPage() {
               Sankalp rules
               <textarea rows="4" value={draft.rules} onChange={(event) => updateDraft("rules", event.target.value)} />
             </label>
-            <button type="submit">Create Sankalp</button>
+            <button type="submit" name="intent" value="draft">
+              Save Draft
+            </button>
+            <button type="submit" name="intent" value="publish" className="secondary-button">
+              Publish Live
+            </button>
           </form>
         ) : (
           <div className="sadasya-sankalp-note">
@@ -570,7 +585,7 @@ export function ProjectsPage() {
                     <h3>{project.title}</h3>
                     <p>{project.description || "No description added."}</p>
                   </div>
-                  <span>{formatLabel(project.lifecycleStage || project.status)}</span>
+                  <span className={project.isDraft ? "draft-pill" : ""}>{project.isDraft ? "Draft" : formatLabel(project.lifecycleStage || project.status)}</span>
                 </div>
                 <div className="project-summary">
                   <span>Type {formatLabel(project.projectType || "implementation")}</span>
@@ -592,7 +607,21 @@ export function ProjectsPage() {
                   <button type="button" className="secondary-button" onClick={() => loadProjectDetails(project.id)}>
                     Open Workspace
                   </button>
-                  {canManageProjects ? (
+                  {canManageProjects && project.isDraft ? (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        updateProject(project.id, {
+                          status: "proposed",
+                          lifecycleStage: firstLiveStageForProject(project.projectType)
+                        })
+                      }
+                    >
+                      Publish Live
+                    </button>
+                  ) : null}
+                  {canManageProjects && !project.isDraft ? (
                     <button
                       type="button"
                       className="secondary-button"
@@ -617,7 +646,9 @@ export function ProjectsPage() {
               <h2>{selectedDetails.project.title}</h2>
               <p>{selectedDetails.project.rules || "Rules are pending. Add scope clearly before estimate and fundraising."}</p>
             </div>
-            <span className="status-pill">{formatLabel(selectedDetails.project.lifecycleStage)}</span>
+            <span className={`status-pill ${selectedDetails.project.isDraft ? "draft-pill" : ""}`}>
+              {selectedDetails.project.isDraft ? "Draft Sample" : formatLabel(selectedDetails.project.lifecycleStage)}
+            </span>
           </div>
 
           <div className="mission-financials">
@@ -712,6 +743,20 @@ export function ProjectsPage() {
                 />
               </label>
               <button type="submit">Update Sankalp</button>
+              {selectedDetails.project.isDraft ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    updateProject(selectedProjectId, {
+                      status: "proposed",
+                      lifecycleStage: firstLiveStageForProject(selectedDetails.project.projectType)
+                    })
+                  }
+                >
+                  Publish Live
+                </button>
+              ) : null}
             </form>
           ) : null}
 

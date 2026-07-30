@@ -116,8 +116,9 @@ export function TreasuryPage() {
 
     try {
       const response = await apiGet(`/projects/family/${familyId}`);
-      setProjects(response.data);
-      setMessage(response.data.length ? "Loaded Sankalp for allocation." : "Create a Sankalp before allocating funds.");
+      const liveProjects = response.data.filter((project) => !project.isDraft);
+      setProjects(liveProjects);
+      setMessage(liveProjects.length ? "Loaded live Sankalp for allocation." : "Publish a Sankalp before allocating funds.");
     } catch (error) {
       setMessage(error.message);
     }
