@@ -19,7 +19,7 @@ const createInvitationSchema = z
     invitedEmail: z.string().email().optional(),
     invitedPhone: z.string().min(6).optional(),
     invitedName: z.string().min(2).optional(),
-    intendedRole: z.enum(["admin", "project_lead", "member", "viewer", "external_advisor"]).default("member")
+    intendedRole: z.enum(["admin", "kosh_pramukh", "project_lead", "member", "viewer", "external_advisor"]).default("member")
   })
   .refine((value) => value.invitedEmail || value.invitedPhone, {
     message: "Either invitedEmail or invitedPhone is required"

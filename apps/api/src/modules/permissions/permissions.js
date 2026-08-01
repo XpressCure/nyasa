@@ -50,6 +50,17 @@ export const rolePermissions = {
     permissions.expensesView,
     permissions.expensesSubmit
   ],
+  kosh_pramukh: [
+    permissions.workspaceView,
+    permissions.membersView,
+    permissions.treasuryViewSummary,
+    permissions.treasuryViewLedger,
+    permissions.treasuryContribute,
+    permissions.treasuryAllocateOwn,
+    permissions.projectsView,
+    permissions.expensesView,
+    permissions.auditView
+  ],
   member: [
     permissions.workspaceView,
     permissions.membersView,

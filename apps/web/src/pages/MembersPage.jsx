@@ -209,6 +209,7 @@ export function MembersPage() {
             Role
             <select value={intendedRole} onChange={(event) => setIntendedRole(event.target.value)}>
               <option value="admin">Admin</option>
+              <option value="kosh_pramukh">Kosh Pramukh</option>
               <option value="project_lead">Sankalp Lead</option>
               <option value="member">Sadasya</option>
               <option value="viewer">Viewer</option>
@@ -253,6 +254,7 @@ export function MembersPage() {
                   <select value={member.role} onChange={(event) => updateMemberRole(member._id, event.target.value)}>
                     <option value="owner">Owner</option>
                     <option value="admin">Admin</option>
+                    <option value="kosh_pramukh">Kosh Pramukh</option>
                     <option value="project_lead">Sankalp Lead</option>
                     <option value="member">Sadasya</option>
                     <option value="viewer">Viewer</option>

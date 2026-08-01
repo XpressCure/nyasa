@@ -92,7 +92,7 @@ const photoUploadSchema = z.object({
 });
 
 const updateRoleSchema = z.object({
-  role: z.enum(["owner", "admin", "project_lead", "member", "viewer", "external_advisor"])
+  role: z.enum(["owner", "admin", "kosh_pramukh", "project_lead", "member", "viewer", "external_advisor"])
 });
 
 const updateStatusSchema = z.object({

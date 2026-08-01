@@ -8,7 +8,7 @@ const invitationSchema = new mongoose.Schema(
     invitedName: { type: String, trim: true },
     intendedRole: {
       type: String,
-      enum: ["admin", "project_lead", "member", "viewer", "external_advisor"],
+      enum: ["admin", "kosh_pramukh", "project_lead", "member", "viewer", "external_advisor"],
       default: "member"
     },
     tokenHash: { type: String, required: true, unique: true },

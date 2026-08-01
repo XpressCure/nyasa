@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { API_BASE_URL, apiGet, apiPatch, apiPost } from "../lib/api.js";
@@ -96,6 +96,8 @@ export function ProjectsPage() {
   const [members, setMembers] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedDetails, setSelectedDetails] = useState(null);
+  const workspaceRef = useRef(null);
+  const [workspaceHighlight, setWorkspaceHighlight] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [message, setMessage] = useState("");
 
@@ -170,6 +172,15 @@ export function ProjectsPage() {
     loadProjects();
     loadMembers();
   }, []);
+
+  useEffect(() => {
+    if (!selectedDetails || !workspaceRef.current) return undefined;
+
+    workspaceRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    setWorkspaceHighlight(true);
+    const timer = window.setTimeout(() => setWorkspaceHighlight(false), 1800);
+    return () => window.clearTimeout(timer);
+  }, [selectedDetails?.project?.id]);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -276,7 +287,7 @@ export function ProjectsPage() {
         auditorMemberId: getMemberId(detailsResponse.data.project.auditorMember),
         implementationLeadMemberId: getMemberId(detailsResponse.data.project.implementationLeadMember)
       });
-      setMessage("Sankalp workspace loaded.");
+      setMessage("Sankalp workspace opened below.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -745,7 +756,11 @@ export function ProjectsPage() {
       </section>
 
       {selectedDetails ? (
-        <section className="content-band spaced-band sankalp-workspace">
+        <section
+          className={`content-band spaced-band sankalp-workspace ${workspaceHighlight ? "workspace-opened" : ""}`}
+          ref={workspaceRef}
+          tabIndex="-1"
+        >
           <div className="section-heading-row">
             <div>
               <h2>{selectedDetails.project.title}</h2>

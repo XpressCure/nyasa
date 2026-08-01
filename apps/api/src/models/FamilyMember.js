@@ -38,7 +38,7 @@ const familyMemberSchema = new mongoose.Schema(
     displayName: { type: String, required: true, trim: true },
     role: {
       type: String,
-      enum: ["owner", "admin", "project_lead", "member", "viewer", "external_advisor"],
+      enum: ["owner", "admin", "kosh_pramukh", "project_lead", "member", "viewer", "external_advisor"],
       default: "member"
     },
     status: {
