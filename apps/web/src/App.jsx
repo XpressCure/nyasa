@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout.jsx";
 import { CalendarPage } from "./pages/CalendarPage.jsx";
+import { ContributePage } from "./pages/ContributePage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { FamilyPage } from "./pages/FamilyPage.jsx";
 import { FamilyTreePage } from "./pages/FamilyTreePage.jsx";
@@ -21,6 +22,7 @@ export function App() {
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/contribute" element={<ContributePage />} />
         <Route path="/family" element={<FamilyPage />} />
         <Route path="/family-tree" element={<FamilyTreePage />} />
         <Route path="/profile" element={<ProfilePage />} />

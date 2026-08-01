@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiPost } from "../lib/api.js";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [needsPhone, setNeedsPhone] = useState(false);
@@ -23,7 +24,9 @@ export function LoginPage() {
       if (response.data.family?._id) {
         localStorage.setItem("nyasa_family_id", response.data.family._id);
       }
-      navigate("/profile");
+      const nextPath = searchParams.get("next");
+      const safeNextPath = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/profile";
+      navigate(safeNextPath);
     } catch (apiError) {
       if (apiError.code === "LOGIN_PHONE_REQUIRED") {
         setNeedsPhone(true);
