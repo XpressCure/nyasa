@@ -169,7 +169,7 @@ familyRoutes.get(
     const normalizedFamilyId = new mongoose.Types.ObjectId(req.familyId);
     const treasury = await getOrCreateMainTreasury({ familyId: req.familyId, userId: req.user._id });
 
-    const [family, memberCount, livingMembersForAgeGroups, activeProjects, completedProjects, treasuryBalancePaise, contributionRows] = await Promise.all([
+    const [family, memberCount, livingMembersForAgeGroups, activeProjects, completedProjects, treasuryBalancePaise, contributionRows, featuredProjects] = await Promise.all([
       Family.findById(req.familyId),
       FamilyMember.countDocuments({ familyId: req.familyId, status: "active" }),
       FamilyMember.find({
@@ -191,7 +191,15 @@ familyRoutes.get(
           }
         },
         { $group: { _id: null, amountPaise: { $sum: "$amountPaise" } } }
-      ])
+      ]),
+      Project.find({
+        familyId: req.familyId,
+        visibility: "family",
+        status: { $in: ["proposed", "active", "estimate_received", "fundraising", "implementation"] }
+      })
+        .select("title slug description category projectType status lifecycleStage budgetRequired targetBudgetPaise targetCompletionDate completionPercent")
+        .sort({ createdAt: -1 })
+        .limit(5)
     ]);
 
     res.json({
@@ -204,7 +212,21 @@ familyRoutes.get(
           completedProjects,
           treasuryBalance: treasuryBalancePaise / 100,
           contributionThisYear: (contributionRows[0]?.amountPaise || 0) / 100
-        }
+        },
+        featuredProjects: featuredProjects.map((project) => ({
+          id: project._id,
+          title: project.title,
+          slug: project.slug,
+          description: project.description,
+          category: project.category,
+          projectType: project.projectType,
+          status: project.status,
+          lifecycleStage: project.lifecycleStage,
+          budgetRequired: project.budgetRequired,
+          targetBudgetRupees: (project.targetBudgetPaise || 0) / 100,
+          targetCompletionDate: project.targetCompletionDate,
+          completionPercent: project.completionPercent || 0
+        }))
       }
     });
   })

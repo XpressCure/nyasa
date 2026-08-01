@@ -31,6 +31,22 @@ function carPosition(progress) {
   return Math.max(6, Math.min(94, progress));
 }
 
+function formatLifecycle(value) {
+  const labels = {
+    concept: "विचार",
+    research: "शोध",
+    estimate_pending: "अनुमान बाकी",
+    estimate_received: "अनुमान मिला",
+    fundraising: "कोष सहयोग",
+    ready_for_implementation: "कार्य शुरू होने को तैयार",
+    implementation: "कार्य चल रहा है",
+    completed: "पूर्ण",
+    paused: "रुका हुआ",
+    archived: "संग्रहित"
+  };
+  return labels[value] || value || "संकल्प";
+}
+
 async function getSelectedFamilyId() {
   const storedFamilyId = localStorage.getItem("nyasa_family_id");
   if (storedFamilyId) return storedFamilyId;
@@ -134,6 +150,7 @@ export function DashboardPage() {
   }, []);
 
   const metrics = dashboard?.metrics;
+  const featuredProjects = dashboard?.featuredProjects || [];
   const ageGroups = metrics?.ageGroups?.groups || [];
   const stats = [
     ["Kul Sadasya", metrics?.memberCount ?? 0],
@@ -178,6 +195,41 @@ export function DashboardPage() {
           </article>
         ))}
       </div>
+      <section className="content-band featured-sankalp-band">
+        <div className="tree-register-header">
+          <div>
+            <h2>पाँच प्रारम्भिक संकल्प</h2>
+            <p className="section-note">Booklet से live किए गए शुरुआती कार्य, ताकि हर सदस्य उद्देश्य, टीम, समय और कोष स्थिति देख सके.</p>
+          </div>
+          <Link className="secondary-button" to="/projects">
+            सभी संकल्प देखें
+          </Link>
+        </div>
+        <div className="featured-sankalp-list">
+          {featuredProjects.length ? (
+            featuredProjects.map((project, index) => (
+              <article className="featured-sankalp-card" key={project.id}>
+                <div className="sankalp-number">{index + 1}</div>
+                <div>
+                  <div className="project-card-header compact-header">
+                    <h3>{project.title}</h3>
+                    <span>{formatLifecycle(project.lifecycleStage)}</span>
+                  </div>
+                  <p>{project.description}</p>
+                  <div className="project-summary">
+                    <span>{project.projectType}</span>
+                    <span>{project.budgetRequired ? `Budget ${formatMoney(project.targetBudgetRupees)}` : "No initial budget"}</span>
+                    {project.targetCompletionDate ? <span>By {formatDate(project.targetCompletionDate)}</span> : null}
+                    <span>Progress {clampPercent(project.completionPercent)}%</span>
+                  </div>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="empty-copy">पाँच प्रारम्भिक संकल्प database में जोड़ने के बाद यहाँ दिखाई देंगे.</p>
+          )}
+        </div>
+      </section>
       <section className="content-band kosh-darshan-band">
         <div className="tree-register-header">
           <div>

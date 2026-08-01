@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:prepare-live": "node src/scripts/prepare-live-db.js",
+    "db:seed-paanch-sankalp": "node src/scripts/seed-paanch-sankalp.js",
     "build": "node -e \"process.env.MONGODB_URI='mongodb://127.0.0.1:27017/nyasa'; process.env.JWT_SECRET='dev-build-secret-dev-build-secret'; import('./src/app.js').then(() => console.log('api build ok'))\"",
     "lint": "eslint src",
     "test": "node --test"

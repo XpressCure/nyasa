@@ -582,6 +582,55 @@ select {
   margin-top: 14px;
 }
 
+.featured-sankalp-band {
+  margin-bottom: 18px;
+}
+
+.featured-sankalp-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.featured-sankalp-card {
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 14px;
+}
+
+.sankalp-number {
+  align-items: center;
+  background: #d7a84f;
+  border-radius: 999px;
+  color: #17211c;
+  display: inline-flex;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.compact-header {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.compact-header h3 {
+  font-size: 18px;
+}
+
+.featured-sankalp-card p {
+  line-height: 1.5;
+}
+
+.featured-sankalp-card .project-summary {
+  margin-top: 12px;
+}
+
 .project-list {
   display: grid;
   gap: 16px;
@@ -2574,8 +2623,13 @@ button:disabled {
   .tree-member-card,
   .member-row,
   .ledger-row,
+  .featured-sankalp-card,
   .project-card {
     padding: 12px;
+  }
+
+  .featured-sankalp-card {
+    grid-template-columns: 1fr;
   }
 
   .tree-member-card.compact {
