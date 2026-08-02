@@ -17,6 +17,7 @@ const navSections = [
       { to: "/contribute", label: "Yogdaan", icon: HeartHandshake },
       { to: "/treasury", label: "Kosh", icon: Landmark },
       { to: "/projects", label: "Sankalp", icon: GitBranch },
+      { to: "/sankalp-sabha", label: "Sankalp Sabha", icon: Users },
       { to: "/members", label: "Sadasya", icon: Archive, permission: "members.manage" }
     ]
   },

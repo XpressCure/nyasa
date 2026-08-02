@@ -11,6 +11,7 @@ import { LoginPage } from "./pages/LoginPage.jsx";
 import { MembersPage } from "./pages/MembersPage.jsx";
 import { ProfilePage } from "./pages/ProfilePage.jsx";
 import { ProjectsPage } from "./pages/ProjectsPage.jsx";
+import { SankalpSabhaPage } from "./pages/SankalpSabhaPage.jsx";
 import { TreasuryPage } from "./pages/TreasuryPage.jsx";
 
 export function App() {
@@ -29,6 +30,7 @@ export function App() {
         <Route path="/members" element={<MembersPage />} />
         <Route path="/treasury" element={<TreasuryPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/sankalp-sabha" element={<SankalpSabhaPage />} />
       </Route>
     </Routes>
   );

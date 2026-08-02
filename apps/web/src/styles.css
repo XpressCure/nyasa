@@ -1074,6 +1074,84 @@ button:disabled {
   font-weight: 800;
 }
 
+.sabha-intro-band {
+  display: grid;
+  gap: 18px;
+}
+
+.sabha-rule-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.sabha-rule-grid span {
+  background: #f0eadc;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  font-weight: 800;
+  padding: 12px;
+}
+
+.proposal-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.proposal-card {
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.proposal-card h3 {
+  margin: 0;
+}
+
+.proposal-card p,
+.proposal-card small {
+  color: #4e5b53;
+  line-height: 1.5;
+}
+
+.compact-proposal-card {
+  min-height: 160px;
+}
+
+.vote-meter {
+  background: #e7dfd0;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.vote-meter span {
+  background: #d7a84f;
+  display: block;
+  height: 100%;
+}
+
+.vote-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vote-actions button {
+  background: #17211c;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 10px;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -2671,7 +2749,9 @@ button:disabled {
   .home-band,
   .future-grid,
   .family-gallery-grid,
-  .contribute-project-grid {
+  .contribute-project-grid,
+  .proposal-grid,
+  .sabha-rule-grid {
     grid-template-columns: 1fr;
   }
 

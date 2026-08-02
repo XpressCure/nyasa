@@ -7,6 +7,8 @@ import { Family } from "../../models/Family.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
 import { Project } from "../../models/Project.js";
+import { SankalpProposal } from "../../models/SankalpProposal.js";
+import { SankalpProposalVote } from "../../models/SankalpProposalVote.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
@@ -169,7 +171,7 @@ familyRoutes.get(
     const normalizedFamilyId = new mongoose.Types.ObjectId(req.familyId);
     const treasury = await getOrCreateMainTreasury({ familyId: req.familyId, userId: req.user._id });
 
-    const [family, memberCount, livingMembersForAgeGroups, activeProjects, completedProjects, treasuryBalancePaise, contributionRows, featuredProjects] = await Promise.all([
+    const [family, memberCount, livingMembersForAgeGroups, activeProjects, completedProjects, treasuryBalancePaise, contributionRows, featuredProjects, proposalRows] = await Promise.all([
       Family.findById(req.familyId),
       FamilyMember.countDocuments({ familyId: req.familyId, status: "active" }),
       FamilyMember.find({
@@ -199,7 +201,32 @@ familyRoutes.get(
       })
         .select("title slug description category projectType status lifecycleStage budgetRequired targetBudgetPaise targetCompletionDate completionPercent")
         .sort({ createdAt: -1 })
-        .limit(5)
+        .limit(5),
+      SankalpProposal.aggregate([
+        {
+          $match: {
+            familyId: normalizedFamilyId,
+            status: "voting"
+          }
+        },
+        {
+          $lookup: {
+            from: SankalpProposalVote.collection.name,
+            localField: "_id",
+            foreignField: "proposalId",
+            as: "votes"
+          }
+        },
+        {
+          $addFields: {
+            upVotes: { $size: { $filter: { input: "$votes", as: "vote", cond: { $eq: ["$$vote.vote", "up"] } } } },
+            downVotes: { $size: { $filter: { input: "$votes", as: "vote", cond: { $eq: ["$$vote.vote", "down"] } } } }
+          }
+        },
+        { $addFields: { voteScore: { $subtract: ["$upVotes", "$downVotes"] }, totalVotes: { $add: ["$upVotes", "$downVotes"] } } },
+        { $sort: { voteScore: -1, totalVotes: -1, createdAt: -1 } },
+        { $limit: 3 }
+      ])
     ]);
 
     res.json({
@@ -213,6 +240,21 @@ familyRoutes.get(
           treasuryBalance: treasuryBalancePaise / 100,
           contributionThisYear: (contributionRows[0]?.amountPaise || 0) / 100
         },
+        votingSankalp: proposalRows.map((proposal) => ({
+          id: proposal._id,
+          title: proposal.title,
+          description: proposal.description,
+          category: proposal.category,
+          status: proposal.status,
+          tentativeBudgetRupees: (proposal.tentativeBudgetPaise || 0) / 100,
+          votes: {
+            up: proposal.upVotes || 0,
+            down: proposal.downVotes || 0,
+            total: proposal.totalVotes || 0,
+            score: proposal.voteScore || 0
+          },
+          createdAt: proposal.createdAt
+        })),
         featuredProjects: featuredProjects.map((project) => ({
           id: project._id,
           title: project.title,

@@ -151,6 +151,7 @@ export function DashboardPage() {
 
   const metrics = dashboard?.metrics;
   const featuredProjects = dashboard?.featuredProjects || [];
+  const votingSankalp = dashboard?.votingSankalp || [];
   const ageGroups = metrics?.ageGroups?.groups || [];
   const stats = [
     ["Kul Sadasya", metrics?.memberCount ?? 0],
@@ -227,6 +228,34 @@ export function DashboardPage() {
             ))
           ) : (
             <p className="empty-copy">पाँच प्रारम्भिक संकल्प database में जोड़ने के बाद यहाँ दिखाई देंगे.</p>
+          )}
+        </div>
+      </section>
+      <section className="content-band spaced-band">
+        <div className="tree-register-header">
+          <div>
+            <h2>Sankalp Sabha Voting</h2>
+            <p className="section-note">Ideas proposed by Sadasya. Living members aged 15+ can vote once.</p>
+          </div>
+          <Link className="secondary-button" to="/sankalp-sabha">
+            Open Sabha
+          </Link>
+        </div>
+        <div className="proposal-grid">
+          {votingSankalp.length ? (
+            votingSankalp.map((proposal) => (
+              <article className="proposal-card compact-proposal-card" key={proposal.id}>
+                <h3>{proposal.title}</h3>
+                <p>{proposal.description}</p>
+                <div className="project-summary">
+                  <span>Up {proposal.votes.up}</span>
+                  <span>Down {proposal.votes.down}</span>
+                  <span>Score {proposal.votes.score}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="empty-copy">No Sankalp is open for voting right now.</p>
           )}
         </div>
       </section>
