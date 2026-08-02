@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  Bell,
   BookOpenText,
   CheckCircle2,
   HeartHandshake,
@@ -126,6 +125,7 @@ export function HomePage() {
   const [activeView, setActiveView] = useState("member");
   const [launchStarted, setLaunchStarted] = useState(false);
   const [launchComplete, setLaunchComplete] = useState(false);
+  const [bellRings, setBellRings] = useState([]);
   const [snapshot, setSnapshot] = useState(null);
   const active = walkthrough[activeView];
 
@@ -143,32 +143,57 @@ export function HomePage() {
 
   function ringLaunchBell() {
     setLaunchStarted(true);
+    const ringId = Date.now();
+    setBellRings((current) => [...current.slice(-4), ringId]);
+    window.setTimeout(() => {
+      setBellRings((current) => current.filter((id) => id !== ringId));
+    }, 2600);
 
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
 
       const audioContext = new AudioContext();
+      audioContext.resume?.();
       const now = audioContext.currentTime;
       const masterGain = audioContext.createGain();
+      const compressor = audioContext.createDynamicsCompressor();
       masterGain.gain.setValueAtTime(0.0001, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.42, now + 0.03);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.3);
-      masterGain.connect(audioContext.destination);
+      masterGain.gain.exponentialRampToValueAtTime(0.62, now + 0.02);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.6);
+      compressor.connect(audioContext.destination);
+      masterGain.connect(compressor);
 
-      [528, 792, 1056].forEach((frequency, index) => {
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(frequency, now + index * 0.03);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.24 / (index + 1), now + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.1 + index * 0.2);
-        oscillator.connect(gain);
-        gain.connect(masterGain);
-        oscillator.start(now + index * 0.03);
-        oscillator.stop(now + 2.5 + index * 0.2);
+      const partials = [
+        { frequency: 136.1, gain: 0.22, decay: 3.4, type: "sine" },
+        { frequency: 272.2, gain: 0.18, decay: 2.8, type: "sine" },
+        { frequency: 408.3, gain: 0.2, decay: 2.4, type: "triangle" },
+        { frequency: 544.4, gain: 0.18, decay: 2.2, type: "sine" },
+        { frequency: 816.6, gain: 0.13, decay: 1.8, type: "triangle" },
+        { frequency: 1088.8, gain: 0.1, decay: 1.5, type: "sine" },
+        { frequency: 1633.2, gain: 0.07, decay: 1.2, type: "sine" },
+        { frequency: 2177.6, gain: 0.045, decay: 0.9, type: "sine" }
+      ];
+
+      partials.forEach((partial, index) => {
+        [0, 0.08].forEach((strikeDelay, strikeIndex) => {
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = partial.type;
+          oscillator.frequency.setValueAtTime(partial.frequency, now + strikeDelay);
+          oscillator.detune.setValueAtTime((index % 2 === 0 ? 6 : -5) + strikeIndex * 4, now + strikeDelay);
+          oscillator.detune.linearRampToValueAtTime(0, now + strikeDelay + partial.decay);
+          gain.gain.setValueAtTime(0.0001, now + strikeDelay);
+          gain.gain.exponentialRampToValueAtTime(partial.gain / (strikeIndex + 1), now + strikeDelay + 0.018);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + strikeDelay + partial.decay);
+          oscillator.connect(gain);
+          gain.connect(masterGain);
+          oscillator.start(now + strikeDelay);
+          oscillator.stop(now + strikeDelay + partial.decay + 0.2);
+        });
       });
+
+      window.setTimeout(() => audioContext.close?.(), 3900);
     } catch {
       // Launch still proceeds when a browser blocks or lacks Web Audio support.
     }
@@ -177,13 +202,18 @@ export function HomePage() {
   return (
     <main className="home-page">
       {!launchComplete ? (
-        <section className={`launch-stage ${launchStarted ? "launch-stage-active" : ""}`} aria-label="Nyas launch sequence">
+        <section
+          className={`launch-stage ${launchStarted ? "launch-stage-active" : ""} ${bellRings.length ? "launch-bell-ringing" : ""}`}
+          aria-label="Nyas launch sequence"
+        >
           <button type="button" className="launch-skip-button" onClick={() => setLaunchComplete(true)}>
             Skip
           </button>
-          <div className="launch-om-burst" aria-hidden="true">
-            ॐ
-          </div>
+          {bellRings.map((ringId) => (
+            <div className="launch-om-burst" aria-hidden="true" key={ringId}>
+              ॐ
+            </div>
+          ))}
           <div className="launch-stage-inner">
             <div className="launch-logo-ring">
               <img src={nyasaLogo} alt="Nyas logo" />
@@ -191,9 +221,17 @@ export function HomePage() {
             <p className="launch-kicker">Alahdadpur Kul presents</p>
             <h1>न्यास</h1>
             <p className="launch-subtitle">एक परिवार. एक विश्वास. एक विरासत. एक मंच.</p>
-            <button type="button" className="launch-bell-button" disabled={launchStarted} onClick={ringLaunchBell}>
-              <Bell size={34} />
-              <span>Mandir bell bajaiye</span>
+            <button type="button" className="launch-bell-button" onClick={ringLaunchBell}>
+              <span className="temple-bell-wrap" aria-hidden="true">
+                <span className="temple-bell-rope" />
+                <span className="temple-bell">
+                  <span className="temple-bell-cap" />
+                  <span className="temple-bell-body" />
+                  <span className="temple-bell-lip" />
+                  <span className="temple-bell-clapper" />
+                </span>
+              </span>
+              <span>{launchStarted ? "Bell dobara bajaiye" : "Mandir bell bajaiye"}</span>
             </button>
             <div className="launch-sequence-line">
               {launchSequenceSteps.map((step, index) => (
