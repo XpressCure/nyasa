@@ -13,7 +13,7 @@ import {
   Users
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import familyHouse from "../assets/family-house.jpeg";
 import familyPhoto from "../assets/family-photo.jpeg";
 import nyasaLogo from "../assets/nyasa-logo.png";
@@ -121,12 +121,30 @@ const launchSequenceSteps = [
   "Nyas Live"
 ];
 
+const launchBellBlessings = [
+  "ॐ",
+  "यश",
+  "कीर्ति",
+  "वैभव",
+  "सम्मान",
+  "समन्वय",
+  "उज्ज्वल भविष्य",
+  "संस्कार",
+  "विश्वास",
+  "एकता",
+  "प्रगति",
+  "सेवा",
+  "संकल्प",
+  "आशीर्वाद"
+];
+
 export function HomePage() {
   const [activeView, setActiveView] = useState("member");
   const [launchStarted, setLaunchStarted] = useState(false);
   const [launchComplete, setLaunchComplete] = useState(false);
   const [bellRings, setBellRings] = useState([]);
   const [snapshot, setSnapshot] = useState(null);
+  const bellRingCount = useRef(0);
   const active = walkthrough[activeView];
 
   useEffect(() => {
@@ -144,10 +162,18 @@ export function HomePage() {
   function ringLaunchBell() {
     setLaunchStarted(true);
     const ringId = Date.now();
-    setBellRings((current) => [...current.slice(-4), ringId]);
+    const blessingWord = launchBellBlessings[bellRingCount.current % launchBellBlessings.length];
+    bellRingCount.current += 1;
+    setBellRings((current) => [
+      ...current.slice(-5),
+      {
+        id: ringId,
+        word: blessingWord
+      }
+    ]);
     window.setTimeout(() => {
-      setBellRings((current) => current.filter((id) => id !== ringId));
-    }, 2600);
+      setBellRings((current) => current.filter((ring) => ring.id !== ringId));
+    }, 3600);
 
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -159,32 +185,33 @@ export function HomePage() {
       const masterGain = audioContext.createGain();
       const compressor = audioContext.createDynamicsCompressor();
       masterGain.gain.setValueAtTime(0.0001, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.62, now + 0.02);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.6);
+      masterGain.gain.exponentialRampToValueAtTime(0.78, now + 0.018);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.2);
       compressor.connect(audioContext.destination);
       masterGain.connect(compressor);
 
       const partials = [
-        { frequency: 136.1, gain: 0.22, decay: 3.4, type: "sine" },
-        { frequency: 272.2, gain: 0.18, decay: 2.8, type: "sine" },
-        { frequency: 408.3, gain: 0.2, decay: 2.4, type: "triangle" },
-        { frequency: 544.4, gain: 0.18, decay: 2.2, type: "sine" },
-        { frequency: 816.6, gain: 0.13, decay: 1.8, type: "triangle" },
-        { frequency: 1088.8, gain: 0.1, decay: 1.5, type: "sine" },
-        { frequency: 1633.2, gain: 0.07, decay: 1.2, type: "sine" },
-        { frequency: 2177.6, gain: 0.045, decay: 0.9, type: "sine" }
+        { frequency: 108, gain: 0.24, decay: 4.9, type: "sine" },
+        { frequency: 216, gain: 0.21, decay: 4.4, type: "sine" },
+        { frequency: 324, gain: 0.23, decay: 4, type: "triangle" },
+        { frequency: 432, gain: 0.22, decay: 3.7, type: "sine" },
+        { frequency: 648, gain: 0.17, decay: 3.1, type: "triangle" },
+        { frequency: 864, gain: 0.13, decay: 2.6, type: "sine" },
+        { frequency: 1296, gain: 0.09, decay: 2.1, type: "sine" },
+        { frequency: 1728, gain: 0.06, decay: 1.7, type: "sine" },
+        { frequency: 2592, gain: 0.035, decay: 1.2, type: "triangle" }
       ];
 
       partials.forEach((partial, index) => {
-        [0, 0.08].forEach((strikeDelay, strikeIndex) => {
+        [0, 0.12, 0.28].forEach((strikeDelay, strikeIndex) => {
           const oscillator = audioContext.createOscillator();
           const gain = audioContext.createGain();
           oscillator.type = partial.type;
           oscillator.frequency.setValueAtTime(partial.frequency, now + strikeDelay);
-          oscillator.detune.setValueAtTime((index % 2 === 0 ? 6 : -5) + strikeIndex * 4, now + strikeDelay);
+          oscillator.detune.setValueAtTime((index % 2 === 0 ? 11 : -9) + strikeIndex * 3, now + strikeDelay);
           oscillator.detune.linearRampToValueAtTime(0, now + strikeDelay + partial.decay);
           gain.gain.setValueAtTime(0.0001, now + strikeDelay);
-          gain.gain.exponentialRampToValueAtTime(partial.gain / (strikeIndex + 1), now + strikeDelay + 0.018);
+          gain.gain.exponentialRampToValueAtTime(partial.gain / (strikeIndex + 1.15), now + strikeDelay + 0.014);
           gain.gain.exponentialRampToValueAtTime(0.0001, now + strikeDelay + partial.decay);
           oscillator.connect(gain);
           gain.connect(masterGain);
@@ -193,7 +220,22 @@ export function HomePage() {
         });
       });
 
-      window.setTimeout(() => audioContext.close?.(), 3900);
+      const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.18, audioContext.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let index = 0; index < noiseData.length; index += 1) {
+        noiseData[index] = (Math.random() * 2 - 1) * (1 - index / noiseData.length);
+      }
+      const noise = audioContext.createBufferSource();
+      const noiseGain = audioContext.createGain();
+      noise.buffer = noiseBuffer;
+      noiseGain.gain.setValueAtTime(0.16, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      noise.connect(noiseGain);
+      noiseGain.connect(masterGain);
+      noise.start(now);
+      noise.stop(now + 0.2);
+
+      window.setTimeout(() => audioContext.close?.(), 5600);
     } catch {
       // Launch still proceeds when a browser blocks or lacks Web Audio support.
     }
@@ -209,9 +251,9 @@ export function HomePage() {
           <button type="button" className="launch-skip-button" onClick={() => setLaunchComplete(true)}>
             Skip
           </button>
-          {bellRings.map((ringId) => (
-            <div className="launch-om-burst" aria-hidden="true" key={ringId}>
-              ॐ
+          {bellRings.map((ring, index) => (
+            <div className={`launch-om-burst launch-blessing-${(index % 3) + 1}`} aria-hidden="true" key={ring.id}>
+              {ring.word}
             </div>
           ))}
           <div className="launch-stage-inner">
@@ -231,7 +273,7 @@ export function HomePage() {
                   <span className="temple-bell-clapper" />
                 </span>
               </span>
-              <span>{launchStarted ? "Bell dobara bajaiye" : "Mandir bell bajaiye"}</span>
+              <span>{launchStarted ? "घंटा फिर बजाइए" : "मंदिर का घंटा बजाइए"}</span>
             </button>
             <div className="launch-sequence-line">
               {launchSequenceSteps.map((step, index) => (
