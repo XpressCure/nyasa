@@ -138,6 +138,16 @@ const launchBellBlessings = [
   "आशीर्वाद"
 ];
 
+function formatPreviewMoney(value) {
+  if (!value) return "₹0";
+  if (value >= 100000) return `₹${(value / 100000).toFixed(value >= 1000000 ? 1 : 0)}L`;
+  return new Intl.NumberFormat("en-IN", {
+    currency: "INR",
+    maximumFractionDigits: 0,
+    style: "currency"
+  }).format(value);
+}
+
 export function HomePage() {
   const [activeView, setActiveView] = useState("member");
   const [launchStarted, setLaunchStarted] = useState(false);
@@ -146,6 +156,8 @@ export function HomePage() {
   const [snapshot, setSnapshot] = useState(null);
   const bellRingCount = useRef(0);
   const active = walkthrough[activeView];
+  const featuredSankalp = snapshot?.sankalp?.featured;
+  const featuredSankalpProgress = Math.max(0, Math.min(100, featuredSankalp?.fundingPercent || featuredSankalp?.completionPercent || 0));
 
   useEffect(() => {
     apiGet("/families/public/nyasa-summary")
@@ -293,7 +305,6 @@ export function HomePage() {
             <div className="launch-logo-ring">
               <img src={nyasaLogo} alt="Nyas logo" />
             </div>
-            <p className="launch-kicker">Alahdadpur Kul presents</p>
             <h1>न्यास</h1>
             <p className="launch-subtitle">एक परिवार. एक विश्वास. एक विरासत. एक मंच.</p>
             <button type="button" className="launch-bell-button" onClick={ringLaunchBell}>
@@ -395,29 +406,33 @@ export function HomePage() {
             <div className="preview-metrics">
               <div>
                 <span>Parichay</span>
-                <strong>Live</strong>
+                <strong>{snapshot?.memberCount ?? "Live"}</strong>
               </div>
               <div>
-                <span>Kosh</span>
-                <strong>Ready</strong>
+                <span>Locations</span>
+                <strong>{snapshot?.locationCount ?? "Ready"}</strong>
               </div>
               <div>
-                <span>Launch Sankalp</span>
-                <strong>3</strong>
+                <span>Live Sankalp</span>
+                <strong>{snapshot?.sankalp?.activeCount ?? 0}</strong>
               </div>
             </div>
             <div className="preview-mission">
               <div>
-                <strong>Alahdadpur Ancestral House Sankalp</strong>
-                <span>Prepared for transparent Kul contributions</span>
+                <strong>{featuredSankalp?.title || "Live Sankalp will appear here"}</strong>
+                <span>
+                  {featuredSankalp
+                    ? `${formatPreviewMoney(featuredSankalp.allocatedRupees)} allocated of ${formatPreviewMoney(featuredSankalp.targetBudgetRupees)}`
+                    : "Create or publish a Sankalp to show real progress here."}
+                </span>
               </div>
               <div className="preview-progress">
-                <span style={{ width: "8%" }} />
+                <span style={{ width: `${featuredSankalpProgress}%` }} />
               </div>
             </div>
             <div className="preview-row">
               <CheckCircle2 size={18} />
-              Live database prepared with Alahdadpur workspace
+              {featuredSankalp ? `${featuredSankalpProgress}% live progress from Kosh records` : "Connected to live Alahdadpur workspace"}
             </div>
           </div>
         </div>

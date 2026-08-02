@@ -76,7 +76,7 @@ familyRoutes.get(
     }
 
     const normalizedFamilyId = new mongoose.Types.ObjectId(String(family._id));
-    const [memberCount, locationRows] = await Promise.all([
+    const [memberCount, locationRows, activeSankalpCount, featuredSankalp] = await Promise.all([
       FamilyMember.countDocuments({ familyId: family._id, status: { $ne: "removed" } }),
       FamilyMember.aggregate([
         { $match: { familyId: normalizedFamilyId, status: { $ne: "removed" } } },
@@ -96,14 +96,64 @@ familyRoutes.get(
         { $group: { _id: "$location", count: { $sum: 1 } } },
         { $sort: { count: -1, _id: 1 } },
         { $limit: 6 }
-      ])
+      ]),
+      Project.countDocuments({
+        familyId: family._id,
+        visibility: "family",
+        status: { $in: ["proposed", "active", "estimate_received", "fundraising", "implementation"] }
+      }),
+      Project.findOne({
+        familyId: family._id,
+        visibility: "family",
+        status: { $in: ["implementation", "fundraising", "estimate_received", "active", "proposed"] }
+      })
+        .select("title description lifecycleStage targetBudgetPaise completionPercent")
+        .sort({ updatedAt: -1 })
     ]);
+
+    const targetBudgetRupees = (featuredSankalp?.targetBudgetPaise || 0) / 100;
+    let allocatedPaise = 0;
+
+    if (featuredSankalp?._id) {
+      const allocationRows = await LedgerTransaction.aggregate([
+        {
+          $match: {
+            familyId: normalizedFamilyId,
+            projectId: featuredSankalp._id,
+            status: "posted",
+            type: { $in: ["allocation", "refund", "reversal"] }
+          }
+        },
+        { $group: { _id: "$direction", amountPaise: { $sum: "$amountPaise" } } }
+      ]);
+      const debit = allocationRows.find((row) => row._id === "debit")?.amountPaise || 0;
+      const credit = allocationRows.find((row) => row._id === "credit")?.amountPaise || 0;
+      allocatedPaise = Math.max(debit - credit, 0);
+    }
+
+    const allocatedRupees = allocatedPaise / 100;
+    const fundingPercent = targetBudgetRupees > 0 ? Math.round((allocatedRupees / targetBudgetRupees) * 100) : 0;
 
     res.json({
       data: {
         memberCount,
         locationCount: locationRows.length,
-        locations: locationRows.map((row) => ({ location: row._id, count: row.count }))
+        locations: locationRows.map((row) => ({ location: row._id, count: row.count })),
+        sankalp: {
+          activeCount: activeSankalpCount,
+          featured: featuredSankalp
+            ? {
+                id: featuredSankalp._id,
+                title: featuredSankalp.title,
+                description: featuredSankalp.description,
+                lifecycleStage: featuredSankalp.lifecycleStage,
+                targetBudgetRupees,
+                allocatedRupees,
+                fundingPercent,
+                completionPercent: featuredSankalp.completionPercent || 0
+              }
+            : null
+        }
       }
     });
   })
