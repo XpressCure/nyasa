@@ -1,6 +1,29 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { apiPost } from "../lib/api.js";
+import { apiGet, apiPost } from "../lib/api.js";
+
+function hasProfileDetails(member) {
+  if (!member) return false;
+
+  const hasLocation = Boolean(member.placeOfResidence || member.city || member.state || member.country);
+  const hasPhoto = Boolean(member.photoUrl || member.photoDocumentId);
+  const hasFamilyLinks = Boolean(
+    member.fatherMemberId ||
+      member.motherMemberId ||
+      member.spouseMemberId ||
+      member.childMemberIds?.length ||
+      member.childrenCount
+  );
+
+  return Boolean(
+    member.gender &&
+      member.dateOfBirth &&
+      hasLocation &&
+      hasPhoto &&
+      (member.profession || member.bio || member.work?.currentPlace) &&
+      hasFamilyLinks
+  );
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -25,7 +48,16 @@ export function LoginPage() {
         localStorage.setItem("nyasa_family_id", response.data.family._id);
       }
       const nextPath = searchParams.get("next");
-      const safeNextPath = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/profile";
+      let defaultPath = "/profile";
+      if (response.data.family?._id) {
+        try {
+          const memberResponse = await apiGet(`/members/family/${response.data.family._id}/me`);
+          defaultPath = hasProfileDetails(memberResponse.data) ? "/dashboard" : "/profile";
+        } catch {
+          defaultPath = "/profile";
+        }
+      }
+      const safeNextPath = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : defaultPath;
       navigate(safeNextPath);
     } catch (apiError) {
       if (apiError.code === "LOGIN_PHONE_REQUIRED") {

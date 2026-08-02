@@ -31,6 +31,37 @@ function carPosition(progress) {
   return Math.max(6, Math.min(94, progress));
 }
 
+const visionTerms = [
+  "राष्ट्रीय स्तर का परिवार ब्रांड",
+  "Future leaders",
+  "Alahdadpur model village",
+  "नई पीढ़ी का आत्मविश्वास",
+  "Women leadership",
+  "Civil services and public life",
+  "Family enterprise",
+  "Transparent Kosh",
+  "Health and fitness culture",
+  "Education excellence",
+  "Research mindset",
+  "Digital legacy",
+  "Global family network",
+  "Village employment",
+  "Legal and property discipline",
+  "संस्कार और आधुनिकता",
+  "Family mentorship",
+  "Sports and discipline",
+  "Creative careers",
+  "Shared decision making",
+  "Sankalp se siddhi",
+  "Alahdadpur social impact",
+  "Archives and oral history",
+  "Next generation founders"
+];
+
+function shuffledVisionTerms() {
+  return [...visionTerms].sort(() => Math.random() - 0.5).slice(0, 16);
+}
+
 function formatLifecycle(value) {
   const labels = {
     concept: "विचार",
@@ -66,6 +97,7 @@ export function DashboardPage() {
   const [dashboard, setDashboard] = useState(null);
   const [hub, setHub] = useState(null);
   const [koshAnalytics, setKoshAnalytics] = useState(null);
+  const [dailyVisionTerms] = useState(shuffledVisionTerms);
   const [analyticsRange, setAnalyticsRange] = useState("3m");
   const [analyticsDateFrom, setAnalyticsDateFrom] = useState("");
   const [analyticsDateTo, setAnalyticsDateTo] = useState("");
@@ -196,6 +228,22 @@ export function DashboardPage() {
           </article>
         ))}
       </div>
+      <section className="content-band vision-chart-band">
+        <div className="vision-chart-copy">
+          <span>Nyas Vision Chart</span>
+          <h2>आज का सामूहिक दृष्टिकोण</h2>
+          <p>
+            Darshan हर refresh पर परिवार की कुछ नई आकांक्षाएँ दिखाएगा, ताकि बातचीत केवल data पर नहीं, भविष्य की दिशा पर भी शुरू हो.
+          </p>
+        </div>
+        <div className="vision-cloud" aria-label="Family vision terms">
+          {dailyVisionTerms.map((term, index) => (
+            <span className={`vision-chip vision-chip-${(index % 5) + 1}`} key={term}>
+              {term}
+            </span>
+          ))}
+        </div>
+      </section>
       <section className="content-band featured-sankalp-band">
         <div className="tree-register-header">
           <div>

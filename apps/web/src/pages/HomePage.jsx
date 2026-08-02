@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  Bell,
   BookOpenText,
   CheckCircle2,
   HeartHandshake,
@@ -108,12 +109,23 @@ const futureSections = [
 const launchMessageHighlights = [
   "परिवार की विरासत, इतिहास और स्मृतियों को सुरक्षित रखना।",
   "Alahdadpur और पैतृक घर से जुड़े कार्यों को संगठित रूप से आगे बढ़ाना।",
-  "Family Funds को पारदर्शी तरीके से संचालित करना।",
-  "आने वाली पीढ़ियों के लिए एक मजबूत, जुड़ा हुआ आधार बनाना।"
+  "Kosh और Sankalp को पारदर्शी तरीके से संचालित करना।",
+  "हर सदस्य को Parichay, Kul Map, Sankalp Sabha और Yogdaan से जोड़ना।"
+];
+
+const launchSequenceSteps = [
+  "Alahdadpur",
+  "Kul Parichay",
+  "Kul Map",
+  "Kosh",
+  "Sankalp Sabha",
+  "Nyas Live"
 ];
 
 export function HomePage() {
   const [activeView, setActiveView] = useState("member");
+  const [launchStarted, setLaunchStarted] = useState(false);
+  const [launchComplete, setLaunchComplete] = useState(false);
   const [snapshot, setSnapshot] = useState(null);
   const active = walkthrough[activeView];
 
@@ -123,8 +135,93 @@ export function HomePage() {
       .catch(() => setSnapshot(null));
   }, []);
 
+  useEffect(() => {
+    if (!launchStarted) return undefined;
+    const timer = window.setTimeout(() => setLaunchComplete(true), 9200);
+    return () => window.clearTimeout(timer);
+  }, [launchStarted]);
+
+  function ringLaunchBell() {
+    setLaunchStarted(true);
+
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      const audioContext = new AudioContext();
+      const now = audioContext.currentTime;
+      const masterGain = audioContext.createGain();
+      masterGain.gain.setValueAtTime(0.0001, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.42, now + 0.03);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.3);
+      masterGain.connect(audioContext.destination);
+
+      [528, 792, 1056].forEach((frequency, index) => {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, now + index * 0.03);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.24 / (index + 1), now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.1 + index * 0.2);
+        oscillator.connect(gain);
+        gain.connect(masterGain);
+        oscillator.start(now + index * 0.03);
+        oscillator.stop(now + 2.5 + index * 0.2);
+      });
+    } catch {
+      // Launch still proceeds when a browser blocks or lacks Web Audio support.
+    }
+  }
+
   return (
     <main className="home-page">
+      {!launchComplete ? (
+        <section className={`launch-stage ${launchStarted ? "launch-stage-active" : ""}`} aria-label="Nyas launch sequence">
+          <button type="button" className="launch-skip-button" onClick={() => setLaunchComplete(true)}>
+            Skip
+          </button>
+          <div className="launch-om-burst" aria-hidden="true">
+            ॐ
+          </div>
+          <div className="launch-stage-inner">
+            <div className="launch-logo-ring">
+              <img src={nyasaLogo} alt="Nyas logo" />
+            </div>
+            <p className="launch-kicker">Alahdadpur Kul presents</p>
+            <h1>न्यास</h1>
+            <p className="launch-subtitle">एक परिवार. एक विश्वास. एक विरासत. एक मंच.</p>
+            <button type="button" className="launch-bell-button" disabled={launchStarted} onClick={ringLaunchBell}>
+              <Bell size={34} />
+              <span>Mandir bell bajaiye</span>
+            </button>
+            <div className="launch-sequence-line">
+              {launchSequenceSteps.map((step, index) => (
+                <span key={step} style={{ animationDelay: `${index * 0.55 + 0.6}s` }}>
+                  {step}
+                </span>
+              ))}
+            </div>
+            <div className="launch-reveal-card">
+              <strong>Website launch ready</strong>
+              <span>Parichay, Kul Map, Kosh, Sankalp, Sabha voting and family dashboard are live.</span>
+            </div>
+            <div className="launch-controls">
+              {!launchStarted ? (
+                <button type="button" onClick={ringLaunchBell}>
+                  Launch with bell
+                  <ArrowRight size={18} />
+                </button>
+              ) : (
+                <button type="button" onClick={() => setLaunchComplete(true)}>
+                  Enter Nyas
+                  <ArrowRight size={18} />
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
       <nav className="home-nav">
         <div className="home-brand">
           <img className="home-brand-logo" src={nyasaLogo} alt="न्यास Trust logo" />
@@ -255,15 +352,16 @@ export function HomePage() {
         <div className="launch-note-card">
           <span className="home-kicker">
             <Landmark size={16} />
-            Launch Sankalp
+            Nyas Launch
           </span>
-          <h2>बड़े डैडी के 72वें जन्मदिवस पर एक पारिवारिक संकल्प।</h2>
+          <h2>न्यास का शुभारंभ: परिवार, गाँव और भविष्य को जोड़ने वाला डिजिटल मंच।</h2>
           <p>
-            Nyasa Trust केवल एक सॉफ्टवेयर नहीं है। यह हमारे परिवार की सामूहिक यात्रा का डिजिटल अभिलेख है: विश्वास, अपनापन,
-            आध्यात्मिक आधार, Alahdadpur से जुड़ी स्मृतियाँ, और आने वाली पीढ़ियों के लिए हमारी जिम्मेदारी।
+            Nyas केवल एक वेबसाइट नहीं है। यह परिवार की सामूहिक स्मृतियों, Parichay, Kul Map, Kosh, Sankalp, Sabha voting और Alahdadpur से जुड़े
+            कार्यों का जीवंत डिजिटल घर है। यहाँ हर सदस्य अपनी जानकारी जोड़ सकता है, परिवार की शाखाओं को जोड़ सकता है, और आने वाले कार्यों में
+            पारदर्शी रूप से भाग ले सकता है।
           </p>
           <blockquote>
-            "आज हम न्यासी हैं, कल हमारी संताने होंगी। विरासत हमारी नहीं, हमारी जिम्मेदारी है।"
+            "विरासत केवल संभालने की चीज नहीं, मिलकर आगे बढ़ाने की जिम्मेदारी है।"
           </blockquote>
         </div>
         <div className="launch-message-list">
