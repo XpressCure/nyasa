@@ -4,7 +4,8 @@ import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
 import { loadCurrentSession } from "../lib/session.js";
 
-const presetAmounts = [501, 1001, 2100, 5100, 11000];
+const MIN_WALLET_TOP_UP_RUPEES = 2000;
+const presetAmounts = [2000, 5100, 11000, 21000, 51000];
 
 function formatMoney(amountRupees = 0) {
   return new Intl.NumberFormat("en-IN", {
@@ -117,9 +118,15 @@ export function ContributePage() {
   async function startPayment(event) {
     event.preventDefault();
     const familyId = getFamilyId();
+    const topUpAmount = Number(amountRupees || 0);
 
     if (!familyId) {
       setMessage("Please sign in before adding Yogdaan.");
+      return;
+    }
+
+    if (topUpAmount < MIN_WALLET_TOP_UP_RUPEES) {
+      setMessage(`Minimum wallet top-up is ${formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.`);
       return;
     }
 
@@ -248,7 +255,13 @@ export function ContributePage() {
           </div>
           <label>
             Custom amount
-            <input type="number" min="1" value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} />
+            <input
+              type="number"
+              min={MIN_WALLET_TOP_UP_RUPEES}
+              value={amountRupees}
+              onChange={(event) => setAmountRupees(event.target.value)}
+            />
+            <small>Minimum wallet top-up is {formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.</small>
           </label>
           <button type="submit">Pay Securely</button>
         </form>

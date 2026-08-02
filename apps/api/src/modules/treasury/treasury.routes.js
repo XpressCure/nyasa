@@ -15,6 +15,8 @@ import { calculatePostedBalance, getOrCreateMainTreasury, getOrCreateWallet } fr
 
 export const treasuryRoutes = Router();
 
+const MIN_WALLET_TOP_UP_RUPEES = 2000;
+
 const contributionSchema = z.object({
   memberId: z.string().min(1).optional(),
   amountRupees: z.coerce.number().positive(),
@@ -64,6 +66,12 @@ function serializeMoney(amountPaise = 0) {
 
 function netDebitCreditRows(rows = []) {
   return rows.reduce((total, row) => (row._id === "debit" ? total + row.amountPaise : total - row.amountPaise), 0);
+}
+
+function ensureMinimumWalletTopUp(amountRupees) {
+  if (Number(amountRupees) < MIN_WALLET_TOP_UP_RUPEES) {
+    throw httpError(400, `Minimum wallet top-up is INR ${MIN_WALLET_TOP_UP_RUPEES}.`, "WALLET_TOP_UP_BELOW_MINIMUM");
+  }
 }
 
 function calculateAllocationPolicy(project) {
@@ -392,9 +400,7 @@ treasuryRoutes.post(
     const body = contributionSchema.parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
 
-    if (amountPaise <= 0) {
-      throw httpError(400, "Contribution amount must be greater than zero.", "INVALID_AMOUNT");
-    }
+    ensureMinimumWalletTopUp(body.amountRupees);
 
     const transaction = await createContributionTransaction({
       familyId: req.familyId,
@@ -432,9 +438,7 @@ treasuryRoutes.post(
     const body = contributionSchema.omit({ memberId: true }).parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
 
-    if (amountPaise <= 0) {
-      throw httpError(400, "Contribution amount must be greater than zero.", "INVALID_AMOUNT");
-    }
+    ensureMinimumWalletTopUp(body.amountRupees);
 
     const transaction = await createContributionTransaction({
       familyId: req.familyId,

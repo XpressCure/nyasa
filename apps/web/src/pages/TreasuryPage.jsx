@@ -15,6 +15,8 @@ function formatRole(role = "") {
   return role.replaceAll("_", " ");
 }
 
+const MIN_WALLET_TOP_UP_RUPEES = 2000;
+
 function getFundingNeed(project) {
   return Math.max(project?.targetRemainingRupees || 0, 0);
 }
@@ -208,8 +210,14 @@ export function TreasuryPage() {
   async function addToMyWallet(event) {
     event.preventDefault();
     const familyId = getFamilyId();
+    const topUpAmount = Number(selfContributionAmountRupees || 0);
     if (!familyId) {
       setMessage("Create or select a Kul first.");
+      return;
+    }
+
+    if (topUpAmount < MIN_WALLET_TOP_UP_RUPEES) {
+      setMessage(`Minimum wallet top-up is ${formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.`);
       return;
     }
 
@@ -422,8 +430,9 @@ export function TreasuryPage() {
                 value={selfContributionAmountRupees}
                 onChange={(event) => setSelfContributionAmountRupees(event.target.value)}
                 type="number"
-                min="1"
+                min={MIN_WALLET_TOP_UP_RUPEES}
               />
+              <small>Minimum wallet top-up is {formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.</small>
             </label>
             <label>
               Description
@@ -460,7 +469,8 @@ export function TreasuryPage() {
             </label>
             <label>
               Amount
-              <input value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} type="number" min="1" />
+              <input value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} type="number" min={MIN_WALLET_TOP_UP_RUPEES} />
+              <small>Minimum wallet top-up is {formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.</small>
             </label>
             <label>
               Description

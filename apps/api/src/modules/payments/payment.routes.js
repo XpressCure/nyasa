@@ -14,6 +14,8 @@ import { createRazorpayOrder, getRazorpayKeyId, verifyRazorpayPaymentSignature }
 
 export const paymentRoutes = Router();
 
+const MIN_WALLET_TOP_UP_RUPEES = 2000;
+
 const createOrderSchema = z.object({
   amountRupees: z.coerce.number().positive(),
   description: z.string().max(280).optional()
@@ -35,8 +37,8 @@ paymentRoutes.post(
     const body = createOrderSchema.parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
 
-    if (amountPaise <= 0) {
-      throw httpError(400, "Payment amount must be greater than zero.", "INVALID_AMOUNT");
+    if (body.amountRupees < MIN_WALLET_TOP_UP_RUPEES) {
+      throw httpError(400, `Minimum wallet top-up is INR ${MIN_WALLET_TOP_UP_RUPEES}.`, "WALLET_TOP_UP_BELOW_MINIMUM");
     }
 
     const receipt = `nyasa_${Date.now()}`.slice(0, 40);
