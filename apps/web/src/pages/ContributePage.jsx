@@ -33,6 +33,41 @@ function getFundingNeed(project) {
   return Math.max(project.targetRemainingRupees || 0, 0);
 }
 
+function getContributionPolicy(project) {
+  if (!project?.budgetRequired || !project.targetBudgetRupees) {
+    return null;
+  }
+
+  const maxPercent = project.targetBudgetRupees > 200000 ? 5 : 10;
+  const minRupees = Math.max(Math.ceil(project.targetBudgetRupees * 0.02), 500);
+  const maxRupees = Math.floor(project.targetBudgetRupees * (maxPercent / 100));
+  const remainingRupees = getFundingNeed(project);
+  const effectiveMinRupees = Math.min(minRupees, maxRupees);
+
+  return {
+    maxPercent,
+    minRupees: Math.min(effectiveMinRupees, remainingRupees || effectiveMinRupees),
+    maxRupees: Math.min(maxRupees, remainingRupees || maxRupees)
+  };
+}
+
+function getDefaultAllocationAmount(project, preferredAmount = 0) {
+  const policy = getContributionPolicy(project);
+  const remainingRupees = getFundingNeed(project);
+  const upperLimit = policy?.maxRupees || remainingRupees || preferredAmount;
+  const lowerLimit = policy?.minRupees || 1;
+  const requestedAmount = Number(preferredAmount || 0);
+  const amount = requestedAmount > 0 ? requestedAmount : lowerLimit;
+
+  return Math.max(Math.min(amount, upperLimit), Math.min(lowerLimit, upperLimit));
+}
+
+function getContributionHint(project) {
+  const policy = getContributionPolicy(project);
+  if (!policy) return "This Sankalp does not have a funding limit yet.";
+  return `Allowed range: ${formatMoney(policy.minRupees)} to ${formatMoney(policy.maxRupees)} per member. Max ${policy.maxPercent}% of this Sankalp.`;
+}
+
 export function ContributePage() {
   const [session, setSession] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -73,6 +108,7 @@ export function ContributePage() {
       setSummary(summaryResponse.data);
       setProjects(fundingProjects);
       setAllocationProjectId((current) => current || fundingProjects[0]?.id || "");
+      setAllocationAmountRupees((current) => current || (fundingProjects[0] ? String(getDefaultAllocationAmount(fundingProjects[0], amountRupees)) : ""));
     } catch (error) {
       setMessage(error.message);
     }
@@ -121,8 +157,9 @@ export function ContributePage() {
               razorpaySignature: response.razorpay_signature
             });
             setPaymentComplete(true);
-            setAllocationAmountRupees(String(paymentOrder.amountRupees));
-            setMessage("Payment verified. Now choose the Sankalp you want to support.");
+            const selectedProject = projects.find((project) => project.id === allocationProjectId) || projects[0];
+            setAllocationAmountRupees(String(selectedProject ? getDefaultAllocationAmount(selectedProject, paymentOrder.amountRupees) : paymentOrder.amountRupees));
+            setMessage(`Done: ${formatMoney(paymentOrder.amountRupees)} has been added to your Kosh wallet. Now choose the Sankalp you want to support.`);
             await loadPage();
           } catch (error) {
             setMessage(error.message);
@@ -157,7 +194,8 @@ export function ContributePage() {
         amountRupees: allocationAmountRupees,
         description: "Allocated from QR Yogdaan flow"
       });
-      setMessage(response.message || "Yogdaan allocated to Sankalp.");
+      setPaymentComplete(true);
+      setMessage(response.message || "Done: Yogdaan allocated to Sankalp.");
       await loadPage();
     } catch (error) {
       setMessage(error.message);
@@ -237,19 +275,26 @@ export function ContributePage() {
                   key={project.id}
                   onClick={() => {
                     setAllocationProjectId(project.id);
-                    setAllocationAmountRupees(String(Math.min(Number(allocationAmountRupees || amountRupees || 0), getFundingNeed(project)) || getFundingNeed(project)));
+                    setAllocationAmountRupees(String(getDefaultAllocationAmount(project, allocationAmountRupees || amountRupees)));
                   }}
                 >
                   <strong>{project.title}</strong>
-                  <span>Needed {formatMoney(getFundingNeed(project))}</span>
-                  <small>{project.fundingPercent || 0}% funded</small>
+                  <span>Remaining {formatMoney(getFundingNeed(project))}</span>
+                  <small>{getContributionHint(project)}</small>
                 </button>
               ))}
             </div>
             <form className="form-grid" onSubmit={allocateToSankalp}>
               <label>
                 Sankalp
-                <select value={allocationProjectId} onChange={(event) => setAllocationProjectId(event.target.value)}>
+                <select
+                  value={allocationProjectId}
+                  onChange={(event) => {
+                    const project = projects.find((item) => item.id === event.target.value);
+                    setAllocationProjectId(event.target.value);
+                    setAllocationAmountRupees(String(getDefaultAllocationAmount(project, allocationAmountRupees || amountRupees)));
+                  }}
+                >
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
                       {project.title} - needs {formatMoney(getFundingNeed(project))}
@@ -259,7 +304,14 @@ export function ContributePage() {
               </label>
               <label>
                 Amount to allocate
-                <input type="number" min="1" value={allocationAmountRupees} onChange={(event) => setAllocationAmountRupees(event.target.value)} />
+                <input
+                  type="number"
+                  min={getContributionPolicy(projects.find((project) => project.id === allocationProjectId))?.minRupees || 1}
+                  max={getContributionPolicy(projects.find((project) => project.id === allocationProjectId))?.maxRupees || undefined}
+                  value={allocationAmountRupees}
+                  onChange={(event) => setAllocationAmountRupees(event.target.value)}
+                />
+                <small>{getContributionHint(projects.find((project) => project.id === allocationProjectId))}</small>
               </label>
               <button type="submit">Allocate to Sankalp</button>
             </form>

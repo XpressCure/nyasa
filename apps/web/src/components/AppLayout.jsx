@@ -1,4 +1,4 @@
-import { Archive, BookOpenText, CalendarDays, GitBranch, HeartHandshake, Home, Images, Landmark, Search, UserCircle, Users } from "lucide-react";
+import { Archive, BookOpenText, CalendarDays, GitBranch, HeartHandshake, Home, Images, Landmark, Menu, Search, UserCircle, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
@@ -34,15 +34,22 @@ const navSections = [
 export function AppLayout() {
   const location = useLocation();
   const [session, setSession] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     loadCurrentSession()
       .then(setSession)
       .catch(() => setSession(null));
+    setMenuOpen(false);
   }, [location.pathname]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${menuOpen ? "sidebar-open" : ""}`}>
+      <button type="button" className="mobile-menu-button" onClick={() => setMenuOpen((current) => !current)}>
+        {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        <span>{menuOpen ? "Close" : "Menu"}</span>
+      </button>
+      <button type="button" className="sidebar-backdrop" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">N</span>
@@ -68,7 +75,7 @@ export function AppLayout() {
                 }
 
                 return (
-                  <NavLink end={item.end} key={item.to} to={item.to} className="nav-link">
+                  <NavLink end={item.end} key={item.to} to={item.to} className="nav-link" onClick={() => setMenuOpen(false)}>
                     <Icon size={18} />
                     <span>{item.label}</span>
                   </NavLink>

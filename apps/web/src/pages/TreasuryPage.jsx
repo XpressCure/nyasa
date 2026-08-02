@@ -15,6 +15,45 @@ function formatRole(role = "") {
   return role.replaceAll("_", " ");
 }
 
+function getFundingNeed(project) {
+  return Math.max(project?.targetRemainingRupees || 0, 0);
+}
+
+function getContributionPolicy(project) {
+  if (!project?.budgetRequired || !project.targetBudgetRupees) {
+    return null;
+  }
+
+  const maxPercent = project.targetBudgetRupees > 200000 ? 5 : 10;
+  const minRupees = Math.max(Math.ceil(project.targetBudgetRupees * 0.02), 500);
+  const maxRupees = Math.floor(project.targetBudgetRupees * (maxPercent / 100));
+  const remainingRupees = getFundingNeed(project);
+  const effectiveMinRupees = Math.min(minRupees, maxRupees);
+
+  return {
+    maxPercent,
+    minRupees: Math.min(effectiveMinRupees, remainingRupees || effectiveMinRupees),
+    maxRupees: Math.min(maxRupees, remainingRupees || maxRupees)
+  };
+}
+
+function getDefaultAllocationAmount(project, preferredAmount = 0) {
+  const policy = getContributionPolicy(project);
+  const remainingRupees = getFundingNeed(project);
+  const upperLimit = policy?.maxRupees || remainingRupees || preferredAmount;
+  const lowerLimit = policy?.minRupees || 1;
+  const requestedAmount = Number(preferredAmount || 0);
+  const amount = requestedAmount > 0 ? requestedAmount : lowerLimit;
+
+  return Math.max(Math.min(amount, upperLimit), Math.min(lowerLimit, upperLimit));
+}
+
+function getContributionHint(project) {
+  const policy = getContributionPolicy(project);
+  if (!policy) return "No funding limit is set for this Sankalp yet.";
+  return `Minimum ${formatMoney(policy.minRupees)}, maximum ${formatMoney(policy.maxRupees)} per member. Above INR 2L, max is 5%; otherwise max is 10%.`;
+}
+
 function loadRazorpayCheckout() {
   return new Promise((resolve, reject) => {
     if (window.Razorpay) {
@@ -54,6 +93,7 @@ export function TreasuryPage() {
   const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
   const canReverseLedger = ["owner", "admin"].includes(session?.member?.role);
+  const selectedAllocationProject = projects.find((project) => project.id === allocationProjectId);
 
   useEffect(() => {
     loadCurrentSession()
@@ -118,8 +158,10 @@ export function TreasuryPage() {
 
     try {
       const response = await apiGet(`/projects/family/${familyId}`);
-      const liveProjects = response.data.filter((project) => !project.isDraft);
+      const liveProjects = response.data.filter((project) => !project.isDraft && (!project.budgetRequired || getFundingNeed(project) > 0));
       setProjects(liveProjects);
+      setAllocationProjectId((current) => current || liveProjects[0]?.id || "");
+      setAllocationAmountRupees((current) => current || (liveProjects[0] ? String(getDefaultAllocationAmount(liveProjects[0], 0)) : ""));
       setMessage(liveProjects.length ? "Loaded live Sankalp for allocation." : "Publish a Sankalp before allocating funds.");
     } catch (error) {
       setMessage(error.message);
@@ -243,7 +285,7 @@ export function TreasuryPage() {
         amountRupees: allocationAmountRupees,
         description: allocationDescription
       });
-      setMessage(response.message || "Funds allocated to Sankalp.");
+      setMessage(response.message || "Done: Funds allocated to Sankalp.");
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
     } catch (error) {
       setMessage(error.message);
@@ -445,14 +487,22 @@ export function TreasuryPage() {
           <form className="form-grid" onSubmit={allocateToProject}>
             <label>
               Sankalp
-              <select value={allocationProjectId} onChange={(event) => setAllocationProjectId(event.target.value)}>
+              <select
+                value={allocationProjectId}
+                onChange={(event) => {
+                  const project = projects.find((item) => item.id === event.target.value);
+                  setAllocationProjectId(event.target.value);
+                  setAllocationAmountRupees(project ? String(getDefaultAllocationAmount(project, allocationAmountRupees)) : "");
+                }}
+              >
                 <option value="">Select Sankalp</option>
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
-                    {project.title} ({formatMoney(project.allocatedRupees)} allocated)
+                    {project.title} ({formatMoney(getFundingNeed(project))} remaining)
                   </option>
                 ))}
               </select>
+              {selectedAllocationProject ? <small>{getContributionHint(selectedAllocationProject)}</small> : null}
             </label>
             <label>
               Amount
@@ -460,7 +510,8 @@ export function TreasuryPage() {
                 value={allocationAmountRupees}
                 onChange={(event) => setAllocationAmountRupees(event.target.value)}
                 type="number"
-                min="1"
+                min={getContributionPolicy(selectedAllocationProject)?.minRupees || 1}
+                max={getContributionPolicy(selectedAllocationProject)?.maxRupees || undefined}
               />
             </label>
             <label>

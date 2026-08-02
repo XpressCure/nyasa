@@ -66,6 +66,24 @@ function netDebitCreditRows(rows = []) {
   return rows.reduce((total, row) => (row._id === "debit" ? total + row.amountPaise : total - row.amountPaise), 0);
 }
 
+function calculateAllocationPolicy(project) {
+  if (!project.budgetRequired || !project.targetBudgetPaise) {
+    return null;
+  }
+
+  const targetBudgetPaise = project.targetBudgetPaise;
+  const maxPercent = targetBudgetPaise > rupeesToPaise(200000) ? 5 : 10;
+  const minPercent = 2;
+  const maxPaise = Math.floor((targetBudgetPaise * maxPercent) / 100);
+
+  return {
+    maxPercent,
+    minPercent,
+    maxPaise,
+    minPaise: Math.min(Math.max(Math.ceil((targetBudgetPaise * minPercent) / 100), rupeesToPaise(500)), maxPaise)
+  };
+}
+
 async function createContributionTransaction({ familyId, userId, memberId, amountPaise, description, source }) {
   const treasury = await getOrCreateMainTreasury({ familyId, userId });
   const wallet = await getOrCreateWallet({ familyId, memberId });
@@ -97,6 +115,37 @@ async function calculateNetProjectAllocationPaise({ familyId, projectId }) {
       $match: {
         familyId: normalizedFamilyId,
         projectId: normalizedProjectId,
+        status: "posted",
+        type: { $in: ["allocation", "refund", "reversal"] }
+      }
+    },
+    {
+      $group: {
+        _id: "$direction",
+        amountPaise: { $sum: "$amountPaise" }
+      }
+    }
+  ]);
+
+  return rows.reduce((total, row) => {
+    return row._id === "debit" ? total + row.amountPaise : total - row.amountPaise;
+  }, 0);
+}
+
+async function calculateNetMemberProjectAllocationPaise({ familyId, projectId, memberId }) {
+  const normalizedFamilyId =
+    typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+  const normalizedProjectId =
+    typeof projectId === "string" && mongoose.Types.ObjectId.isValid(projectId) ? new mongoose.Types.ObjectId(projectId) : projectId;
+  const normalizedMemberId =
+    typeof memberId === "string" && mongoose.Types.ObjectId.isValid(memberId) ? new mongoose.Types.ObjectId(memberId) : memberId;
+
+  const rows = await LedgerTransaction.aggregate([
+    {
+      $match: {
+        familyId: normalizedFamilyId,
+        projectId: normalizedProjectId,
+        memberId: normalizedMemberId,
         status: "posted",
         type: { $in: ["allocation", "refund", "reversal"] }
       }
@@ -437,12 +486,36 @@ treasuryRoutes.post(
       throw httpError(404, "Mission not found or not open for allocation.", "PROJECT_NOT_ALLOCATABLE");
     }
 
-    const allocatedPaise = await calculateNetProjectAllocationPaise({ familyId: req.familyId, projectId: project._id });
+    const [allocatedPaise, memberAllocatedPaise] = await Promise.all([
+      calculateNetProjectAllocationPaise({ familyId: req.familyId, projectId: project._id }),
+      calculateNetMemberProjectAllocationPaise({ familyId: req.familyId, projectId: project._id, memberId: req.member._id })
+    ]);
     const remainingNeedPaise = project.budgetRequired ? Math.max((project.targetBudgetPaise || 0) - allocatedPaise, 0) : amountPaise;
-    const effectiveAmountPaise = project.budgetRequired ? Math.min(amountPaise, remainingNeedPaise) : amountPaise;
+    const allocationPolicy = calculateAllocationPolicy(project);
+    const memberRemainingLimitPaise = allocationPolicy ? Math.max(allocationPolicy.maxPaise - memberAllocatedPaise, 0) : amountPaise;
+    const effectiveAmountPaise = project.budgetRequired ? Math.min(amountPaise, remainingNeedPaise, memberRemainingLimitPaise) : amountPaise;
 
     if (effectiveAmountPaise <= 0) {
-      throw httpError(400, "This Sankalp is already fully funded.", "PROJECT_FULLY_FUNDED");
+      const code = memberRemainingLimitPaise <= 0 ? "MEMBER_ALLOCATION_LIMIT_REACHED" : "PROJECT_FULLY_FUNDED";
+      const message =
+        memberRemainingLimitPaise <= 0
+          ? `You have already reached your ${allocationPolicy?.maxPercent || 0}% contribution limit for this Sankalp.`
+          : "This Sankalp is already fully funded.";
+      throw httpError(400, message, code);
+    }
+
+    if (allocationPolicy) {
+      const memberTotalAfterAllocationPaise = memberAllocatedPaise + effectiveAmountPaise;
+      const remainingAfterAllocationPaise = Math.max(remainingNeedPaise - effectiveAmountPaise, 0);
+      const closingSmallBalance = remainingNeedPaise < allocationPolicy.minPaise || remainingAfterAllocationPaise === 0;
+
+      if (memberTotalAfterAllocationPaise < allocationPolicy.minPaise && !closingSmallBalance) {
+        throw httpError(
+          400,
+          `Minimum contribution for this Sankalp is INR ${paiseToRupees(allocationPolicy.minPaise)} (${allocationPolicy.minPercent}% or INR 500, whichever is higher).`,
+          "MEMBER_ALLOCATION_BELOW_MINIMUM"
+        );
+      }
     }
 
     const treasury = await getOrCreateMainTreasury({ familyId: req.familyId, userId: req.user._id });
@@ -468,7 +541,13 @@ treasuryRoutes.post(
       metadata: {
         projectTitle: project.title,
         requestedAmountPaise: amountPaise,
-        cappedToRemainingNeed: effectiveAmountPaise < amountPaise
+        cappedToRemainingNeed: project.budgetRequired && effectiveAmountPaise < amountPaise && remainingNeedPaise <= amountPaise,
+        cappedToMemberLimit: allocationPolicy ? effectiveAmountPaise < amountPaise && memberRemainingLimitPaise <= amountPaise : false,
+        memberAllocatedBeforePaise: memberAllocatedPaise,
+        memberAllocatedAfterPaise: memberAllocatedPaise + effectiveAmountPaise,
+        memberMinPaise: allocationPolicy?.minPaise,
+        memberMaxPaise: allocationPolicy?.maxPaise,
+        memberMaxPercent: allocationPolicy?.maxPercent
       },
       createdBy: req.user._id
     });
@@ -490,13 +569,14 @@ treasuryRoutes.post(
       req
     });
 
-    res.status(201).json({
-      data: transaction,
-      message:
-        effectiveAmountPaise < amountPaise
-          ? `Only INR ${paiseToRupees(effectiveAmountPaise)} was needed, so the remaining amount stayed in your wallet.`
-          : "Funds allocated to Sankalp."
-    });
+    let message = "Funds allocated to Sankalp.";
+    if (effectiveAmountPaise < amountPaise && memberRemainingLimitPaise <= amountPaise) {
+      message = `Allocated INR ${paiseToRupees(effectiveAmountPaise)}. Your per-member limit for this Sankalp has been reached; the balance stayed in your wallet.`;
+    } else if (effectiveAmountPaise < amountPaise) {
+      message = `Only INR ${paiseToRupees(effectiveAmountPaise)} was needed, so the remaining amount stayed in your wallet.`;
+    }
+
+    res.status(201).json({ data: transaction, message });
   })
 );
 
