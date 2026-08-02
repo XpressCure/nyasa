@@ -1523,8 +1523,9 @@ button:disabled {
   inset: 0;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
-  padding: 24px;
+  padding: 24px 24px 96px;
   position: fixed;
   z-index: 100;
 }
@@ -1544,21 +1545,22 @@ button:disabled {
 }
 
 .launch-om-burst {
-  color: rgba(255, 214, 126, 0.2);
-  font-size: clamp(54px, 11vw, 174px);
+  color: rgba(255, 214, 126, 0.34);
+  font-size: clamp(52px, 9vw, 142px);
   font-weight: 900;
   left: 50%;
   letter-spacing: 0;
   line-height: 1;
-  max-width: min(86vw, 960px);
+  max-width: min(88vw, 980px);
   opacity: 0;
   pointer-events: none;
   position: absolute;
   text-align: center;
-  top: 50%;
+  text-shadow: 0 0 30px rgba(255, 206, 93, 0.48);
+  top: 28%;
   transform: translate(-50%, -50%) scale(0.18);
   white-space: normal;
-  z-index: 0;
+  z-index: 2;
 }
 
 .launch-stage-active .launch-om-burst {
@@ -1566,24 +1568,25 @@ button:disabled {
 }
 
 .launch-blessing-2 {
-  color: rgba(255, 244, 198, 0.22);
-  top: 45%;
+  color: rgba(255, 244, 198, 0.36);
+  top: 53%;
 }
 
 .launch-blessing-3 {
-  color: rgba(215, 168, 79, 0.24);
-  top: 56%;
+  color: rgba(215, 168, 79, 0.38);
+  top: 75%;
 }
 
 .launch-stage-inner {
   align-items: center;
   display: grid;
-  gap: 18px;
+  gap: 12px;
   justify-items: center;
+  max-height: calc(100dvh - 122px);
   max-width: 920px;
   position: relative;
   text-align: center;
-  z-index: 1;
+  z-index: 3;
 }
 
 .launch-logo-ring {
@@ -1594,16 +1597,16 @@ button:disabled {
   border-radius: 999px;
   box-shadow: 0 0 0 12px rgba(215, 168, 79, 0.08);
   display: inline-flex;
-  height: 132px;
+  height: 108px;
   justify-content: center;
   overflow: hidden;
-  width: 132px;
+  width: 108px;
 }
 
 .launch-logo-ring img {
-  height: 110px;
+  height: 90px;
   object-fit: cover;
-  width: 110px;
+  width: 90px;
 }
 
 .launch-kicker {
@@ -1615,14 +1618,14 @@ button:disabled {
 
 .launch-stage h1 {
   color: #fff;
-  font-size: clamp(64px, 12vw, 148px);
+  font-size: clamp(54px, 10vw, 124px);
   line-height: 0.9;
   margin: 0;
 }
 
 .launch-subtitle {
   color: #e7dfd0;
-  font-size: clamp(20px, 3vw, 34px);
+  font-size: clamp(18px, 2.4vw, 28px);
   margin: 0;
 }
 
@@ -1638,8 +1641,8 @@ button:disabled {
   gap: 8px;
   justify-content: center;
   justify-items: center;
-  min-height: 180px;
-  min-width: 180px;
+  min-height: 152px;
+  min-width: 170px;
   padding: 0;
   position: relative;
 }
@@ -1657,10 +1660,10 @@ button:disabled {
 .temple-bell-wrap {
   align-items: center;
   display: inline-flex;
-  height: 142px;
+  height: 122px;
   justify-content: center;
   position: relative;
-  width: 142px;
+  width: 130px;
 }
 
 .temple-bell-wrap::before {
@@ -1700,10 +1703,10 @@ button:disabled {
 
 .temple-bell {
   bottom: 0;
-  height: 112px;
+  height: 98px;
   position: absolute;
   transform-origin: 50% 0;
-  width: 126px;
+  width: 112px;
 }
 
 .temple-bell-cap {
@@ -1713,12 +1716,12 @@ button:disabled {
   border: 2px solid rgba(255, 222, 135, 0.86);
   border-radius: 999px 999px 14px 14px;
   box-shadow: inset -10px -8px 16px rgba(74, 43, 9, 0.28);
-  height: 30px;
+  height: 26px;
   left: 50%;
   position: absolute;
   top: 2px;
   transform: translateX(-50%);
-  width: 58px;
+  width: 52px;
 }
 
 .temple-bell-body {
@@ -1733,12 +1736,12 @@ button:disabled {
     inset -18px -10px 24px rgba(63, 36, 6, 0.48),
     0 20px 40px rgba(0, 0, 0, 0.26);
   clip-path: polygon(29% 0, 71% 0, 93% 83%, 100% 93%, 0 93%, 7% 83%);
-  height: 88px;
+  height: 76px;
   left: 50%;
   position: absolute;
   top: 24px;
   transform: translateX(-50%);
-  width: 112px;
+  width: 100px;
 }
 
 .temple-bell-body::before {
@@ -1750,9 +1753,9 @@ button:disabled {
   height: 8px;
   left: 50%;
   position: absolute;
-  top: 62px;
+  top: 54px;
   transform: translateX(-50%);
-  width: 104px;
+  width: 94px;
 }
 
 .temple-bell-lip {
@@ -1766,7 +1769,7 @@ button:disabled {
   left: 50%;
   position: absolute;
   transform: translateX(-50%);
-  width: 124px;
+  width: 110px;
 }
 
 .temple-bell-clapper {
@@ -1842,7 +1845,12 @@ button:disabled {
 }
 
 .launch-controls {
+  bottom: 28px;
+  left: 50%;
   min-height: 52px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 6;
 }
 
 .launch-controls button,

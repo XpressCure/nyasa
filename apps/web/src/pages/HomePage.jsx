@@ -184,22 +184,54 @@ export function HomePage() {
       const now = audioContext.currentTime;
       const masterGain = audioContext.createGain();
       const compressor = audioContext.createDynamicsCompressor();
+      const reverb = audioContext.createConvolver();
+      const reverbGain = audioContext.createGain();
+      const dryGain = audioContext.createGain();
+      const strikeFilter = audioContext.createBiquadFilter();
+
+      const impulseLength = audioContext.sampleRate * 3.8;
+      const impulse = audioContext.createBuffer(2, impulseLength, audioContext.sampleRate);
+      for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+        const impulseData = impulse.getChannelData(channel);
+        for (let index = 0; index < impulseLength; index += 1) {
+          const decay = Math.pow(1 - index / impulseLength, 2.4);
+          impulseData[index] = (Math.random() * 2 - 1) * decay;
+        }
+      }
+      reverb.buffer = impulse;
+      reverbGain.gain.setValueAtTime(0.32, now);
+      dryGain.gain.setValueAtTime(0.92, now);
+      strikeFilter.type = "lowpass";
+      strikeFilter.frequency.setValueAtTime(3200, now);
+      strikeFilter.Q.setValueAtTime(0.8, now);
+
+      compressor.threshold.setValueAtTime(-16, now);
+      compressor.knee.setValueAtTime(24, now);
+      compressor.ratio.setValueAtTime(3, now);
+      compressor.attack.setValueAtTime(0.006, now);
+      compressor.release.setValueAtTime(0.42, now);
+
       masterGain.gain.setValueAtTime(0.0001, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.78, now + 0.018);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.2);
+      masterGain.gain.exponentialRampToValueAtTime(0.95, now + 0.012);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 6.1);
       compressor.connect(audioContext.destination);
-      masterGain.connect(compressor);
+      dryGain.connect(compressor);
+      reverbGain.connect(compressor);
+      masterGain.connect(dryGain);
+      masterGain.connect(reverb);
+      reverb.connect(reverbGain);
 
       const partials = [
-        { frequency: 108, gain: 0.24, decay: 4.9, type: "sine" },
-        { frequency: 216, gain: 0.21, decay: 4.4, type: "sine" },
-        { frequency: 324, gain: 0.23, decay: 4, type: "triangle" },
-        { frequency: 432, gain: 0.22, decay: 3.7, type: "sine" },
-        { frequency: 648, gain: 0.17, decay: 3.1, type: "triangle" },
-        { frequency: 864, gain: 0.13, decay: 2.6, type: "sine" },
-        { frequency: 1296, gain: 0.09, decay: 2.1, type: "sine" },
-        { frequency: 1728, gain: 0.06, decay: 1.7, type: "sine" },
-        { frequency: 2592, gain: 0.035, decay: 1.2, type: "triangle" }
+        { frequency: 82, gain: 0.24, decay: 5.8, type: "sine" },
+        { frequency: 164, gain: 0.2, decay: 5.2, type: "sine" },
+        { frequency: 246, gain: 0.24, decay: 4.8, type: "triangle" },
+        { frequency: 392, gain: 0.2, decay: 4.5, type: "sine" },
+        { frequency: 514, gain: 0.18, decay: 4.1, type: "triangle" },
+        { frequency: 742, gain: 0.15, decay: 3.4, type: "sine" },
+        { frequency: 1048, gain: 0.12, decay: 2.8, type: "triangle" },
+        { frequency: 1486, gain: 0.08, decay: 2.3, type: "sine" },
+        { frequency: 2136, gain: 0.055, decay: 1.8, type: "sine" },
+        { frequency: 3024, gain: 0.032, decay: 1.3, type: "triangle" }
       ];
 
       partials.forEach((partial, index) => {
@@ -211,7 +243,7 @@ export function HomePage() {
           oscillator.detune.setValueAtTime((index % 2 === 0 ? 11 : -9) + strikeIndex * 3, now + strikeDelay);
           oscillator.detune.linearRampToValueAtTime(0, now + strikeDelay + partial.decay);
           gain.gain.setValueAtTime(0.0001, now + strikeDelay);
-          gain.gain.exponentialRampToValueAtTime(partial.gain / (strikeIndex + 1.15), now + strikeDelay + 0.014);
+          gain.gain.exponentialRampToValueAtTime(partial.gain / (strikeIndex + 1.05), now + strikeDelay + 0.01);
           gain.gain.exponentialRampToValueAtTime(0.0001, now + strikeDelay + partial.decay);
           oscillator.connect(gain);
           gain.connect(masterGain);
@@ -220,22 +252,23 @@ export function HomePage() {
         });
       });
 
-      const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.18, audioContext.sampleRate);
+      const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.26, audioContext.sampleRate);
       const noiseData = noiseBuffer.getChannelData(0);
       for (let index = 0; index < noiseData.length; index += 1) {
-        noiseData[index] = (Math.random() * 2 - 1) * (1 - index / noiseData.length);
+        noiseData[index] = (Math.random() * 2 - 1) * Math.pow(1 - index / noiseData.length, 1.7);
       }
       const noise = audioContext.createBufferSource();
       const noiseGain = audioContext.createGain();
       noise.buffer = noiseBuffer;
-      noiseGain.gain.setValueAtTime(0.16, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-      noise.connect(noiseGain);
+      noiseGain.gain.setValueAtTime(0.24, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+      noise.connect(strikeFilter);
+      strikeFilter.connect(noiseGain);
       noiseGain.connect(masterGain);
       noise.start(now);
-      noise.stop(now + 0.2);
+      noise.stop(now + 0.28);
 
-      window.setTimeout(() => audioContext.close?.(), 5600);
+      window.setTimeout(() => audioContext.close?.(), 6800);
     } catch {
       // Launch still proceeds when a browser blocks or lacks Web Audio support.
     }
