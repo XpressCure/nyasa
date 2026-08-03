@@ -2416,6 +2416,129 @@ button:disabled {
   margin-top: 6px;
 }
 
+.market-section {
+  padding-top: 24px;
+}
+
+.market-section .home-section-heading p {
+  color: #4e5b53;
+  font-size: 18px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.customer-segment-grid,
+.pricing-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.customer-segment-grid article,
+.pricing-grid article,
+.market-position-card,
+.pricing-note {
+  background: #ffffff;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(35, 32, 26, 0.06);
+}
+
+.customer-segment-grid article,
+.pricing-grid article {
+  padding: 18px;
+}
+
+.customer-segment-grid svg {
+  color: #34513f;
+}
+
+.customer-segment-grid h3,
+.pricing-grid p,
+.customer-segment-grid p {
+  margin: 10px 0 0;
+}
+
+.customer-segment-grid p,
+.pricing-grid p {
+  color: #4e5b53;
+  line-height: 1.5;
+}
+
+.market-position-card {
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 22px;
+}
+
+.market-position-card span,
+.pricing-grid article > span {
+  color: #68756e;
+  display: block;
+}
+
+.market-position-card strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 6px;
+}
+
+.market-position-card p {
+  color: #4e5b53;
+  line-height: 1.55;
+  margin: 8px 0 0;
+  max-width: 760px;
+}
+
+.pricing-section {
+  padding-top: 24px;
+}
+
+.pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pricing-grid article {
+  display: grid;
+  gap: 12px;
+}
+
+.pricing-grid strong {
+  color: #17211c;
+  font-size: 30px;
+}
+
+.pricing-grid ul {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.pricing-grid li {
+  align-items: center;
+  color: #34513f;
+  display: flex;
+  gap: 8px;
+}
+
+.pricing-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 18px;
+}
+
+.pricing-note span {
+  color: #4e5b53;
+  line-height: 1.5;
+}
+
 .home-snapshot-section {
   padding-top: 24px;
 }
@@ -3128,6 +3251,11 @@ button:disabled {
   .home-hero {
     grid-template-columns: 1fr;
   }
+
+  .customer-segment-grid,
+  .pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 820px) {
@@ -3331,9 +3459,16 @@ button:disabled {
   .future-grid,
   .family-gallery-grid,
   .contribute-project-grid,
+  .customer-segment-grid,
+  .pricing-grid,
   .proposal-grid,
   .sabha-rule-grid {
     grid-template-columns: 1fr;
+  }
+
+  .market-position-card {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .amount-preset-row {
@@ -3594,6 +3729,10 @@ button:disabled {
   .home-secondary {
     justify-content: center;
     text-align: center;
+  }
+
+  .pricing-grid strong {
+    font-size: 26px;
   }
 
   .portal-preview,

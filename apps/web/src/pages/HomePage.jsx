@@ -105,6 +105,46 @@ const futureSections = [
   }
 ];
 
+const customerSegments = [
+  {
+    title: "Large Joint Families",
+    text: "Families with 50-500 members who need one private place for Kul Map, Parichay, events, documents, and family decisions."
+  },
+  {
+    title: "Ancestral Property Families",
+    text: "Families managing village homes, farms, temples, dharamshalas, shops, or shared assets across multiple cities."
+  },
+  {
+    title: "Family Trusts",
+    text: "Private, religious, social, or legacy trusts that need transparent Kosh, Sankalp, documents, roles, and audit trails."
+  },
+  {
+    title: "Family Businesses",
+    text: "Business families that want succession records, next-generation engagement, project voting, and structured family governance."
+  }
+];
+
+const productPlans = [
+  {
+    name: "Starter Family",
+    price: "₹4,999/year",
+    description: "For families beginning their digital Kul record.",
+    features: ["Up to 50 members", "Parichay and basic Kul Map", "Family gallery", "Invite links"]
+  },
+  {
+    name: "Legacy Family",
+    price: "₹14,999/year",
+    description: "For active families running Sankalp and shared records.",
+    features: ["Up to 200 members", "Kosh and Sankalp", "Sabha voting", "Events and document vault"]
+  },
+  {
+    name: "Nyas Trust",
+    price: "₹49,999/year",
+    description: "For large families, trusts, and high-value legacy work.",
+    features: ["Large family workspace", "Custom branding", "Razorpay collections", "Audit-ready reports"]
+  }
+];
+
 const launchMessageHighlights = [
   "परिवार की विरासत, इतिहास और स्मृतियों को सुरक्षित रखना।",
   "Alahdadpur और पैतृक घर से जुड़े कार्यों को संगठित रूप से आगे बढ़ाना।",
@@ -358,6 +398,8 @@ export function HomePage() {
           <a href="#start">Start here</a>
           <a href="#gallery">Gallery</a>
           <a href="#village">Alahdadpur</a>
+          <a href="#market">For families</a>
+          <a href="#pricing">Plans</a>
           <a href="#future">Coming next</a>
           <a href="#kosh">Kosh</a>
           <Link to="/login">Sign in</Link>
@@ -527,6 +569,68 @@ export function HomePage() {
             <strong>Implement</strong>
             <span>Owners create missions, track budgets, review bills, and show progress.</span>
           </div>
+        </div>
+      </section>
+
+      <section className="home-section market-section" id="market">
+        <div className="home-section-heading">
+          <span>Nyas as a product</span>
+          <h2>Built first for one family, designed for many Indian families.</h2>
+          <p>
+            Nyas can serve large joint families, family trusts, ancestral-property families, and family businesses that want one private system for
+            legacy, Kosh, Sankalp, documents, events, and family governance.
+          </p>
+        </div>
+        <div className="customer-segment-grid">
+          {customerSegments.map((segment) => (
+            <article key={segment.title}>
+              <Users size={20} />
+              <h3>{segment.title}</h3>
+              <p>{segment.text}</p>
+            </article>
+          ))}
+        </div>
+        <div className="market-position-card">
+          <div>
+            <span>Best first offer</span>
+            <strong>Family Digitalization Camp</strong>
+            <p>
+              In 7 days, onboard one family with Parichay, Kul Map, photo archive, first Sankalp, and a branded family homepage. This creates immediate
+              value before the annual subscription starts.
+            </p>
+          </div>
+          <Link className="home-cta" to="/login">
+            Use Nyas demo
+            <ArrowRight size={18} />
+          </Link>
+        </div>
+      </section>
+
+      <section className="home-section pricing-section" id="pricing">
+        <div className="home-section-heading">
+          <span>Subscription direction</span>
+          <h2>Simple plans for families, trusts, and legacy work.</h2>
+        </div>
+        <div className="pricing-grid">
+          {productPlans.map((plan) => (
+            <article key={plan.name}>
+              <span>{plan.name}</span>
+              <strong>{plan.price}</strong>
+              <p>{plan.description}</p>
+              <ul>
+                {plan.features.map((feature) => (
+                  <li key={feature}>
+                    <CheckCircle2 size={16} />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+        <div className="pricing-note">
+          <strong>One-time onboarding can be the first revenue driver.</strong>
+          <span>Charge separately for data collection, tree cleanup, photo uploads, document organization, and first Sankalp setup.</span>
         </div>
       </section>
 
