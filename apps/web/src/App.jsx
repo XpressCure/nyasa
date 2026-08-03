@@ -3,6 +3,7 @@ import { AppLayout } from "./components/AppLayout.jsx";
 import { CalendarPage } from "./pages/CalendarPage.jsx";
 import { ContributePage } from "./pages/ContributePage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { DemoRequestPage } from "./pages/DemoRequestPage.jsx";
 import { FamilyPage } from "./pages/FamilyPage.jsx";
 import { FamilyTreePage } from "./pages/FamilyTreePage.jsx";
 import { InviteAcceptPage } from "./pages/InviteAcceptPage.jsx";
@@ -18,6 +19,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/demo-request" element={<DemoRequestPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/invite/:token" element={<InviteAcceptPage />} />
       <Route element={<AppLayout />}>

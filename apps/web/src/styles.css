@@ -2539,6 +2539,122 @@ button:disabled {
   line-height: 1.5;
 }
 
+.demo-request-page {
+  background: #f4f0e8;
+  color: #17211c;
+  min-height: 100vh;
+  padding: 42px 24px;
+}
+
+.demo-request-shell {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 0.72fr);
+  margin: 0 auto;
+  max-width: 1180px;
+}
+
+.demo-request-intro,
+.demo-request-form {
+  background: #ffffff;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(35, 32, 26, 0.08);
+  padding: 28px;
+}
+
+.demo-request-intro {
+  display: grid;
+  gap: 18px;
+}
+
+.demo-request-intro img {
+  height: 92px;
+  object-fit: contain;
+  width: 92px;
+}
+
+.demo-request-intro > span {
+  color: #68756e;
+}
+
+.demo-request-intro h1 {
+  font-size: 48px;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.demo-request-intro p {
+  color: #4e5b53;
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.demo-checklist {
+  display: grid;
+  gap: 10px;
+}
+
+.demo-checklist div {
+  align-items: flex-start;
+  background: #f8f6f1;
+  border: 1px solid #e2ded3;
+  border-radius: 8px;
+  color: #34513f;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.demo-request-form {
+  align-content: start;
+  display: grid;
+  gap: 14px;
+}
+
+.demo-request-form h2 {
+  margin: 0 0 4px;
+}
+
+.demo-request-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.demo-request-form input,
+.demo-request-form select,
+.demo-request-form textarea {
+  border: 1px solid #d8d1c3;
+  border-radius: 8px;
+  font: inherit;
+  padding: 12px;
+}
+
+.demo-request-form button {
+  align-items: center;
+  background: #14231b;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 18px;
+}
+
+.success-message {
+  background: #edf5ee;
+  border: 1px solid #c9dfcd;
+  border-radius: 8px;
+  color: #254b31;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
 .home-snapshot-section {
   padding-top: 24px;
 }
@@ -3252,6 +3368,10 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .demo-request-shell {
+    grid-template-columns: 1fr;
+  }
+
   .customer-segment-grid,
   .pricing-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3551,6 +3671,19 @@ button:disabled {
 
   .main-panel {
     padding: 18px 14px 82px;
+  }
+
+  .demo-request-page {
+    padding: 18px 14px;
+  }
+
+  .demo-request-intro,
+  .demo-request-form {
+    padding: 18px;
+  }
+
+  .demo-request-intro h1 {
+    font-size: 36px;
   }
 
   .page-header {

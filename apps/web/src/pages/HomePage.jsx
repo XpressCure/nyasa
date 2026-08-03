@@ -21,61 +21,61 @@ import { apiGet } from "../lib/api.js";
 
 const launchItems = [
   {
-    title: "Invite the extended Kul",
-    text: "Owners can bring relatives into one Alahdadpur-rooted Kul workspace with clear roles."
+    title: "Private Family Workspace",
+    text: "Each customer gets a branded Nyas workspace for their family, trust, or ancestral property circle."
   },
   {
-    title: "Sadasya Parichay and stories",
-    text: "Sadasya can sign in with name and phone, then add bio, city, profession, and their Kul connection."
+    title: "Parichay and Kul Map",
+    text: "Members add profiles, photos, parents, spouse, children, education, work, health notes, and family links."
   },
   {
-    title: "Village Kosh and Sankalp",
-    text: "Sadasya top up their wallet, allocate funds to Alahdadpur Sankalp, and track contribution progress."
+    title: "Kosh and Sankalp",
+    text: "Families can collect money, allocate it to approved projects, track limits, and keep visible progress records."
   },
   {
-    title: "Transparent work records",
-    text: "Funded village work can collect expenses, attach bills, and route approvals through owner/admin review."
+    title: "Sabha, Documents and Governance",
+    text: "Voting, document uploads, role-based permissions, milestones, expense bills, and audit-friendly records stay together."
   }
 ];
 
 const walkthrough = {
+  buyer: {
+    title: "For family heads",
+    points: ["Create a private branded Nyas", "Invite relatives across cities", "See profile completion", "Run the first Sankalp with transparency"]
+  },
   member: {
-    title: "For Kul Sadasya",
-    points: ["Sign in with name and phone", "Accept Kul invite", "Update Parichay and bio", "Contribute to Alahdadpur Sankalp"]
+    title: "For members",
+    points: ["Sign in with name and phone", "Complete Parichay", "Add immediate family", "Vote, contribute, and follow Sankalp"]
   },
-  owner: {
-    title: "For owners",
-    points: ["Create Kul workspace", "Invite Sadasya", "Create village Sankalp", "Approve expenses"]
-  },
-  launch: {
-    title: "Launch today",
-    points: ["Alahdadpur intro homepage", "Invite-only onboarding", "Parichay updates", "Village Sankalp funding demo"]
+  admin: {
+    title: "For admins",
+    points: ["Merge duplicates", "Manage roles", "Track Kosh and reports", "Export records for family review"]
   }
 };
 
 const todaySteps = [
   {
-    title: "1. Sign in",
-    text: "Use your name and phone number. If your name is already in the Kul tree, न्यास will try to connect you to that profile."
+    title: "1. Configure the family",
+    text: "Set the family or trust name, logo, language style, roles, member limits, and privacy expectations."
   },
   {
-    title: "2. Complete Parichay",
-    text: "Add your photo, date of birth, location, education, work details, health notes, and whatever you know today."
+    title: "2. Run data onboarding",
+    text: "Invite members to fill Parichay, upload photos, add immediate family, and correct the first Kul Map."
   },
   {
-    title: "3. Add immediate family",
-    text: "Add or correct father, mother, spouse, and children. Photos are optional, but they make the tree easier for everyone."
+    title: "3. Launch first Sankalp",
+    text: "Create one meaningful project with rules, team, budget, milestones, voting if needed, and transparent updates."
   },
   {
-    title: "4. Check Kul Map",
-    text: "Open the family tree and check if parents, spouse, children, and grandparents are linked correctly. Missing details can be filled later."
+    title: "4. Keep it alive",
+    text: "Use birthdays, anniversaries, calendar events, Kosh reports, Sabha voting, and weekly content to keep members returning."
   }
 ];
 
 const futureSections = [
   {
     title: "Kul Gallery",
-    text: "A shared album for Alahdadpur gatherings, homes, ceremonies, documents, and memories.",
+    text: "A shared album for gatherings, homes, ceremonies, old photographs, documents, and memories.",
     icon: Images
   },
   {
@@ -89,8 +89,8 @@ const futureSections = [
     icon: Search
   },
   {
-    title: "Social Works",
-    text: "Village initiatives funded and tracked by the trust with transparent progress.",
+    title: "Family Impact",
+    text: "Social work, village work, scholarships, temples, healthcare support, or shared family initiatives.",
     icon: HeartHandshake
   },
   {
@@ -146,14 +146,14 @@ const productPlans = [
 ];
 
 const launchMessageHighlights = [
-  "परिवार की विरासत, इतिहास और स्मृतियों को सुरक्षित रखना।",
-  "Alahdadpur और पैतृक घर से जुड़े कार्यों को संगठित रूप से आगे बढ़ाना।",
-  "Kosh और Sankalp को पारदर्शी तरीके से संचालित करना।",
-  "हर सदस्य को Parichay, Kul Map, Sankalp Sabha और Yogdaan से जोड़ना।"
+  "हर परिवार के लिए निजी, सुरक्षित और branded digital Nyas.",
+  "Parichay, Kul Map, Kosh, Sankalp, Sabha और documents एक जगह.",
+  "Subscription product with one-time onboarding and recurring value.",
+  "Designed for Indian joint families, family trusts, NRIs, and legacy-conscious families."
 ];
 
 const launchSequenceSteps = [
-  "Alahdadpur",
+  "Family",
   "Kul Parichay",
   "Kul Map",
   "Kosh",
@@ -390,19 +390,20 @@ export function HomePage() {
         <div className="home-brand">
           <img className="home-brand-logo" src={nyasaLogo} alt="न्यास Trust logo" />
           <div>
-            <strong>न्यास Trust</strong>
-            <small>Kul OS</small>
+            <strong>Nyas</strong>
+            <small>Family OS</small>
           </div>
         </div>
         <div className="home-nav-actions">
-          <a href="#start">Start here</a>
-          <a href="#gallery">Gallery</a>
-          <a href="#village">Alahdadpur</a>
+          <a href="#start">How it works</a>
+          <a href="#gallery">Product preview</a>
+          <a href="#village">Use cases</a>
           <a href="#market">For families</a>
           <a href="#pricing">Plans</a>
           <a href="#future">Coming next</a>
           <a href="#kosh">Kosh</a>
           <Link to="/login">Sign in</Link>
+          <Link to="/demo-request">Request demo</Link>
           <Link className="home-primary-link" to="/dashboard">
             Open portal
           </Link>
@@ -414,67 +415,67 @@ export function HomePage() {
           <img className="home-hero-logo" src={nyasaLogo} alt="न्यास Trust logo" />
           <span className="home-kicker">
             <MapPin size={16} />
-            Rooted in Alahdadpur
+            Built for Indian families
           </span>
-          <h1>Ek gaon. Ek parivar. Ek vishwas. Ek virasat.</h1>
+          <h1>One private digital home for every large family.</h1>
           <p>
-            न्यास Trust is being built around Alahdadpur: a shared Kul platform to preserve our roots, coordinate village Sankalp, pool money
-            into Kosh, and keep a transparent record of work, decisions, and legacy.
+            Nyas helps joint families, family trusts, ancestral-property groups, and business families preserve their legacy, map their Kul,
+            manage Kosh, run Sankalp, vote in Sabha, and keep transparent records for the next generation.
           </p>
-          <p className="home-blessing-line">परिवार के सभी बड़े-बुजुर्गों, भाइयों, बहनों और बच्चों को सादर प्रणाम।</p>
+          <p className="home-blessing-line">विरासत, विश्वास, निर्णय और योगदान - सब एक सुरक्षित डिजिटल न्यास में।</p>
           <div className="village-pill-row">
-            <span>Alahdadpur</span>
-            <span>Kul trust</span>
-            <span>Village Sankalp</span>
+            <span>Family tree</span>
+            <span>Kosh</span>
+            <span>Sankalp</span>
           </div>
           <div className="home-actions">
-            <Link className="home-cta" to="/login">
-              Start profile today
+            <Link className="home-cta" to="/demo-request">
+              Request demo
               <ArrowRight size={18} />
             </Link>
             <Link className="home-secondary" to="/dashboard">
-              Open dashboard
+              Open product preview
             </Link>
           </div>
         </div>
 
-        <div className="family-hero-card" aria-label="Nyasa family photo and portal preview">
+        <div className="family-hero-card" aria-label="Nyas product preview">
           <img src={familyPhoto} alt="Nyasa family gathered together" />
           <div className="family-hero-overlay">
-            <span>Alahdadpur Kul Trust</span>
-            <strong>Ready to begin</strong>
+            <span>Private family workspace</span>
+            <strong>Ready to configure</strong>
           </div>
           <div className="portal-preview">
             <div className="preview-metrics">
               <div>
-                <span>Parichay</span>
-                <strong>{snapshot?.memberCount ?? "Live"}</strong>
+                <span>Members</span>
+                <strong>50-500</strong>
               </div>
               <div>
-                <span>Locations</span>
-                <strong>{snapshot?.locationCount ?? "Ready"}</strong>
+                <span>Setup</span>
+                <strong>7 days</strong>
               </div>
               <div>
-                <span>Live Sankalp</span>
-                <strong>{snapshot?.sankalp?.activeCount ?? 0}</strong>
+                <span>Modules</span>
+                <strong>8+</strong>
               </div>
             </div>
             <div className="preview-mission">
               <div>
-                <strong>{featuredSankalp?.title || "Live Sankalp will appear here"}</strong>
+                <strong>{featuredSankalp?.title || "Sample Sankalp workspace"}</strong>
                 <span>
                   {featuredSankalp
                     ? `${formatPreviewMoney(featuredSankalp.allocatedRupees)} allocated of ${formatPreviewMoney(featuredSankalp.targetBudgetRupees)}`
-                    : "Create or publish a Sankalp to show real progress here."}
+                    : "Show rules, team, target, contributions, milestones, documents, and progress."}
                 </span>
               </div>
               <div className="preview-progress">
-                <span style={{ width: `${featuredSankalpProgress}%` }} />
+                <span style={{ width: `${featuredSankalp ? featuredSankalpProgress : 62}%` }} />
               </div>
             </div>
             <div className="preview-row">
               <CheckCircle2 size={18} />
-              {featuredSankalp ? `${featuredSankalpProgress}% live progress from Kosh records` : "Connected to live Alahdadpur workspace"}
+              {featuredSankalp ? `${featuredSankalpProgress}% progress from live Kosh records` : "A customer workspace can be branded for any family or trust."}
             </div>
           </div>
         </div>
@@ -482,11 +483,11 @@ export function HomePage() {
 
       <section className="home-section today-start-section" id="start">
         <div className="home-section-heading">
-          <span>For every family member today</span>
-          <h2>न्यास से जुड़ें, Parichay भरें, और Kul tree देखें.</h2>
+          <span>How Nyas is launched</span>
+          <h2>A repeatable onboarding system for every customer family.</h2>
           <p>
-            This first launch is about collecting correct family data. Do not worry if you do not know every date or detail. Add what you know,
-            and the tree will become stronger as parents, siblings, spouses, and children update their own profiles.
+            The strongest first sale is a guided family digitalization camp. Nyas does not ask a family to start from an empty dashboard. We help them
+            configure the workspace, collect profiles, clean the Kul Map, and launch one meaningful Sankalp.
           </p>
         </div>
         <div className="today-step-grid">
@@ -500,19 +501,19 @@ export function HomePage() {
         </div>
         <div className="today-action-panel">
           <div>
-            <strong>What should you tell relatives?</strong>
+            <strong>First paid offer</strong>
             <span>
-              "Please open न्यास, sign in with your name and phone number, complete your Parichay, add immediate family, upload photos if
-              available, and then check the Kul Map."
+              Family Digitalization Camp: a 7-day setup covering branding, member invites, Parichay collection, Kul Map cleanup, first Sankalp,
+              Kosh setup, and admin training.
             </span>
           </div>
           <div className="home-actions">
-            <Link className="home-cta" to="/login">
-              Sign in / Join
+            <Link className="home-cta" to="/demo-request">
+              Request guided setup
               <ArrowRight size={18} />
             </Link>
             <Link className="home-secondary" to="/family-tree">
-              Check Kul Map
+              View Kul Map module
             </Link>
           </div>
         </div>
@@ -522,16 +523,15 @@ export function HomePage() {
         <div className="launch-note-card">
           <span className="home-kicker">
             <Landmark size={16} />
-            Nyas Launch
+            Product promise
           </span>
-          <h2>न्यास का शुभारंभ: परिवार, गाँव और भविष्य को जोड़ने वाला डिजिटल मंच।</h2>
+          <h2>Nyas turns family trust, records, projects and contributions into a living digital system.</h2>
           <p>
-            Nyas केवल एक वेबसाइट नहीं है। यह परिवार की सामूहिक स्मृतियों, Parichay, Kul Map, Kosh, Sankalp, Sabha voting और Alahdadpur से जुड़े
-            कार्यों का जीवंत डिजिटल घर है। यहाँ हर सदस्य अपनी जानकारी जोड़ सकता है, परिवार की शाखाओं को जोड़ सकता है, और आने वाले कार्यों में
-            पारदर्शी रूप से भाग ले सकता है।
+            It is not only a family tree app. It is a Family OS for Indian families that need privacy, continuity, shared decision-making,
+            transparent money movement, document history, and respectful participation from every generation.
           </p>
           <blockquote>
-            "विरासत केवल संभालने की चीज नहीं, मिलकर आगे बढ़ाने की जिम्मेदारी है।"
+            "विरासत केवल संपत्ति नहीं होती। विचार, संस्कार, अनुभव और विश्वास भी विरासत होते हैं।"
           </blockquote>
         </div>
         <div className="launch-message-list">
@@ -548,26 +548,25 @@ export function HomePage() {
         <div className="village-story">
           <span>
             <Home size={18} />
-            Alahdadpur first
+            Use cases
           </span>
-          <h2>A portal for the village we come from and the work we want to do there.</h2>
+          <h2>One platform, many Indian family situations.</h2>
           <p>
-            The first version can introduce the family, gather member bios, show the Alahdadpur gallery, and demonstrate how missions like renovation,
-            social work, research, and village documentation will be funded and governed.
+            Nyas is useful wherever family memory, money, properties, responsibilities, and decisions are spread across cities and generations.
           </p>
         </div>
         <div className="village-focus-grid">
           <div>
-            <strong>Preserve</strong>
-            <span>Family stories, old records, photos, and village memory.</span>
+            <strong>Legacy families</strong>
+            <span>Preserve profiles, history, rituals, values, old records, photos, and oral memories.</span>
           </div>
           <div>
-            <strong>Contribute</strong>
-            <span>Sadasya add to wallet and allocate funds to specific village Sankalp.</span>
+            <strong>Shared assets</strong>
+            <span>Track ancestral houses, farms, shops, temples, repairs, documents, budgets, and responsibilities.</span>
           </div>
           <div>
-            <strong>Implement</strong>
-            <span>Owners create missions, track budgets, review bills, and show progress.</span>
+            <strong>Family governance</strong>
+            <span>Run Sankalp, Sabha voting, Kosh contributions, role-based approvals, and audit-friendly reports.</span>
           </div>
         </div>
       </section>
@@ -599,8 +598,8 @@ export function HomePage() {
               value before the annual subscription starts.
             </p>
           </div>
-          <Link className="home-cta" to="/login">
-            Use Nyas demo
+          <Link className="home-cta" to="/demo-request">
+            Request Nyas demo
             <ArrowRight size={18} />
           </Link>
         </div>
@@ -631,17 +630,20 @@ export function HomePage() {
         <div className="pricing-note">
           <strong>One-time onboarding can be the first revenue driver.</strong>
           <span>Charge separately for data collection, tree cleanup, photo uploads, document organization, and first Sankalp setup.</span>
+          <Link className="home-secondary" to="/demo-request">
+            Plan a customer demo
+          </Link>
         </div>
       </section>
 
       <section className="home-section home-snapshot-section">
         <div className="home-section-heading">
-          <span>Family snapshot</span>
-          <h2>A quick view of the family network as profiles are completed.</h2>
+          <span>Demo snapshot</span>
+          <h2>The live family workspace proves the model before we sell it wider.</h2>
         </div>
         <div className="home-snapshot-grid">
           <div>
-            <span>Family profiles</span>
+            <span>Profiles in demo</span>
             <strong>{snapshot?.memberCount ?? "..."}</strong>
           </div>
           <div>
@@ -649,8 +651,8 @@ export function HomePage() {
             <strong>{snapshot?.locationCount ?? "..."}</strong>
           </div>
           <div>
-            <span>Root</span>
-            <strong>Alahdadpur</strong>
+            <span>Product stage</span>
+            <strong>Founding demo</strong>
           </div>
         </div>
         <div className="home-location-strip">
@@ -661,29 +663,29 @@ export function HomePage() {
               </span>
             ))
           ) : (
-            <span>Locations will grow as members fill their profiles.</span>
+            <span>A demo workspace can show real family adoption while protecting private customer data.</span>
           )}
         </div>
       </section>
 
       <section className="home-section family-gallery-section" id="gallery">
         <div className="home-section-heading">
-          <span>Alahdadpur gallery</span>
-          <h2>Start with the people and places that make the trust real.</h2>
+          <span>Product preview</span>
+          <h2>Nyas feels personal because it starts with real people, places, and memories.</h2>
         </div>
         <div className="family-gallery-grid">
           <figure>
             <img src={familyPhoto} alt="Nyasa family gathered together" />
             <figcaption>
-              <strong>Family gathering</strong>
-              <span>Shared memories, milestones, and celebrations.</span>
+              <strong>Family identity</strong>
+              <span>Gatherings, milestones, branches, introductions, stories, and photographs.</span>
             </figcaption>
           </figure>
           <figure>
             <img src={familyHouse} alt="Family house at night" />
             <figcaption>
-              <strong>Alahdadpur ancestral place</strong>
-              <span>Homes, assets, missions, renovation progress, and village records.</span>
+              <strong>Ancestral assets</strong>
+              <span>Homes, farms, temples, repairs, documents, responsibilities, and shared decisions.</span>
             </figcaption>
           </figure>
         </div>
@@ -691,8 +693,8 @@ export function HomePage() {
 
       <section className="home-section">
         <div className="home-section-heading">
-          <span>What can launch today</span>
-          <h2>A useful first release for the Alahdadpur family circle.</h2>
+          <span>Core modules</span>
+          <h2>The product already has the building blocks for a paid family workspace.</h2>
         </div>
         <div className="launch-grid">
           {launchItems.map((item) => (
@@ -707,9 +709,9 @@ export function HomePage() {
 
       <section className="home-section interactive-section" id="kosh">
         <div>
-          <span>Interactive family view</span>
-          <h2>Show every relative what they can do.</h2>
-          <p>Use these modes during a family demo to explain how Alahdadpur missions, member profiles, and Kosh contributions will work.</p>
+          <span>Interactive product view</span>
+          <h2>Explain Nyas differently to buyers, members, and admins.</h2>
+          <p>Each stakeholder should immediately understand why the platform matters to them and what action they can take first.</p>
           <div className="segmented-control">
             {Object.keys(walkthrough).map((key) => (
               <button className={activeView === key ? "active" : ""} key={key} type="button" onClick={() => setActiveView(key)}>
@@ -734,7 +736,7 @@ export function HomePage() {
       <section className="home-section" id="future">
         <div className="home-section-heading">
           <span>Coming next</span>
-          <h2>The menu can grow into a complete Alahdadpur knowledge and impact system.</h2>
+          <h2>The roadmap turns Nyas into a complete family governance and legacy platform.</h2>
         </div>
         <div className="future-grid">
           {futureSections.map((section) => {
@@ -754,18 +756,18 @@ export function HomePage() {
       <section className="home-band">
         <div>
           <Users size={24} />
-          <strong>Can family members create accounts?</strong>
-          <p>Yes. Today they can sign in with name and phone or accept an invite link. Production OTP/Google login is the next auth upgrade.</p>
+          <strong>Who pays for Nyas?</strong>
+          <p>Usually one family head, trust office, family business, or small core group pays for setup and annual subscription.</p>
         </div>
         <div>
           <ShieldCheck size={24} />
-          <strong>Can they update their bio?</strong>
-          <p>Yes. The portal now includes a self-service profile page for bio, city, country, and profession.</p>
+          <strong>What is the first sale?</strong>
+          <p>Sell a guided Family Digitalization Camp first, then continue with an annual workspace subscription.</p>
         </div>
         <div>
           <Landmark size={24} />
-          <strong>Can money flow be demoed?</strong>
-          <p>Yes. Wallet top-up, mission allocation, expenses, bills, and approvals are ready for a controlled Alahdadpur mission demo.</p>
+          <strong>When do we need separate EC2 and DB?</strong>
+          <p>When we prepare a public demo or first paid customer. The market branch should use its own app host and database.</p>
         </div>
       </section>
     </main>
