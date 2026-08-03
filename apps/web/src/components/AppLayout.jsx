@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
+import { productConfig } from "../lib/productConfig.js";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 const navSections = [
@@ -55,8 +56,8 @@ export function AppLayout() {
         <div className="brand">
           <span className="brand-mark">N</span>
           <div>
-            <strong>न्यास</strong>
-            <small>Kul OS</small>
+            <strong>{productConfig.hindiName}</strong>
+            <small>{productConfig.shortLabel}</small>
           </div>
         </div>
         <nav className="nav-list">

@@ -15,6 +15,22 @@ This branch is for turning Nyas into a repeatable subscription product while kee
 - Demo mode UI that does not write to the family production database.
 - Onboarding checklist and internal admin workflows.
 
+## Frontend Product Config
+
+The marketable frontend can be rebranded without code changes through `apps/web/.env`.
+
+```env
+VITE_NYAS_DEMO_MODE=true
+VITE_NYAS_PRODUCT_NAME=Nyas
+VITE_NYAS_PRODUCT_HINDI_NAME=न्यास
+VITE_NYAS_PRODUCT_SHORT_LABEL=Family OS
+VITE_NYAS_PRODUCT_TAGLINE=One private digital home for every large family.
+VITE_NYAS_PRODUCT_PROMISE=विरासत, विश्वास, निर्णय और योगदान - सब एक सुरक्षित डिजिटल न्यास में।
+VITE_NYAS_PUBLIC_SUMMARY_ENDPOINT=/families/public/nyasa-summary
+```
+
+Use `VITE_NYAS_DEMO_MODE=true` for sales demos that should not depend on the live family API summary.
+
 ## When We Need A New EC2 And DB
 
 Create separate infrastructure before any public demo or paid customer uses the product version.
@@ -55,4 +71,3 @@ Required then:
 4. Add demo data mode so sales screens never depend on private family data.
 5. Add subscription/account model.
 6. Add admin onboarding dashboard for new customers.
-

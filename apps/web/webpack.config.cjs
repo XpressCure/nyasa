@@ -54,7 +54,14 @@ module.exports = (_env, argv) => {
       template: path.resolve(__dirname, "index.html")
     }),
     new webpack.DefinePlugin({
-      "process.env.API_BASE_URL": JSON.stringify(process.env.VITE_API_BASE_URL || "http://localhost:4000/api")
+      "process.env.API_BASE_URL": JSON.stringify(process.env.VITE_API_BASE_URL || "http://localhost:4000/api"),
+      "process.env.NYAS_DEMO_MODE": JSON.stringify(process.env.VITE_NYAS_DEMO_MODE || "false"),
+      "process.env.NYAS_PRODUCT_HINDI_NAME": JSON.stringify(process.env.VITE_NYAS_PRODUCT_HINDI_NAME || "न्यास"),
+      "process.env.NYAS_PRODUCT_NAME": JSON.stringify(process.env.VITE_NYAS_PRODUCT_NAME || "Nyas"),
+      "process.env.NYAS_PRODUCT_PROMISE": JSON.stringify(process.env.VITE_NYAS_PRODUCT_PROMISE || "विरासत, विश्वास, निर्णय और योगदान - सब एक सुरक्षित डिजिटल न्यास में।"),
+      "process.env.NYAS_PRODUCT_SHORT_LABEL": JSON.stringify(process.env.VITE_NYAS_PRODUCT_SHORT_LABEL || "Family OS"),
+      "process.env.NYAS_PRODUCT_TAGLINE": JSON.stringify(process.env.VITE_NYAS_PRODUCT_TAGLINE || "One private digital home for every large family."),
+      "process.env.NYAS_PUBLIC_SUMMARY_ENDPOINT": JSON.stringify(process.env.VITE_NYAS_PUBLIC_SUMMARY_ENDPOINT || "/families/public/nyasa-summary")
     })
   ],
   devServer: {

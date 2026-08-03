@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle2, Send } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import nyasaLogo from "../assets/nyasa-logo.png";
+import { productConfig } from "../lib/productConfig.js";
 
 const defaultForm = {
   name: "",
@@ -16,7 +16,7 @@ const demoChecklist = [
   "Understand family size, branches, cities, and decision makers.",
   "Show Parichay, Kul Map, Kosh, Sankalp, Sabha voting, and document flow.",
   "Explain the 7-day Family Digitalization Camp.",
-  "Recommend Starter, Legacy, or Nyas Trust plan."
+  `Recommend Starter, Legacy, or ${productConfig.name} Trust plan.`
 ];
 
 export function DemoRequestPage() {
@@ -38,13 +38,13 @@ export function DemoRequestPage() {
         <div className="demo-request-intro">
           <Link className="home-secondary" to="/">
             <ArrowLeft size={18} />
-            Back to Nyas
+            Back to {productConfig.name}
           </Link>
-          <img src={nyasaLogo} alt="Nyas logo" />
+          <img src={productConfig.logo} alt={`${productConfig.name} logo`} />
           <span>Product demo</span>
-          <h1>Request a guided Nyas walkthrough.</h1>
+          <h1>Request a guided {productConfig.name} walkthrough.</h1>
           <p>
-            Share basic details about the family or trust. The first conversation should focus on whether Nyas can organize Parichay, Kul Map, Kosh,
+            Share basic details about the family or trust. The first conversation should focus on whether {productConfig.name} can organize Parichay, Kul Map, Kosh,
             Sankalp, documents, and family governance for your use case.
           </p>
           <div className="demo-checklist">
@@ -91,7 +91,7 @@ export function DemoRequestPage() {
             </select>
           </label>
           <label className="wide-field">
-            What do you want Nyas to solve first?
+            What do you want {productConfig.name} to solve first?
             <textarea value={form.need} onChange={(event) => updateField("need", event.target.value)} placeholder="Family tree, Kosh, documents, Sankalp, voting, property records..." rows={5} />
           </label>
           <button type="submit">

@@ -16,8 +16,9 @@ import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import familyHouse from "../assets/family-house.jpeg";
 import familyPhoto from "../assets/family-photo.jpeg";
-import nyasaLogo from "../assets/nyasa-logo.png";
 import { apiGet } from "../lib/api.js";
+import { demoPublicSummary } from "../lib/demoData.js";
+import { productConfig } from "../lib/productConfig.js";
 
 const launchItems = [
   {
@@ -138,7 +139,7 @@ const productPlans = [
     features: ["Up to 200 members", "Kosh and Sankalp", "Sabha voting", "Events and document vault"]
   },
   {
-    name: "Nyas Trust",
+    name: `${productConfig.name} Trust`,
     price: "₹49,999/year",
     description: "For large families, trusts, and high-value legacy work.",
     features: ["Large family workspace", "Custom branding", "Razorpay collections", "Audit-ready reports"]
@@ -189,7 +190,7 @@ function formatPreviewMoney(value) {
 }
 
 export function HomePage() {
-  const [activeView, setActiveView] = useState("member");
+  const [activeView, setActiveView] = useState("buyer");
   const [launchStarted, setLaunchStarted] = useState(false);
   const [launchComplete, setLaunchComplete] = useState(false);
   const [bellRings, setBellRings] = useState([]);
@@ -200,7 +201,12 @@ export function HomePage() {
   const featuredSankalpProgress = Math.max(0, Math.min(100, featuredSankalp?.fundingPercent || featuredSankalp?.completionPercent || 0));
 
   useEffect(() => {
-    apiGet("/families/public/nyasa-summary")
+    if (productConfig.demoMode) {
+      setSnapshot(demoPublicSummary);
+      return;
+    }
+
+    apiGet(productConfig.publicSummaryEndpoint)
       .then((response) => setSnapshot(response.data))
       .catch(() => setSnapshot(null));
   }, []);
@@ -331,7 +337,7 @@ export function HomePage() {
       {!launchComplete ? (
         <section
           className={`launch-stage ${launchStarted ? "launch-stage-active" : ""} ${bellRings.length ? "launch-bell-ringing" : ""}`}
-          aria-label="Nyas launch sequence"
+          aria-label={`${productConfig.name} launch sequence`}
         >
           <button type="button" className="launch-skip-button" onClick={() => setLaunchComplete(true)}>
             Skip
@@ -343,7 +349,7 @@ export function HomePage() {
           ))}
           <div className="launch-stage-inner">
             <div className="launch-logo-ring">
-              <img src={nyasaLogo} alt="Nyas logo" />
+              <img src={productConfig.logo} alt={`${productConfig.name} logo`} />
             </div>
             <h1>न्यास</h1>
             <p className="launch-subtitle">एक परिवार. एक विश्वास. एक विरासत. एक मंच.</p>
@@ -378,7 +384,7 @@ export function HomePage() {
                 </button>
               ) : (
                 <button type="button" onClick={() => setLaunchComplete(true)}>
-                  Enter Nyas
+                  Enter {productConfig.name}
                   <ArrowRight size={18} />
                 </button>
               )}
@@ -388,10 +394,10 @@ export function HomePage() {
       ) : null}
       <nav className="home-nav">
         <div className="home-brand">
-          <img className="home-brand-logo" src={nyasaLogo} alt="न्यास Trust logo" />
+          <img className="home-brand-logo" src={productConfig.logo} alt={`${productConfig.name} logo`} />
           <div>
-            <strong>Nyas</strong>
-            <small>Family OS</small>
+            <strong>{productConfig.name}</strong>
+            <small>{productConfig.shortLabel}</small>
           </div>
         </div>
         <div className="home-nav-actions">
@@ -412,17 +418,17 @@ export function HomePage() {
 
       <section className="home-hero">
         <div className="home-hero-copy">
-          <img className="home-hero-logo" src={nyasaLogo} alt="न्यास Trust logo" />
+          <img className="home-hero-logo" src={productConfig.logo} alt={`${productConfig.name} logo`} />
           <span className="home-kicker">
             <MapPin size={16} />
             Built for Indian families
           </span>
-          <h1>One private digital home for every large family.</h1>
+          <h1>{productConfig.tagline}</h1>
           <p>
-            Nyas helps joint families, family trusts, ancestral-property groups, and business families preserve their legacy, map their Kul,
+            {productConfig.name} helps joint families, family trusts, ancestral-property groups, and business families preserve their legacy, map their Kul,
             manage Kosh, run Sankalp, vote in Sabha, and keep transparent records for the next generation.
           </p>
-          <p className="home-blessing-line">विरासत, विश्वास, निर्णय और योगदान - सब एक सुरक्षित डिजिटल न्यास में।</p>
+          <p className="home-blessing-line">{productConfig.promiseLine}</p>
           <div className="village-pill-row">
             <span>Family tree</span>
             <span>Kosh</span>
@@ -483,10 +489,10 @@ export function HomePage() {
 
       <section className="home-section today-start-section" id="start">
         <div className="home-section-heading">
-          <span>How Nyas is launched</span>
+          <span>How {productConfig.name} is launched</span>
           <h2>A repeatable onboarding system for every customer family.</h2>
           <p>
-            The strongest first sale is a guided family digitalization camp. Nyas does not ask a family to start from an empty dashboard. We help them
+            The strongest first sale is a guided family digitalization camp. {productConfig.name} does not ask a family to start from an empty dashboard. We help them
             configure the workspace, collect profiles, clean the Kul Map, and launch one meaningful Sankalp.
           </p>
         </div>
@@ -525,7 +531,7 @@ export function HomePage() {
             <Landmark size={16} />
             Product promise
           </span>
-          <h2>Nyas turns family trust, records, projects and contributions into a living digital system.</h2>
+          <h2>{productConfig.name} turns family trust, records, projects and contributions into a living digital system.</h2>
           <p>
             It is not only a family tree app. It is a Family OS for Indian families that need privacy, continuity, shared decision-making,
             transparent money movement, document history, and respectful participation from every generation.
@@ -552,7 +558,7 @@ export function HomePage() {
           </span>
           <h2>One platform, many Indian family situations.</h2>
           <p>
-            Nyas is useful wherever family memory, money, properties, responsibilities, and decisions are spread across cities and generations.
+            {productConfig.name} is useful wherever family memory, money, properties, responsibilities, and decisions are spread across cities and generations.
           </p>
         </div>
         <div className="village-focus-grid">
@@ -576,7 +582,7 @@ export function HomePage() {
           <span>Nyas as a product</span>
           <h2>Built first for one family, designed for many Indian families.</h2>
           <p>
-            Nyas can serve large joint families, family trusts, ancestral-property families, and family businesses that want one private system for
+            {productConfig.name} can serve large joint families, family trusts, ancestral-property families, and family businesses that want one private system for
             legacy, Kosh, Sankalp, documents, events, and family governance.
           </p>
         </div>
@@ -599,7 +605,7 @@ export function HomePage() {
             </p>
           </div>
           <Link className="home-cta" to="/demo-request">
-            Request Nyas demo
+            Request {productConfig.name} demo
             <ArrowRight size={18} />
           </Link>
         </div>
@@ -671,7 +677,7 @@ export function HomePage() {
       <section className="home-section family-gallery-section" id="gallery">
         <div className="home-section-heading">
           <span>Product preview</span>
-          <h2>Nyas feels personal because it starts with real people, places, and memories.</h2>
+          <h2>{productConfig.name} feels personal because it starts with real people, places, and memories.</h2>
         </div>
         <div className="family-gallery-grid">
           <figure>
@@ -710,7 +716,7 @@ export function HomePage() {
       <section className="home-section interactive-section" id="kosh">
         <div>
           <span>Interactive product view</span>
-          <h2>Explain Nyas differently to buyers, members, and admins.</h2>
+          <h2>Explain {productConfig.name} differently to buyers, members, and admins.</h2>
           <p>Each stakeholder should immediately understand why the platform matters to them and what action they can take first.</p>
           <div className="segmented-control">
             {Object.keys(walkthrough).map((key) => (
@@ -736,7 +742,7 @@ export function HomePage() {
       <section className="home-section" id="future">
         <div className="home-section-heading">
           <span>Coming next</span>
-          <h2>The roadmap turns Nyas into a complete family governance and legacy platform.</h2>
+          <h2>The roadmap turns {productConfig.name} into a complete family governance and legacy platform.</h2>
         </div>
         <div className="future-grid">
           {futureSections.map((section) => {
@@ -756,7 +762,7 @@ export function HomePage() {
       <section className="home-band">
         <div>
           <Users size={24} />
-          <strong>Who pays for Nyas?</strong>
+          <strong>Who pays for {productConfig.name}?</strong>
           <p>Usually one family head, trust office, family business, or small core group pays for setup and annual subscription.</p>
         </div>
         <div>
