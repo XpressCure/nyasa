@@ -177,6 +177,7 @@ async function fileToUploadPayload(file) {
 
 export function ProfilePage() {
   const [profile, setProfile] = useState(null);
+  const [accountPhone, setAccountPhone] = useState("");
   const [form, setForm] = useState(initialForm);
   const [profilePhotoFile, setProfilePhotoFile] = useState(null);
   const [immediateFamily, setImmediateFamily] = useState(initialImmediateFamily);
@@ -303,8 +304,12 @@ export function ProfilePage() {
     }
 
     try {
-      const response = await apiGet(`/members/family/${familyId}/me`);
+      const [response, sessionResponse] = await Promise.all([
+        apiGet(`/members/family/${familyId}/me`),
+        apiGet(`/permissions/family/${familyId}/me`)
+      ]);
       setProfile(response.data);
+      setAccountPhone(sessionResponse.data.user?.phone || "");
       setForm(hydrateForm(response.data));
       await loadImmediateFamily(familyId);
       setMessage("Parichay loaded.");
@@ -487,6 +492,11 @@ export function ProfilePage() {
           <label>
             Full name
             <input value={form.displayName} onChange={(event) => updateField("displayName", event.target.value)} />
+          </label>
+          <label>
+            Mobile number
+            <input value={accountPhone || "Not provided"} type="tel" readOnly />
+            <small>This account number is used for sign-in and matching Razorpay Kosh contributions.</small>
           </label>
           <label>
             Gender

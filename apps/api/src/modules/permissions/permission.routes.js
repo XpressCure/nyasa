@@ -20,7 +20,8 @@ permissionRoutes.get(
         user: {
           id: req.user._id,
           fullName: req.user.fullName,
-          email: req.user.email
+          email: req.user.email,
+          phone: req.user.phone
         },
         member: {
           id: req.member._id,
