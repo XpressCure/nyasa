@@ -27,15 +27,22 @@ function getContributionPolicy(project) {
   }
 
   const maxPercent = project.targetBudgetRupees > 200000 ? 5 : 10;
-  const minRupees = Math.max(Math.ceil(project.targetBudgetRupees * 0.02), 500);
-  const maxRupees = Math.floor(project.targetBudgetRupees * (maxPercent / 100));
+  const totalMinRupees = Math.max(Math.ceil(project.targetBudgetRupees * 0.02), 500);
+  const totalMaxRupees = Math.floor(project.targetBudgetRupees * (maxPercent / 100));
+  const memberAllocatedRupees = Number(project.myAllocatedRupees || 0);
+  const memberRemainingLimitRupees = Math.max(totalMaxRupees - memberAllocatedRupees, 0);
   const remainingRupees = getFundingNeed(project);
-  const effectiveMinRupees = Math.min(minRupees, maxRupees);
+  const maxRupees = Math.min(memberRemainingLimitRupees, remainingRupees || memberRemainingLimitRupees);
+  const additionalMinimumRupees = memberAllocatedRupees >= totalMinRupees ? 1 : totalMinRupees - memberAllocatedRupees;
+  const minRupees = Math.min(additionalMinimumRupees, maxRupees);
 
   return {
     maxPercent,
-    minRupees: Math.min(effectiveMinRupees, remainingRupees || effectiveMinRupees),
-    maxRupees: Math.min(maxRupees, remainingRupees || maxRupees)
+    minRupees,
+    maxRupees,
+    memberAllocatedRupees,
+    memberRemainingLimitRupees,
+    totalMaxRupees
   };
 }
 
@@ -53,7 +60,14 @@ function getDefaultAllocationAmount(project, preferredAmount = 0) {
 function getContributionHint(project) {
   const policy = getContributionPolicy(project);
   if (!policy) return "No funding limit is set for this Sankalp yet.";
-  return `Minimum ${formatMoney(policy.minRupees)}, maximum ${formatMoney(policy.maxRupees)} per member. Above INR 2L, max is 5%; otherwise max is 10%.`;
+  const contributorText = `${project.contributorCount || 0} ${project.contributorCount === 1 ? "member has" : "members have"} contributed so far; names remain private.`;
+  if (getFundingNeed(project) <= 0) {
+    return `This Sankalp is fully funded. ${contributorText}`;
+  }
+  if (policy.memberRemainingLimitRupees <= 0) {
+    return `You have contributed ${formatMoney(policy.memberAllocatedRupees)} and reached your ${policy.maxPercent}% individual limit. ${contributorText}`;
+  }
+  return `Your contribution: ${formatMoney(policy.memberAllocatedRupees)}. You can add up to ${formatMoney(policy.maxRupees)} more. ${contributorText}`;
 }
 
 function loadRazorpayCheckout() {
@@ -92,12 +106,16 @@ export function TreasuryPage() {
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState(null);
+  const [isAllocating, setIsAllocating] = useState(false);
   const allocationSectionRef = useRef(null);
   const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
   const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
   const canReverseLedger = ["owner", "admin"].includes(session?.member?.role);
   const selectedAllocationProject = projects.find((project) => project.id === allocationProjectId);
+  const selectedContributionPolicy = getContributionPolicy(selectedAllocationProject);
+  const allocationBlocked = Boolean(selectedContributionPolicy && selectedContributionPolicy.maxRupees <= 0);
+  const personalLimitReached = Boolean(selectedContributionPolicy && selectedContributionPolicy.memberRemainingLimitRupees <= 0);
 
   useEffect(() => {
     loadCurrentSession()
@@ -326,6 +344,7 @@ export function TreasuryPage() {
 
   async function allocateToProject(event) {
     event.preventDefault();
+    if (isAllocating) return;
     const familyId = getFamilyId();
     if (!familyId) {
       notify("error", "Kul not selected", "Create or select a Kul before allocating funds.");
@@ -337,7 +356,19 @@ export function TreasuryPage() {
       return;
     }
 
+    if (allocationBlocked) {
+      notify(
+        "warning",
+        personalLimitReached ? "Individual contribution limit reached" : "Sankalp is fully funded",
+        personalLimitReached
+          ? `You have already contributed ${formatMoney(selectedContributionPolicy.memberAllocatedRupees)} to this Sankalp. Please support another Sankalp.`
+          : "This Sankalp has received its full target amount. Please support another Sankalp."
+      );
+      return;
+    }
+
     try {
+      setIsAllocating(true);
       const projectTitle = selectedAllocationProject?.title || "चुने गए Sankalp";
       const response = await apiPost(`/treasury/family/${familyId}/allocations`, {
         projectId: allocationProjectId,
@@ -356,6 +387,8 @@ export function TreasuryPage() {
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
     } catch (error) {
       notify("error", "Allocation not done", error.message);
+    } finally {
+      setIsAllocating(false);
     }
   }
 
@@ -645,13 +678,16 @@ export function TreasuryPage() {
                 type="number"
                 min={getContributionPolicy(selectedAllocationProject)?.minRupees || 1}
                 max={getContributionPolicy(selectedAllocationProject)?.maxRupees || undefined}
+                disabled={allocationBlocked}
               />
             </label>
             <label>
               Description
               <input value={allocationDescription} onChange={(event) => setAllocationDescription(event.target.value)} />
             </label>
-            <button type="submit">Allocate Funds</button>
+            <button type="submit" disabled={isAllocating || allocationBlocked}>
+              {isAllocating ? "Allocating..." : personalLimitReached ? "Individual limit reached" : allocationBlocked ? "Sankalp fully funded" : "Allocate Funds"}
+            </button>
           </form>
         ) : (
           <p>Your current role cannot allocate funds.</p>

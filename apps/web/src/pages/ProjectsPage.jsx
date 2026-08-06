@@ -708,6 +708,7 @@ export function ProjectsPage() {
                   <span>Tentative {formatMoney(project.tentativeBudgetRupees)}</span>
                   <span>Estimate {formatMoney(project.estimatedBudgetRupees || project.targetBudgetRupees)}</span>
                   <span>Allocated {formatMoney(project.allocatedRupees)}</span>
+                  <span>{project.contributorCount || 0} contributors</span>
                   <span>Spent {formatMoney(project.spentRupees)}</span>
                   <span>Progress {project.completionPercent || 0}%</span>
                 </div>
@@ -794,6 +795,14 @@ export function ProjectsPage() {
             <div>
               <span>Allocated</span>
               <strong>{formatMoney(selectedDetails.project.allocatedRupees)}</strong>
+            </div>
+            <div>
+              <span>Contributors</span>
+              <strong>{selectedDetails.project.contributorCount || 0}</strong>
+            </div>
+            <div>
+              <span>My contribution</span>
+              <strong>{formatMoney(selectedDetails.project.myAllocatedRupees || 0)}</strong>
             </div>
             <div>
               <span>Spent</span>

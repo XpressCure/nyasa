@@ -101,6 +101,7 @@ const updateSchema = z.object({
 function serializeProject(project, financials = {}) {
   const allocatedPaise = financials.allocatedPaise || 0;
   const spentPaise = financials.spentPaise || 0;
+  const myAllocatedPaise = financials.myAllocatedPaise || 0;
   const targetBudgetPaise = project.targetBudgetPaise || 0;
   const fundingPercent = targetBudgetPaise > 0 ? Math.min(Math.round((allocatedPaise / targetBudgetPaise) * 100), 100) : 0;
   const isFullyFunded = targetBudgetPaise > 0 && allocatedPaise >= targetBudgetPaise;
@@ -128,6 +129,9 @@ function serializeProject(project, financials = {}) {
     targetBudgetRupees: paiseToRupees(targetBudgetPaise),
     allocatedPaise,
     allocatedRupees: paiseToRupees(allocatedPaise),
+    contributorCount: financials.contributorCount || 0,
+    myAllocatedPaise,
+    myAllocatedRupees: paiseToRupees(myAllocatedPaise),
     fundingPercent,
     isFullyFunded,
     implementationStatus: project.status === "implementation" ? "in_implementation" : isFullyFunded ? "ready_to_begin" : "funding",
@@ -228,11 +232,15 @@ async function assertCanManageProject(req, project) {
   throw httpError(403, "You can manage only Sankalp assigned to you.", "PROJECT_ASSIGNMENT_REQUIRED");
 }
 
-async function getProjectFinancials(familyId, projectIds) {
+async function getProjectFinancials(familyId, projectIds, currentMemberId) {
   const normalizedFamilyId =
     typeof familyId === "string" && mongoose.Types.ObjectId.isValid(familyId) ? new mongoose.Types.ObjectId(familyId) : familyId;
+  const normalizedCurrentMemberId =
+    typeof currentMemberId === "string" && mongoose.Types.ObjectId.isValid(currentMemberId)
+      ? new mongoose.Types.ObjectId(currentMemberId)
+      : currentMemberId;
 
-  const [ledgerRows, expenseRows] = await Promise.all([
+  const [ledgerRows, expenseRows, memberAllocationRows] = await Promise.all([
     LedgerTransaction.aggregate([
       {
         $match: {
@@ -262,12 +270,30 @@ async function getProjectFinancials(familyId, projectIds) {
           amountPaise: { $sum: "$amountPaise" }
         }
       }
+    ]),
+    LedgerTransaction.aggregate([
+      {
+        $match: {
+          familyId: normalizedFamilyId,
+          projectId: { $in: projectIds },
+          status: "posted",
+          type: { $in: ["allocation", "refund", "reversal"] },
+          memberId: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: { projectId: "$projectId", memberId: "$memberId" },
+          debitPaise: { $sum: { $cond: [{ $eq: ["$direction", "debit"] }, "$amountPaise", 0] } },
+          creditPaise: { $sum: { $cond: [{ $eq: ["$direction", "credit"] }, "$amountPaise", 0] } }
+        }
+      }
     ])
   ]);
 
   const financials = ledgerRows.reduce((map, row) => {
     const projectId = String(row._id.projectId);
-    const current = map.get(projectId) || { allocatedPaise: 0, spentPaise: 0 };
+    const current = map.get(projectId) || { allocatedPaise: 0, contributorCount: 0, myAllocatedPaise: 0, spentPaise: 0 };
 
     if (["allocation", "refund", "reversal"].includes(row._id.type) && row._id.direction === "debit") {
       current.allocatedPaise += row.amountPaise;
@@ -281,8 +307,21 @@ async function getProjectFinancials(familyId, projectIds) {
 
   for (const row of expenseRows) {
     const projectId = String(row._id);
-    const current = financials.get(projectId) || { allocatedPaise: 0, spentPaise: 0 };
+    const current = financials.get(projectId) || { allocatedPaise: 0, contributorCount: 0, myAllocatedPaise: 0, spentPaise: 0 };
     current.spentPaise = row.amountPaise;
+    financials.set(projectId, current);
+  }
+
+  for (const row of memberAllocationRows) {
+    const netAllocatedPaise = Math.max(row.debitPaise - row.creditPaise, 0);
+    if (netAllocatedPaise <= 0) continue;
+
+    const projectId = String(row._id.projectId);
+    const current = financials.get(projectId) || { allocatedPaise: 0, contributorCount: 0, myAllocatedPaise: 0, spentPaise: 0 };
+    current.contributorCount += 1;
+    if (normalizedCurrentMemberId && String(row._id.memberId) === String(normalizedCurrentMemberId)) {
+      current.myAllocatedPaise = netAllocatedPaise;
+    }
     financials.set(projectId, current);
   }
 
@@ -315,7 +354,7 @@ projectRoutes.get(
       .populate("auditorMemberId", "displayName role")
       .populate("implementationLeadMemberId", "displayName role")
       .sort({ createdAt: -1 });
-    const financials = await getProjectFinancials(req.familyId, projects.map((project) => project._id));
+    const financials = await getProjectFinancials(req.familyId, projects.map((project) => project._id), req.member._id);
 
     res.json({
       data: projects.map((project) => serializeProject(project, financials.get(String(project._id))))
@@ -437,7 +476,7 @@ projectRoutes.get(
       Document.find({ familyId: req.familyId, projectId: project._id, category: "project_document", status: "active" })
         .populate("uploadedBy", "displayName role")
         .sort({ createdAt: -1 }),
-      getProjectFinancials(req.familyId, [project._id])
+      getProjectFinancials(req.familyId, [project._id], req.member._id)
     ]);
 
     res.json({
