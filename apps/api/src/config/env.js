@@ -19,6 +19,8 @@ const envSchema = z.object({
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  RAZORPAY_PAYMENT_PAGE_ID: z.string().optional(),
+  RAZORPAY_PAYMENT_PAGE_FAMILY_ID: z.string().optional(),
   Bucket: z.string().optional(),
   AWSAccessKeyId: z.string().optional(),
   AWSSecretKey: z.string().optional()

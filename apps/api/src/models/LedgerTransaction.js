@@ -34,5 +34,6 @@ ledgerTransactionSchema.index({ familyId: 1, walletId: 1 });
 ledgerTransactionSchema.index({ familyId: 1, treasuryAccountId: 1 });
 ledgerTransactionSchema.index({ familyId: 1, type: 1 });
 ledgerTransactionSchema.index({ familyId: 1, status: 1 });
+ledgerTransactionSchema.index({ paymentId: 1 }, { unique: true, sparse: true });
 
 export const LedgerTransaction = mongoose.model("LedgerTransaction", ledgerTransactionSchema);

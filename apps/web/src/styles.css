@@ -501,6 +501,60 @@ select {
   margin-top: 10px;
 }
 
+.hosted-contribution-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.hosted-contribution-row {
+  align-items: end;
+  background: #faf8f2;
+  border: 1px solid #ded8ca;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr) auto;
+  padding: 14px;
+}
+
+.hosted-contribution-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.hosted-contribution-row label {
+  display: grid;
+  gap: 6px;
+}
+
+.hosted-contribution-row select {
+  min-height: 42px;
+}
+
+.hosted-contribution-status {
+  color: #8b651f;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.hosted-contribution-amount {
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .hosted-contribution-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .hosted-contribution-row button {
+    width: 100%;
+  }
+}
+
 .wallet-spotlight {
   align-items: center;
   background: linear-gradient(135deg, #17211c, #2e3d33);
@@ -1299,6 +1353,41 @@ select {
   }
 }
 
+@media (max-width: 720px) {
+  .sankalp-carousel-heading {
+    align-items: center;
+  }
+
+  .sankalp-carousel-heading strong {
+    font-size: 16px;
+  }
+
+  .sankalp-carousel-track {
+    margin-inline: -4px;
+    padding: 3px 4px 12px;
+  }
+
+  .sankalp-slide {
+    flex-basis: calc(100% - 16px);
+    min-height: 230px;
+    padding: 16px;
+  }
+
+  .sankalp-slide h3 {
+    font-size: 20px;
+  }
+
+  .sankalp-slide-metrics {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .allocation-wallet-pill {
+    align-self: flex-start;
+  }
+}
+
 .login-page {
   align-items: center;
   background: #17211c;
@@ -1510,6 +1599,185 @@ button:disabled {
 .contribute-project-card small {
   color: #805f1d;
   font-weight: 800;
+}
+
+.sankalp-carousel {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+  min-width: 0;
+}
+
+.sankalp-carousel-heading {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+}
+
+.sankalp-carousel-heading > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.recommendation-kicker {
+  color: #8a641b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sankalp-carousel-heading strong {
+  font-size: 18px;
+}
+
+.sankalp-carousel-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.sankalp-carousel-controls button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d8cdb8;
+  border-radius: 50%;
+  color: #17211c;
+  cursor: pointer;
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  padding: 0;
+  width: 42px;
+}
+
+.sankalp-carousel-track {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 3px;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+
+.sankalp-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.sankalp-slide {
+  background: #fbfaf6;
+  border: 1px solid #ddd6c8;
+  border-radius: 8px;
+  color: #17211c;
+  cursor: pointer;
+  display: grid;
+  flex: 0 0 min(520px, calc(100% - 24px));
+  gap: 12px;
+  min-height: 214px;
+  padding: 20px;
+  scroll-snap-align: center;
+  text-align: left;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.sankalp-slide.active {
+  border-color: #d7a84f;
+  box-shadow: 0 12px 32px rgba(34, 55, 42, 0.12), 0 0 0 2px rgba(215, 168, 79, 0.16);
+  transform: translateY(-1px);
+}
+
+.sankalp-slide-topline,
+.sankalp-slide-metrics {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.sankalp-slide-topline span {
+  background: #efe4c9;
+  border-radius: 999px;
+  color: #755617;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.sankalp-slide-topline strong {
+  color: #245f39;
+  font-size: 14px;
+}
+
+.sankalp-slide h3 {
+  font-size: 22px;
+  margin: 0;
+}
+
+.sankalp-progress {
+  background: #e8e2d6;
+  border-radius: 999px;
+  height: 9px;
+  overflow: hidden;
+}
+
+.sankalp-progress i {
+  background: #2f7d46;
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  transition: width 480ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.sankalp-slide-metrics {
+  color: #536158;
+  gap: 14px;
+}
+
+.sankalp-slide-metrics span {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.sankalp-slide small {
+  color: #755617;
+  font-weight: 700;
+}
+
+.sankalp-carousel-dots {
+  display: flex;
+  gap: 7px;
+  justify-content: center;
+}
+
+.sankalp-carousel-dots button {
+  background: #cfc7b7;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  height: 7px;
+  padding: 0;
+  transition: background 180ms ease, width 180ms ease;
+  width: 7px;
+}
+
+.sankalp-carousel-dots button.active {
+  background: #2f7d46;
+  width: 24px;
+}
+
+.allocation-wallet-pill {
+  background: #edf4ee;
+  border: 1px solid #c9ddcd;
+  border-radius: 999px;
+  color: #245f39;
+  padding: 9px 13px;
+  white-space: nowrap;
+}
+
+.sankalp-allocation-form {
+  border-top: 1px solid #e2ded3;
+  padding-top: 18px;
 }
 
 .sabha-intro-band {

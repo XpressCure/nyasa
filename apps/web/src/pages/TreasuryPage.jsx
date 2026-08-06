@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader.jsx";
+import { SankalpFundingCarousel } from "../components/SankalpFundingCarousel.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
+import {
+  getContributionPolicy,
+  getDefaultAllocationAmount,
+  getFundingNeed,
+  projectAfterAllocation,
+  rankFundingProjects,
+  recommendNextFundingProject
+} from "../lib/sankalpFunding.js";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 function formatMoney(amountRupees = 0) {
@@ -16,46 +25,6 @@ function formatRole(role = "") {
 }
 
 const MIN_WALLET_TOP_UP_RUPEES = 2000;
-
-function getFundingNeed(project) {
-  return Math.max(project?.targetRemainingRupees || 0, 0);
-}
-
-function getContributionPolicy(project) {
-  if (!project?.budgetRequired || !project.targetBudgetRupees) {
-    return null;
-  }
-
-  const maxPercent = project.targetBudgetRupees > 200000 ? 5 : 10;
-  const totalMinRupees = Math.max(Math.ceil(project.targetBudgetRupees * 0.02), 500);
-  const totalMaxRupees = Math.floor(project.targetBudgetRupees * (maxPercent / 100));
-  const memberAllocatedRupees = Number(project.myAllocatedRupees || 0);
-  const memberRemainingLimitRupees = Math.max(totalMaxRupees - memberAllocatedRupees, 0);
-  const remainingRupees = getFundingNeed(project);
-  const maxRupees = Math.min(memberRemainingLimitRupees, remainingRupees || memberRemainingLimitRupees);
-  const additionalMinimumRupees = memberAllocatedRupees >= totalMinRupees ? 1 : totalMinRupees - memberAllocatedRupees;
-  const minRupees = Math.min(additionalMinimumRupees, maxRupees);
-
-  return {
-    maxPercent,
-    minRupees,
-    maxRupees,
-    memberAllocatedRupees,
-    memberRemainingLimitRupees,
-    totalMaxRupees
-  };
-}
-
-function getDefaultAllocationAmount(project, preferredAmount = 0) {
-  const policy = getContributionPolicy(project);
-  const remainingRupees = getFundingNeed(project);
-  const upperLimit = policy?.maxRupees || remainingRupees || preferredAmount;
-  const lowerLimit = policy?.minRupees || 1;
-  const requestedAmount = Number(preferredAmount || 0);
-  const amount = requestedAmount > 0 ? requestedAmount : lowerLimit;
-
-  return Math.max(Math.min(amount, upperLimit), Math.min(lowerLimit, upperLimit));
-}
 
 function getContributionHint(project) {
   const policy = getContributionPolicy(project);
@@ -94,6 +63,8 @@ export function TreasuryPage() {
   const [transactions, setTransactions] = useState([]);
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
+  const [pendingHostedContributions, setPendingHostedContributions] = useState([]);
+  const [hostedLinkMemberIds, setHostedLinkMemberIds] = useState({});
   const [selfContributionAmountRupees, setSelfContributionAmountRupees] = useState("5000");
   const [selfContributionDescription, setSelfContributionDescription] = useState("Added to my Kosh wallet");
   const [amountRupees, setAmountRupees] = useState("5000");
@@ -106,6 +77,7 @@ export function TreasuryPage() {
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState(null);
+  const [isPaying, setIsPaying] = useState(false);
   const [isAllocating, setIsAllocating] = useState(false);
   const allocationSectionRef = useRef(null);
   const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
@@ -126,6 +98,12 @@ export function TreasuryPage() {
     loadMembers();
     loadKoshAnalytics();
   }, []);
+
+  useEffect(() => {
+    if (!session?.familyId) return;
+    if (canContribute) claimHostedContributions();
+    if (canRecordManualContribution) loadPendingHostedContributions();
+  }, [session?.familyId, canContribute, canRecordManualContribution]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -154,11 +132,19 @@ export function TreasuryPage() {
 
   function continueFromNotice() {
     const action = notice?.action;
+    const nextProject = notice?.nextProject;
     setNotice(null);
 
-    if (action === "allocate") {
+    if (nextProject) selectAllocationProject(nextProject, walletBalanceRupees);
+
+    if (action === "allocate" || action === "next_sankalp") {
       window.setTimeout(() => allocationSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     }
+  }
+
+  function selectAllocationProject(project, preferredAmount = allocationAmountRupees) {
+    setAllocationProjectId(project?.id || "");
+    setAllocationAmountRupees(project ? String(getDefaultAllocationAmount(project, preferredAmount)) : "");
   }
 
   async function loadTreasury() {
@@ -210,13 +196,15 @@ export function TreasuryPage() {
 
     try {
       const response = await apiGet(`/projects/family/${familyId}`);
-      const liveProjects = response.data.filter((project) => !project.isDraft && (!project.budgetRequired || getFundingNeed(project) > 0));
+      const liveProjects = rankFundingProjects(response.data);
       setProjects(liveProjects);
-      setAllocationProjectId((current) => current || liveProjects[0]?.id || "");
+      setAllocationProjectId((current) => liveProjects.some((project) => project.id === current) ? current : liveProjects[0]?.id || "");
       setAllocationAmountRupees((current) => current || (liveProjects[0] ? String(getDefaultAllocationAmount(liveProjects[0], 0)) : ""));
       setMessage(liveProjects.length ? "Loaded live Sankalp for allocation." : "Publish a Sankalp before allocating funds.");
+      return liveProjects;
     } catch (error) {
       setMessage(error.message);
+      return [];
     }
   }
 
@@ -233,6 +221,54 @@ export function TreasuryPage() {
       setMessage("Loaded living Sadasya for contribution entry.");
     } catch (error) {
       setMessage(error.message);
+    }
+  }
+
+  async function claimHostedContributions() {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    try {
+      const response = await apiPost(`/payments/family/${familyId}/hosted-contributions/claim`, {});
+      if (response.data.claimed > 0) {
+        notify(
+          "success",
+          "Payment Page Yogdaan received",
+          `${response.data.claimed} pending contribution${response.data.claimed === 1 ? " has" : "s have"} been added to your Kosh wallet.`
+        );
+        await Promise.all([loadTreasury(), loadKoshAnalytics()]);
+      }
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function loadPendingHostedContributions() {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+
+    try {
+      const response = await apiGet(`/payments/family/${familyId}/hosted-contributions/pending`);
+      setPendingHostedContributions(response.data);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function linkHostedContribution(contributionId) {
+    const familyId = getFamilyId();
+    const memberId = hostedLinkMemberIds[contributionId];
+    if (!familyId || !memberId) {
+      notify("warning", "Choose a Sadasya", "Select the living family member whose wallet should receive this contribution.");
+      return;
+    }
+
+    try {
+      await apiPost(`/payments/family/${familyId}/hosted-contributions/${contributionId}/link`, { memberId });
+      notify("success", "Contribution linked", "The Payment Page contribution is now safely credited to the selected wallet.");
+      await Promise.all([loadPendingHostedContributions(), loadTreasury(), loadKoshAnalytics()]);
+    } catch (error) {
+      notify("error", "Could not link contribution", error.message);
     }
   }
 
@@ -272,6 +308,7 @@ export function TreasuryPage() {
     }
 
     try {
+      setIsPaying(true);
       setMessage("Creating secure payment order...");
       const orderResponse = await apiPost(`/payments/family/${familyId}/razorpay-orders`, {
         amountRupees: selfContributionAmountRupees,
@@ -289,7 +326,8 @@ export function TreasuryPage() {
         order_id: paymentOrder.providerOrderId,
         prefill: {
           name: paymentOrder.user.fullName,
-          email: paymentOrder.user.email
+          email: paymentOrder.user.email,
+          contact: paymentOrder.user.phone
         },
         notes: {
           familyId,
@@ -316,20 +354,33 @@ export function TreasuryPage() {
                 primaryLabel: "Sankalp को आवंटित करें"
               }
             );
+            setIsPaying(false);
             await Promise.all([loadTreasury(), loadKoshAnalytics()]);
           } catch (error) {
+            setIsPaying(false);
             notify("error", "Payment verification failed", error.message);
           }
         },
         modal: {
-          ondismiss: () => notify("warning", "Payment not completed", "The Razorpay window was closed. No money was added to your wallet.")
+          backdropclose: false,
+          confirm_close: true,
+          escape: false,
+          ondismiss: () => {
+            setIsPaying(false);
+            notify("warning", "Payment not completed", "The Razorpay window was closed. No money was added to your wallet.");
+          }
         },
         theme: {
           color: "#17211c"
+        },
+        retry: {
+          enabled: true,
+          max_count: 3
         }
       });
 
       checkout.on("payment.failed", (response) => {
+        setIsPaying(false);
         notify(
           "error",
           "Payment failed",
@@ -338,6 +389,7 @@ export function TreasuryPage() {
       });
       checkout.open();
     } catch (error) {
+      setIsPaying(false);
       notify("error", "Could not start payment", error.message);
     }
   }
@@ -376,12 +428,20 @@ export function TreasuryPage() {
         description: allocationDescription
       });
       const acceptedAmountRupees = Number(response.data?.amountPaise || 0) / 100 || Number(allocationAmountRupees);
-      notify("success", "आपके सहयोग से Sankalp आगे बढ़ा", response.message || "आपकी राशि सफलतापूर्वक Sankalp को आवंटित हो गई है।", {
+      const updatedProjects = rankFundingProjects(projects.map((project) => (
+        project.id === allocationProjectId ? projectAfterAllocation(project, acceptedAmountRupees) : project
+      )));
+      const nextProject = recommendNextFundingProject(updatedProjects, allocationProjectId);
+      notify("success", "आपके सहयोग से Sankalp आगे बढ़ा", nextProject
+        ? `${nextProject.title} अब अपने लक्ष्य के सबसे करीब है। आप चाहें तो इसे अगला सहयोग दे सकते हैं।`
+        : response.message || "आपकी राशि सफलतापूर्वक Sankalp को आवंटित हो गई है।", {
+        action: nextProject ? "next_sankalp" : undefined,
         amount: formatMoney(acceptedAmountRupees),
         balance: formatMoney(Math.max(walletBalanceRupees - acceptedAmountRupees, 0)),
         celebration: "allocation",
         eyebrow: "एक परिवार • एक विश्वास • एक प्रयास",
-        primaryLabel: "बहुत सुंदर",
+        nextProject,
+        primaryLabel: nextProject ? "अगला Sankalp देखें" : "बहुत सुंदर",
         projectTitle
       });
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
@@ -594,7 +654,7 @@ export function TreasuryPage() {
               Description
               <input value={selfContributionDescription} onChange={(event) => setSelfContributionDescription(event.target.value)} />
             </label>
-            <button type="submit">Pay With Razorpay</button>
+            <button type="submit" disabled={isPaying}>{isPaying ? "Opening secure payment..." : "Pay With Razorpay"}</button>
           </form>
         ) : (
           <p>Your current role cannot add money to a wallet.</p>
@@ -646,19 +706,83 @@ export function TreasuryPage() {
         </div>
       </section>
 
+      {canRecordManualContribution ? (
+        <section className="content-band spaced-band">
+          <div className="section-heading-row">
+            <div>
+              <h2>Payment Page Review</h2>
+              <p className="section-note">
+                Payments from registered phone numbers are credited automatically. Link only the entries Nyas could not identify safely.
+              </p>
+            </div>
+            <button type="button" className="secondary-button" onClick={loadPendingHostedContributions}>
+              Refresh
+            </button>
+          </div>
+          {pendingHostedContributions.length ? (
+            <div className="hosted-contribution-list">
+              {pendingHostedContributions.map((contribution) => (
+                <article className="hosted-contribution-row" key={contribution.id}>
+                  <div>
+                    <span className="hosted-contribution-status">Needs review</span>
+                    <strong>{contribution.donorName || "Name not supplied"}</strong>
+                    <span>{contribution.donorPhone || "Phone not supplied"}</span>
+                    <small>Razorpay payment {contribution.providerPaymentId}</small>
+                  </div>
+                  <strong className="hosted-contribution-amount">{formatMoney(contribution.amountRupees)}</strong>
+                  <label>
+                    Credit living Sadasya
+                    <select
+                      value={hostedLinkMemberIds[contribution.id] || ""}
+                      onChange={(event) => setHostedLinkMemberIds((current) => ({
+                        ...current,
+                        [contribution.id]: event.target.value
+                      }))}
+                    >
+                      <option value="">Select Sadasya</option>
+                      {members.map((member) => (
+                        <option key={member._id} value={member._id}>{member.displayName}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="button" onClick={() => linkHostedContribution(contribution.id)}>
+                    Link and Credit
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-copy">No Payment Page contributions need manual matching.</p>
+          )}
+        </section>
+      ) : null}
+
       <section className="content-band spaced-band" ref={allocationSectionRef}>
-        <h2>Allocate To Sankalp</h2>
-        <p className="section-note">Allocations spend the wallet of the current signed-in member shown in the sidebar.</p>
+        <div className="section-heading-row">
+          <div>
+            <h2>Allocate To Sankalp</h2>
+            <p className="section-note">Start with the Sankalp closest to its goal, or slide to choose another.</p>
+          </div>
+          <strong className="allocation-wallet-pill">Wallet {formatMoney(walletBalanceRupees)}</strong>
+        </div>
         {canAllocateFunds ? (
-          <form className="form-grid" onSubmit={allocateToProject}>
+          <>
+            {projects.length ? (
+              <SankalpFundingCarousel
+                formatMoney={formatMoney}
+                onSelect={selectAllocationProject}
+                projects={projects}
+                selectedProjectId={allocationProjectId}
+              />
+            ) : <p className="empty-copy">No live Sankalp currently needs funding.</p>}
+            <form className="form-grid sankalp-allocation-form" onSubmit={allocateToProject}>
             <label>
               Sankalp
               <select
                 value={allocationProjectId}
                 onChange={(event) => {
                   const project = projects.find((item) => item.id === event.target.value);
-                  setAllocationProjectId(event.target.value);
-                  setAllocationAmountRupees(project ? String(getDefaultAllocationAmount(project, allocationAmountRupees)) : "");
+                  selectAllocationProject(project);
                 }}
               >
                 <option value="">Select Sankalp</option>
@@ -688,7 +812,8 @@ export function TreasuryPage() {
             <button type="submit" disabled={isAllocating || allocationBlocked}>
               {isAllocating ? "Allocating..." : personalLimitReached ? "Individual limit reached" : allocationBlocked ? "Sankalp fully funded" : "Allocate Funds"}
             </button>
-          </form>
+            </form>
+          </>
         ) : (
           <p>Your current role cannot allocate funds.</p>
         )}

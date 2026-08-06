@@ -91,3 +91,16 @@ export function verifyRazorpayPaymentSignature({ orderId, paymentId, signature }
 
   return crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
 }
+
+export function verifyRazorpayWebhookSignature({ rawBody, signature }) {
+  if (!env.RAZORPAY_WEBHOOK_SECRET || !rawBody || !signature) return false;
+
+  const expectedSignature = crypto
+    .createHmac("sha256", env.RAZORPAY_WEBHOOK_SECRET)
+    .update(rawBody)
+    .digest("hex");
+  const expectedBuffer = Buffer.from(expectedSignature);
+  const signatureBuffer = Buffer.from(signature);
+
+  return expectedBuffer.length === signatureBuffer.length && crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
+}
