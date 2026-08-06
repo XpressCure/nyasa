@@ -29,7 +29,9 @@ export function createApp() {
   app.use(express.json({
     limit: "12mb",
     verify: (req, _res, buffer) => {
-      if (req.originalUrl === "/api/payments/razorpay-webhook") req.rawBody = Buffer.from(buffer);
+      if (["/api/payments/razorpay-webhook", "/api/bank-contributions/sms-ingest"].includes(req.originalUrl)) {
+        req.rawBody = Buffer.from(buffer);
+      }
     }
   }));
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));

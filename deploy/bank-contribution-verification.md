@@ -12,6 +12,9 @@ BANK_ACCOUNT_NAME=YOUR ACCOUNT NAME
 BANK_ACCOUNT_NUMBER=YOUR ACCOUNT NUMBER
 BANK_IFSC=YOUR IFSC
 BANK_UPI_ID=
+BANK_SMS_INGEST_SECRET=GENERATE_A_LONG_RANDOM_SECRET
+BANK_SMS_FAMILY_ID=YOUR_FAMILY_OBJECT_ID
+BANK_SMS_ALLOWED_SENDERS=UCOBANK,UCOBNK
 ```
 
 The account details are returned only to authenticated family members who have Kosh contribution permission.
@@ -41,3 +44,24 @@ The account details are returned only to authenticated family members who have K
 - Bank proofs are visible only to the contributor and Kosh reviewers.
 - SMS checks extract amount, date/time, UTR and payment language.
 - Receipt OCR is deliberately marked `not_configured`; the image is stored for manual review. Add a vetted OCR provider before treating extracted image text as a reviewer aid.
+
+## Dedicated Android SMS forwarder
+
+This is intended for one controlled Android phone holding the Kosh bank SIM. It does not read members' phones. Install Termux and Termux:API from their trusted distribution, grant SMS access once, then install Node.js and keep the phone secured.
+
+```bash
+pkg install nodejs termux-api
+termux-setup-storage
+export NYAS_SMS_API_URL="https://nyasa.xpresscure.com/api/bank-contributions/sms-ingest"
+export NYAS_SMS_INGEST_SECRET="THE_SAME_LONG_SECRET_AS_THE_SERVER"
+export NYAS_SMS_SENDERS="UCOBANK,UCOBNK"
+node tools/bank-sms-forwarder.mjs
+```
+
+The forwarder polls the newest inbox messages every 30 seconds, filters senders locally, signs the exact payload, and remembers the last 500 forwarded message IDs. Nyas verifies the signature and rejects messages older than five minutes or from senders outside the server allowlist.
+
+Matching order:
+
+1. Exact UTR against an open claim.
+2. One and only one open claim with the exact amount in the seven-day window.
+3. Anything ambiguous is retained under **Unmatched bank SMS** for Kosh Pramukh review and never credits a wallet automatically.

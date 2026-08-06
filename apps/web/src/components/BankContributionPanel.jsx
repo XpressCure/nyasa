@@ -31,6 +31,7 @@ export function BankContributionPanel({ canReview, onLedgerChanged, passwordVeri
   const [config, setConfig] = useState(null);
   const [claims, setClaims] = useState([]);
   const [reviewClaims, setReviewClaims] = useState([]);
+  const [unmatchedSms, setUnmatchedSms] = useState([]);
   const [amountRupees, setAmountRupees] = useState("2000");
   const [activeClaimId, setActiveClaimId] = useState("");
   const [smsText, setSmsText] = useState("");
@@ -49,22 +50,26 @@ export function BankContributionPanel({ canReview, onLedgerChanged, passwordVeri
     Promise.all([
       apiGet(`/bank-contributions/family/${familyId}/config`),
       apiGet(`/bank-contributions/family/${familyId}/mine`),
-      canReview ? apiGet(`/bank-contributions/family/${familyId}/review`) : Promise.resolve({ data: [] })
-    ]).then(([configResponse, mineResponse, reviewResponse]) => {
+      canReview ? apiGet(`/bank-contributions/family/${familyId}/review`) : Promise.resolve({ data: [] }),
+      canReview ? apiGet(`/bank-contributions/family/${familyId}/sms-receipts`) : Promise.resolve({ data: [] })
+    ]).then(([configResponse, mineResponse, reviewResponse, smsResponse]) => {
       setConfig(configResponse.data);
       setClaims(mineResponse.data);
       setReviewClaims(reviewResponse.data);
+      setUnmatchedSms(smsResponse.data);
       setActiveClaimId(mineResponse.data.find((claim) => ["awaiting_payment", "pending_review"].includes(claim.status))?.id || "");
     }).catch((error) => notify("error", "Bank contribution unavailable", error.message));
   }, [familyId, canReview]);
 
   async function refresh() {
-    const [mineResponse, reviewResponse] = await Promise.all([
+    const [mineResponse, reviewResponse, smsResponse] = await Promise.all([
       apiGet(`/bank-contributions/family/${familyId}/mine`),
-      canReview ? apiGet(`/bank-contributions/family/${familyId}/review`) : Promise.resolve({ data: [] })
+      canReview ? apiGet(`/bank-contributions/family/${familyId}/review`) : Promise.resolve({ data: [] }),
+      canReview ? apiGet(`/bank-contributions/family/${familyId}/sms-receipts`) : Promise.resolve({ data: [] })
     ]);
     setClaims(mineResponse.data);
     setReviewClaims(reviewResponse.data);
+    setUnmatchedSms(smsResponse.data);
     setActiveClaimId(mineResponse.data.find((claim) => ["awaiting_payment", "pending_review"].includes(claim.status))?.id || "");
   }
 
@@ -259,6 +264,13 @@ export function BankContributionPanel({ canReview, onLedgerChanged, passwordVeri
               <div className="button-row"><button type="button" disabled={busy || !passwordVerified} onClick={() => decide(claim, "approve")}>Verify and credit wallet</button><button type="button" className="danger-button" disabled={busy || !passwordVerified} onClick={() => decide(claim, "reject")}>Reject with reason</button></div>
             </article>
           )) : <p className="empty-copy">No bank contributions are waiting for review.</p>}
+          {unmatchedSms.length ? (
+            <div className="unmatched-sms-list">
+              <h3>Unmatched bank SMS</h3>
+              <p className="section-note">These could not be tied safely to one claim. Do not approve them until the member and UTR are confirmed.</p>
+              {unmatchedSms.map((sms) => <article key={sms.id}><strong>{sms.extractedAmountRupees ? formatMoney(sms.extractedAmountRupees) : "Amount unread"}</strong><span>{sms.extractedUtr || "UTR unread"}</span><small>{new Date(sms.receivedAt).toLocaleString("en-IN")}</small><blockquote>{sms.body}</blockquote></article>)}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </>

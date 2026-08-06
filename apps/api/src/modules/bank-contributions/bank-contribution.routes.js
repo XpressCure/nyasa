@@ -5,6 +5,7 @@ import { env } from "../../config/env.js";
 import { requireAuth, requirePasswordAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { BankContributionClaim } from "../../models/BankContributionClaim.js";
+import { BankSmsReceipt } from "../../models/BankSmsReceipt.js";
 import { Document } from "../../models/Document.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
 import { asyncHandler } from "../../utils/async-handler.js";
@@ -15,6 +16,7 @@ import { permissions, roleHasPermission } from "../permissions/permissions.js";
 import { paiseToRupees, rupeesToPaise } from "../treasury/money.js";
 import { getOrCreateMainTreasury, getOrCreateWallet } from "../treasury/treasury.service.js";
 import { analyzeContributionEvidence, normalizeUtr } from "./evidence-analysis.js";
+import { matchBankSmsToClaims, verifySmsSignature } from "./bank-sms.service.js";
 
 export const bankContributionRoutes = Router();
 const MIN_CONTRIBUTION_RUPEES = 2000;
@@ -39,6 +41,12 @@ const decisionSchema = z.object({
   note: z.string().max(1000).optional().default(""),
   amountRupees: z.coerce.number().min(MIN_CONTRIBUTION_RUPEES).optional(),
   utr: z.string().min(6).max(40).optional()
+});
+const smsIngestSchema = z.object({
+  messageId: z.string().min(1).max(180),
+  sender: z.string().min(2).max(80),
+  body: z.string().min(1).max(4000),
+  receivedAt: z.string().datetime()
 });
 
 function createPaymentReference(memberId) {
@@ -92,6 +100,62 @@ async function findAccessibleClaim(req) {
   return claim;
 }
 
+bankContributionRoutes.post(
+  "/sms-ingest",
+  asyncHandler(async (req, res) => {
+    if (!env.BANK_SMS_INGEST_SECRET || !env.BANK_SMS_FAMILY_ID) throw httpError(503, "Bank SMS ingestion is not configured.", "BANK_SMS_NOT_CONFIGURED");
+    const rawBody = req.rawBody?.toString("utf8") || "";
+    const timestamp = req.get("x-nyas-timestamp") || "";
+    const signature = req.get("x-nyas-signature") || "";
+    if (!verifySmsSignature({ rawBody, timestamp, signature, secret: env.BANK_SMS_INGEST_SECRET })) {
+      throw httpError(401, "Invalid bank SMS signature.", "INVALID_BANK_SMS_SIGNATURE");
+    }
+    const body = smsIngestSchema.parse(req.body);
+    const allowedSenders = (env.BANK_SMS_ALLOWED_SENDERS || "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    if (!allowedSenders.length || !allowedSenders.some((sender) => body.sender.toLowerCase().includes(sender))) {
+      throw httpError(403, "SMS sender is not allowlisted.", "BANK_SMS_SENDER_NOT_ALLOWED");
+    }
+
+    const duplicate = await BankSmsReceipt.findOne({ familyId: env.BANK_SMS_FAMILY_ID, messageId: body.messageId });
+    if (duplicate) return res.json({ data: { status: duplicate.status, duplicate: true, matchedClaimId: duplicate.matchedClaimId } });
+
+    const receivedAt = new Date(body.receivedAt);
+    const claims = await BankContributionClaim.find({
+      familyId: env.BANK_SMS_FAMILY_ID,
+      status: { $in: ["awaiting_payment", "pending_review"] },
+      createdAt: { $gte: new Date(receivedAt.getTime() - 7 * 24 * 60 * 60 * 1000), $lte: new Date(receivedAt.getTime() + 15 * 60 * 1000) }
+    });
+    const match = matchBankSmsToClaims({ body: body.body, receivedAt, claims });
+    let matchedClaimId = null;
+    if (match.claim) {
+      match.claim.evidence.push({
+        type: "bank_sms",
+        smsText: body.body,
+        analysis: match.analysis,
+        submittedBySystem: true,
+        submittedAt: receivedAt
+      });
+      match.claim.status = "pending_review";
+      if (!match.claim.utr && match.analysis.extractedUtr) match.claim.utr = match.analysis.extractedUtr;
+      await match.claim.save();
+      matchedClaimId = match.claim._id;
+    }
+    const receipt = await BankSmsReceipt.create({
+      familyId: env.BANK_SMS_FAMILY_ID,
+      messageId: body.messageId,
+      sender: body.sender,
+      body: body.body,
+      receivedAt,
+      status: match.claim ? "matched" : "unmatched",
+      matchedClaimId,
+      extractedUtr: match.analysis.extractedUtr,
+      extractedAmountPaise: match.analysis.extractedAmountPaise,
+      matchReason: match.reason
+    });
+    res.status(201).json({ data: { status: receipt.status, matchedClaimId, matchReason: match.reason } });
+  })
+);
+
 bankContributionRoutes.use(requireAuth);
 
 bankContributionRoutes.get(
@@ -127,6 +191,23 @@ bankContributionRoutes.get(
       .populate("evidence.submittedBy", "displayName role")
       .sort({ createdAt: 1 });
     res.json({ data: claims.map(serializeClaim) });
+  })
+);
+
+bankContributionRoutes.get(
+  "/family/:familyId/sms-receipts",
+  requireFamilyPermission(permissions.treasuryViewLedger),
+  asyncHandler(async (req, res) => {
+    const receipts = await BankSmsReceipt.find({ familyId: req.familyId, status: "unmatched" }).sort({ receivedAt: -1 }).limit(30);
+    res.json({ data: receipts.map((receipt) => ({
+      id: receipt._id,
+      sender: receipt.sender,
+      body: receipt.body,
+      receivedAt: receipt.receivedAt,
+      extractedUtr: receipt.extractedUtr,
+      extractedAmountRupees: receipt.extractedAmountPaise ? paiseToRupees(receipt.extractedAmountPaise) : null,
+      matchReason: receipt.matchReason
+    })) });
   })
 );
 

@@ -711,6 +711,35 @@ select {
   color: #8f2f28;
 }
 
+.unmatched-sms-list {
+  border-top: 1px solid #ded8ca;
+  margin-top: 22px;
+  padding-top: 16px;
+}
+
+.unmatched-sms-list article {
+  background: #fff5df;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: auto auto 1fr;
+  margin-top: 10px;
+  padding: 12px;
+}
+
+.unmatched-sms-list article small {
+  text-align: right;
+}
+
+.unmatched-sms-list blockquote,
+.evidence-item blockquote {
+  background: #fff;
+  border-left: 3px solid #d7a93c;
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  padding: 9px;
+}
+
 @media (max-width: 760px) {
   .bank-claim-workflow,
   .bank-review-fields,
@@ -739,6 +768,14 @@ select {
 
   .bank-payment-card dl div {
     display: grid;
+  }
+
+  .unmatched-sms-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .unmatched-sms-list article small {
+    text-align: left;
   }
 
   .bank-payment-card dd {

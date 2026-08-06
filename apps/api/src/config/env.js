@@ -27,6 +27,9 @@ const envSchema = z.object({
   BANK_ACCOUNT_NUMBER: z.string().optional(),
   BANK_IFSC: z.string().optional(),
   BANK_UPI_ID: z.string().optional(),
+  BANK_SMS_INGEST_SECRET: z.string().min(24).optional(),
+  BANK_SMS_FAMILY_ID: z.string().optional(),
+  BANK_SMS_ALLOWED_SENDERS: z.string().optional(),
   Bucket: z.string().optional(),
   AWSAccessKeyId: z.string().optional(),
   AWSSecretKey: z.string().optional()

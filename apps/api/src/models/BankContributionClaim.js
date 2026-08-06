@@ -29,7 +29,8 @@ const contributionEvidenceSchema = new mongoose.Schema(
     declaredUtr: { type: String, trim: true, uppercase: true },
     proofDocumentId: { type: mongoose.Schema.Types.ObjectId, ref: "Document" },
     analysis: evidenceAnalysisSchema,
-    submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember", required: true },
+    submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember" },
+    submittedBySystem: { type: Boolean, default: false },
     submittedAt: { type: Date, default: Date.now }
   },
   { _id: true }
