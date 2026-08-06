@@ -152,7 +152,8 @@ async function creditHostedContribution({ contribution, member, actorUser, match
 paymentRoutes.post(
   "/razorpay-webhook",
   asyncHandler(async (req, res) => {
-    if (!env.RAZORPAY_WEBHOOK_SECRET || !env.RAZORPAY_PAYMENT_PAGE_ID || !env.RAZORPAY_PAYMENT_PAGE_FAMILY_ID) {
+    const acceptedPageIds = [env.RAZORPAY_PAYMENT_PAGE_ID, env.RAZORPAY_TEST_PAYMENT_PAGE_ID].filter(Boolean);
+    if (!env.RAZORPAY_WEBHOOK_SECRET || !acceptedPageIds.length || !env.RAZORPAY_PAYMENT_PAGE_FAMILY_ID) {
       throw httpError(503, "Razorpay Payment Page webhook is not configured.", "RAZORPAY_WEBHOOK_NOT_CONFIGURED");
     }
 
@@ -168,7 +169,8 @@ paymentRoutes.post(
       return;
     }
 
-    if (!payloadContainsValue(req.body?.payload, env.RAZORPAY_PAYMENT_PAGE_ID)) {
+    const matchedPageId = acceptedPageIds.find((pageId) => payloadContainsValue(req.body?.payload, pageId));
+    if (!matchedPageId) {
       res.json({ data: { ignored: true, reason: "different_payment_page" } });
       return;
     }
@@ -176,6 +178,26 @@ paymentRoutes.post(
     const payment = extractHostedPayment(req.body);
     if (!payment?.providerPaymentId || payment.status !== "captured" || payment.currency !== "INR") {
       res.json({ data: { ignored: true, reason: "payment_not_captured" } });
+      return;
+    }
+
+    if (matchedPageId === env.RAZORPAY_TEST_PAYMENT_PAGE_ID) {
+      const matches = await findPhoneMatches({
+        familyId: env.RAZORPAY_PAYMENT_PAGE_FAMILY_ID,
+        normalizedPhone: payment.normalizedPhone
+      });
+      res.json({
+        data: {
+          amountRupees: paiseToRupees(payment.amountPaise),
+          donorName: payment.donorName,
+          donorPhone: payment.donorPhone,
+          matchCount: matches.length,
+          matchedMember: matches.length === 1 ? matches[0].displayName : null,
+          normalizedPhone: payment.normalizedPhone,
+          testMode: true,
+          validated: true
+        }
+      });
       return;
     }
 
@@ -188,7 +210,7 @@ paymentRoutes.post(
           providerEventId: req.get("x-razorpay-event-id") || undefined,
           providerPaymentId: payment.providerPaymentId,
           providerOrderId: payment.providerOrderId,
-          paymentPageId: env.RAZORPAY_PAYMENT_PAGE_ID,
+          paymentPageId: matchedPageId,
           donorName: payment.donorName,
           donorPhone: payment.donorPhone,
           normalizedPhone: payment.normalizedPhone,

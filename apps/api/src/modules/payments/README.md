@@ -33,6 +33,10 @@ Nyas validates the webhook signature and the configured Payment Page ID before r
 
 Both the Razorpay payment ID and webhook event ID are stored for duplicate protection. Payments from other Razorpay Payment Pages are ignored.
 
+### Safe Test Mode
+
+Create a separate Payment Page in Razorpay Test Mode and configure its ID as `RAZORPAY_TEST_PAYMENT_PAGE_ID`. Test payments validate the webhook signature, donor fields, phone normalization, and member match, but never create a wallet or ledger entry. Use the same webhook secret in the Test and Live Razorpay webhook configurations when both modes call the same Nyas endpoint.
+
 ## Endpoints
 
 - `POST /api/payments/family/:familyId/razorpay-orders`
@@ -49,6 +53,7 @@ RAZORPAY_KEY_ID=replace-with-key-id
 RAZORPAY_KEY_SECRET=replace-with-key-secret
 RAZORPAY_WEBHOOK_SECRET=use-a-separate-random-webhook-secret
 RAZORPAY_PAYMENT_PAGE_ID=pl_replace-with-payment-page-id
+RAZORPAY_TEST_PAYMENT_PAGE_ID=pl_replace-with-test-payment-page-id
 RAZORPAY_PAYMENT_PAGE_FAMILY_ID=replace-with-mongodb-family-id
 ```
 
