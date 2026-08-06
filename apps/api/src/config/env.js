@@ -22,6 +22,11 @@ const envSchema = z.object({
   RAZORPAY_PAYMENT_PAGE_ID: z.string().optional(),
   RAZORPAY_TEST_PAYMENT_PAGE_ID: z.string().optional(),
   RAZORPAY_PAYMENT_PAGE_FAMILY_ID: z.string().optional(),
+  BANK_CONTRIBUTION_ENABLED: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
+  BANK_ACCOUNT_NAME: z.string().optional(),
+  BANK_ACCOUNT_NUMBER: z.string().optional(),
+  BANK_IFSC: z.string().optional(),
+  BANK_UPI_ID: z.string().optional(),
   Bucket: z.string().optional(),
   AWSAccessKeyId: z.string().optional(),
   AWSSecretKey: z.string().optional()

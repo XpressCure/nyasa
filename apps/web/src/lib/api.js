@@ -57,4 +57,17 @@ export async function apiPatch(path, body) {
   });
 }
 
+export async function apiDownload(path) {
+  const token = localStorage.getItem("nyasa_token");
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error?.message || `Download failed: ${response.status}`);
+  }
+  return response.blob();
+}
+
 export { API_BASE_URL };

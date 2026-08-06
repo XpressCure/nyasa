@@ -246,6 +246,14 @@ documentRoutes.get(
       throw httpError(404, "Document not found.", "DOCUMENT_NOT_FOUND");
     }
 
+    if (
+      document.category === "bank_contribution_proof" &&
+      String(document.memberId || "") !== String(req.member._id) &&
+      !roleHasPermission(req.member.role, permissions.treasuryViewLedger)
+    ) {
+      throw httpError(403, "Only the contributor and Kosh reviewers can open bank payment proof.", "BANK_PROOF_ACCESS_DENIED");
+    }
+
     await streamDocument(document, res);
   })
 );

@@ -17,7 +17,7 @@ const documentSchema = new mongoose.Schema(
     region: String,
     category: {
       type: String,
-      enum: ["expense_bill", "member_photo", "project_photo", "project_document", "other"],
+      enum: ["expense_bill", "member_photo", "project_photo", "project_document", "bank_contribution_proof", "other"],
       default: "other"
     },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember", required: true },

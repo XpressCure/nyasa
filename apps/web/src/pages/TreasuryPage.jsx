@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
+import { BankContributionPanel } from "../components/BankContributionPanel.jsx";
 import { SankalpFundingCarousel } from "../components/SankalpFundingCarousel.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
 import {
@@ -680,6 +681,13 @@ export function TreasuryPage() {
         </div>
         {message ? <p className="form-message">{message}</p> : null}
       </section>
+
+      <BankContributionPanel
+        canReview={canRecordManualContribution}
+        notify={notify}
+        onLedgerChanged={loadTreasury}
+        passwordVerified={passwordVerified}
+      />
 
       <section className="content-band spaced-band">
         <h2>Admin Contribution Entry</h2>

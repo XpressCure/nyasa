@@ -501,6 +501,251 @@ select {
   margin-top: 10px;
 }
 
+/* Verified bank contributions */
+.bank-contribution-panel {
+  border-top: 3px solid #d7a93c;
+}
+
+.section-kicker {
+  color: #8a651d;
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.verification-badge,
+.confidence-meter {
+  background: #e7f4eb;
+  border: 1px solid #afd1b9;
+  color: #185b31;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  padding: 7px 10px;
+}
+
+.bank-security-note {
+  background: #fff4d6;
+  border-left: 3px solid #d7a93c;
+  padding: 12px;
+}
+
+.bank-start-form,
+.bank-review-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, auto);
+  margin-top: 18px;
+}
+
+.bank-start-form label,
+.bank-proof-form label,
+.bank-review-fields label {
+  display: grid;
+  gap: 6px;
+}
+
+.bank-claim-workflow {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+  margin-top: 20px;
+}
+
+.bank-payment-card {
+  background: #13251d;
+  color: #fff;
+  padding: 22px;
+}
+
+.bank-payment-card > span {
+  color: #cbd8d1;
+}
+
+.bank-payment-card > strong {
+  display: block;
+  font-size: 30px;
+  margin: 5px 0 18px;
+}
+
+.bank-payment-card dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.bank-payment-card dl div {
+  border-top: 1px solid #355046;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-top: 9px;
+}
+
+.bank-payment-card dt {
+  color: #afc4ba;
+}
+
+.bank-payment-card dd {
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.bank-proof-form {
+  display: grid;
+  gap: 12px;
+}
+
+.bank-proof-form h3 {
+  margin: 0;
+}
+
+.bank-proof-form textarea {
+  min-height: 92px;
+}
+
+.bank-claim-history {
+  border-top: 1px solid #ded8ca;
+  margin-top: 22px;
+  padding-top: 16px;
+}
+
+.bank-claim-summary {
+  align-items: center;
+  background: #f8f6f0;
+  border: 1px solid #ded8ca;
+  color: #17231d;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  margin-top: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.bank-claim-summary em {
+  font-size: 12px;
+  font-style: normal;
+  text-transform: capitalize;
+}
+
+.bank-claim-summary > small {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+.bank-claim-summary.approved {
+  border-left: 4px solid #2d7a4b;
+}
+
+.bank-claim-summary.rejected {
+  border-left: 4px solid #a33c33;
+}
+
+.bank-review-card {
+  border: 1px solid #ded8ca;
+  margin-top: 16px;
+  padding: 18px;
+}
+
+.bank-review-card header {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr auto auto;
+}
+
+.bank-review-card header h3 {
+  margin: 3px 0 0;
+}
+
+.evidence-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.evidence-item {
+  background: #f8f6f0;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.evidence-item small {
+  color: #805018;
+}
+
+.evidence-item .secondary-button {
+  justify-self: start;
+  margin-top: 5px;
+}
+
+.bank-review-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bank-sms-check {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr auto;
+  margin-top: 12px;
+}
+
+.bank-sms-check label {
+  display: grid;
+  gap: 6px;
+}
+
+.bank-sms-check textarea {
+  min-height: 72px;
+}
+
+.danger-button {
+  background: #fff;
+  border: 1px solid #a33c33;
+  color: #8f2f28;
+}
+
+@media (max-width: 760px) {
+  .bank-claim-workflow,
+  .bank-review-fields,
+  .bank-sms-check,
+  .bank-start-form {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-review-card header {
+    align-items: start;
+    grid-template-columns: 1fr auto;
+  }
+
+  .confidence-meter {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .bank-claim-summary {
+    grid-template-columns: 1fr auto;
+  }
+
+  .bank-claim-summary em {
+    grid-column: 1 / -1;
+  }
+
+  .bank-payment-card dl div {
+    display: grid;
+  }
+
+  .bank-payment-card dd {
+    text-align: left;
+  }
+}
+
 .hosted-contribution-list {
   display: grid;
   gap: 10px;
