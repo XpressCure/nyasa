@@ -1039,6 +1039,7 @@ select {
   right: 0;
   top: 0;
   z-index: 80;
+  animation: feedbackBackdropIn 180ms ease-out both;
 }
 
 .feedback-dialog {
@@ -1049,12 +1050,16 @@ select {
   display: grid;
   gap: 12px;
   max-width: 480px;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
   padding: 24px;
   width: min(100%, 480px);
+  animation: feedbackDialogIn 420ms cubic-bezier(0.2, 0.85, 0.25, 1.15) both;
 }
 
-.feedback-dialog span {
+.feedback-eyebrow {
   color: #805f1d;
+  display: block;
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0;
@@ -1085,6 +1090,21 @@ select {
   padding: 12px 16px;
 }
 
+.feedback-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.feedback-actions button {
+  flex: 1 1 0;
+}
+
+.feedback-dialog .feedback-secondary-action {
+  background: #f0ede5;
+  color: #243129;
+}
+
 .feedback-dialog.success {
   border-top: 5px solid #2f7d46;
 }
@@ -1095,6 +1115,188 @@ select {
 
 .feedback-dialog.error {
   border-top: 5px solid #b42318;
+}
+
+.feedback-overlay.is-celebrating {
+  background: rgba(13, 27, 20, 0.72);
+}
+
+.feedback-dialog.celebration {
+  background: #fffdf7;
+  border: 1px solid #d8b45f;
+  border-top: 6px solid #d7a84f;
+  box-shadow: 0 28px 90px rgba(4, 23, 14, 0.42), 0 0 0 5px rgba(215, 168, 79, 0.12);
+  gap: 10px;
+  max-width: 540px;
+  padding: 24px 30px 28px;
+  text-align: center;
+}
+
+.feedback-celebration-stage {
+  height: 126px;
+  margin: -4px auto 2px;
+  position: relative;
+  width: 210px;
+}
+
+.celebration-halo {
+  border: 1px solid rgba(215, 168, 79, 0.42);
+  border-radius: 50%;
+  height: 112px;
+  left: 49px;
+  position: absolute;
+  top: 7px;
+  width: 112px;
+  animation: celebrationHalo 1.8s ease-out infinite;
+}
+
+.celebration-halo::after {
+  border: 1px solid rgba(47, 125, 70, 0.2);
+  border-radius: inherit;
+  content: "";
+  inset: 10px;
+  position: absolute;
+}
+
+.celebration-seal {
+  align-items: center;
+  background: #173c29;
+  border: 4px solid #e6c46f;
+  border-radius: 50%;
+  box-shadow: 0 10px 26px rgba(23, 60, 41, 0.28);
+  color: #f7d77e;
+  display: flex;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 45px;
+  height: 84px;
+  justify-content: center;
+  left: 63px;
+  line-height: 1;
+  position: absolute;
+  top: 21px;
+  width: 84px;
+  z-index: 2;
+  animation: celebrationSealIn 650ms cubic-bezier(0.18, 0.9, 0.25, 1.25) both;
+}
+
+.celebration-petals {
+  inset: 0;
+  position: absolute;
+}
+
+.celebration-petals i {
+  background: #d7a84f;
+  border-radius: 80% 10% 80% 10%;
+  display: block;
+  height: 13px;
+  position: absolute;
+  width: 7px;
+  animation: celebrationPetalIn 700ms cubic-bezier(0.2, 0.8, 0.25, 1.2) both;
+}
+
+.celebration-petals i:nth-child(1) { left: 18px; top: 24px; transform: rotate(-52deg); }
+.celebration-petals i:nth-child(2) { left: 38px; top: 4px; transform: rotate(-30deg); animation-delay: 70ms; }
+.celebration-petals i:nth-child(3) { left: 75px; top: 0; transform: rotate(-12deg); animation-delay: 140ms; }
+.celebration-petals i:nth-child(4) { right: 75px; top: 0; transform: rotate(12deg); animation-delay: 210ms; }
+.celebration-petals i:nth-child(5) { right: 38px; top: 4px; transform: rotate(30deg); animation-delay: 280ms; }
+.celebration-petals i:nth-child(6) { right: 18px; top: 24px; transform: rotate(52deg); animation-delay: 350ms; }
+.celebration-petals i:nth-child(7) { left: 5px; top: 62px; transform: rotate(-78deg); animation-delay: 420ms; }
+.celebration-petals i:nth-child(8) { right: 5px; top: 62px; transform: rotate(78deg); animation-delay: 490ms; }
+.celebration-petals i:nth-child(9) { bottom: 13px; left: 28px; transform: rotate(-115deg); animation-delay: 560ms; }
+.celebration-petals i:nth-child(10) { bottom: 13px; right: 28px; transform: rotate(115deg); animation-delay: 630ms; }
+.celebration-petals i:nth-child(11) { bottom: 0; left: 65px; transform: rotate(-155deg); animation-delay: 700ms; }
+.celebration-petals i:nth-child(12) { bottom: 0; right: 65px; transform: rotate(155deg); animation-delay: 770ms; }
+
+.feedback-dialog.celebration h2 {
+  font-size: 30px;
+}
+
+.feedback-amount {
+  color: #173c29;
+  display: block;
+  font-size: 42px;
+  line-height: 1.08;
+  margin: 2px 0;
+  animation: celebrationAmountIn 520ms 260ms ease-out both;
+}
+
+.feedback-project {
+  background: #f4efe2;
+  border: 1px solid #e1d2ad;
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 11px 14px;
+  text-align: left;
+}
+
+.feedback-project span {
+  color: #7a6841;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.feedback-project strong {
+  color: #243129;
+  font-size: 17px;
+}
+
+.feedback-balance {
+  align-items: center;
+  background: #edf4ee;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 13px;
+  text-align: left;
+}
+
+.feedback-balance strong {
+  color: #1f6a39;
+  font-size: 18px;
+}
+
+@keyframes feedbackBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes feedbackDialogIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes celebrationSealIn {
+  0% { opacity: 0; transform: scale(0.35) rotate(-18deg); }
+  72% { opacity: 1; transform: scale(1.08) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes celebrationHalo {
+  0% { opacity: 0.72; transform: scale(0.82); }
+  75%, 100% { opacity: 0; transform: scale(1.28); }
+}
+
+@keyframes celebrationPetalIn {
+  from { opacity: 0; margin-top: 12px; scale: 0.2; }
+  to { opacity: 1; margin-top: 0; scale: 1; }
+}
+
+@keyframes celebrationAmountIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedback-overlay,
+  .feedback-dialog,
+  .celebration-halo,
+  .celebration-seal,
+  .celebration-petals i,
+  .feedback-amount {
+    animation: none;
+  }
 }
 
 .login-page {
@@ -3719,6 +3921,28 @@ button:disabled {
 
   .feedback-dialog {
     padding: 20px;
+  }
+
+  .feedback-dialog.celebration {
+    padding: 18px 16px 20px;
+  }
+
+  .feedback-dialog.celebration h2 {
+    font-size: 25px;
+  }
+
+  .feedback-celebration-stage {
+    margin-bottom: -5px;
+    margin-top: -12px;
+    transform: scale(0.88);
+  }
+
+  .feedback-amount {
+    font-size: 35px;
+  }
+
+  .feedback-actions {
+    flex-direction: column;
   }
 
   .vision-chart-band {

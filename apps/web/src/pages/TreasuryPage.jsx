@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
@@ -92,6 +92,7 @@ export function TreasuryPage() {
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState(null);
+  const allocationSectionRef = useRef(null);
   const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
   const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
@@ -108,14 +109,38 @@ export function TreasuryPage() {
     loadKoshAnalytics();
   }, []);
 
+  useEffect(() => {
+    if (!notice) return undefined;
+
+    function closeOnEscape(event) {
+      if (event.key === "Escape") setNotice(null);
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [notice]);
+
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
   }
 
-  function notify(type, title, body) {
+  function notify(type, title, body, details = {}) {
     const readableBody = body || title;
     setMessage(readableBody);
-    setNotice({ body: readableBody, title, type });
+    setNotice({ body: readableBody, title, type, ...details });
+  }
+
+  function closeNotice() {
+    setNotice(null);
+  }
+
+  function continueFromNotice() {
+    const action = notice?.action;
+    setNotice(null);
+
+    if (action === "allocate") {
+      window.setTimeout(() => allocationSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    }
   }
 
   async function loadTreasury() {
@@ -260,13 +285,20 @@ export function TreasuryPage() {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
-            await loadTreasury();
-            await loadKoshAnalytics();
             notify(
               "success",
-              "Payment successful",
-              `${formatMoney(topUpAmount)} has been added to your Kosh wallet. You can now allocate it to a Sankalp.`
+              "धन्यवाद! आपका योगदान सुरक्षित है",
+              "राशि आपके व्यक्तिगत Nyas Wallet में जुड़ गई है। अब आप इसे अपनी पसंद के Sankalp को समर्पित कर सकते हैं।",
+              {
+                action: "allocate",
+                amount: formatMoney(topUpAmount),
+                balance: formatMoney(walletBalanceRupees + topUpAmount),
+                celebration: "wallet",
+                eyebrow: "सहयोग • विश्वास • संकल्प",
+                primaryLabel: "Sankalp को आवंटित करें"
+              }
             );
+            await Promise.all([loadTreasury(), loadKoshAnalytics()]);
           } catch (error) {
             notify("error", "Payment verification failed", error.message);
           }
@@ -306,13 +338,22 @@ export function TreasuryPage() {
     }
 
     try {
+      const projectTitle = selectedAllocationProject?.title || "चुने गए Sankalp";
       const response = await apiPost(`/treasury/family/${familyId}/allocations`, {
         projectId: allocationProjectId,
         amountRupees: allocationAmountRupees,
         description: allocationDescription
       });
+      const acceptedAmountRupees = Number(response.data?.amountPaise || 0) / 100 || Number(allocationAmountRupees);
+      notify("success", "आपके सहयोग से Sankalp आगे बढ़ा", response.message || "आपकी राशि सफलतापूर्वक Sankalp को आवंटित हो गई है।", {
+        amount: formatMoney(acceptedAmountRupees),
+        balance: formatMoney(Math.max(walletBalanceRupees - acceptedAmountRupees, 0)),
+        celebration: "allocation",
+        eyebrow: "एक परिवार • एक विश्वास • एक प्रयास",
+        primaryLabel: "बहुत सुंदर",
+        projectTitle
+      });
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
-      notify("success", "Sankalp allocation done", response.message || "Funds have been allocated from your wallet to this Sankalp.");
     } catch (error) {
       notify("error", "Allocation not done", error.message);
     }
@@ -365,14 +406,51 @@ export function TreasuryPage() {
         description="Contribute once, then allocate funds across Kul Sankalp."
       />
       {notice ? (
-        <div className="feedback-overlay" role="presentation">
-          <div className={`feedback-dialog ${notice.type}`} role="alertdialog" aria-modal="true" aria-labelledby="kosh-feedback-title">
-            <span>{notice.type === "success" ? "Done" : notice.type === "warning" ? "Check" : "Attention"}</span>
+        <div className={`feedback-overlay ${notice.celebration ? "is-celebrating" : ""}`} role="presentation">
+          <div
+            className={`feedback-dialog ${notice.type} ${notice.celebration ? `celebration ${notice.celebration}` : ""}`}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="kosh-feedback-title"
+          >
+            {notice.celebration ? (
+              <div className="feedback-celebration-stage" aria-hidden="true">
+                <div className="celebration-halo" />
+                <div className="celebration-seal">ॐ</div>
+                <div className="celebration-petals">
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <i key={index} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <span className="feedback-eyebrow">
+              {notice.eyebrow || (notice.type === "success" ? "Completed" : notice.type === "warning" ? "Please check" : "Needs attention")}
+            </span>
             <h2 id="kosh-feedback-title">{notice.title}</h2>
+            {notice.amount ? <strong className="feedback-amount">{notice.amount}</strong> : null}
+            {notice.projectTitle ? (
+              <div className="feedback-project">
+                <span>Sankalp</span>
+                <strong>{notice.projectTitle}</strong>
+              </div>
+            ) : null}
             <p>{notice.body}</p>
-            <button type="button" onClick={() => setNotice(null)}>
-              Close
-            </button>
+            {notice.balance ? (
+              <p className="feedback-balance">
+                Wallet में शेष <strong>{notice.balance}</strong>
+              </p>
+            ) : null}
+            <div className="feedback-actions">
+              <button type="button" onClick={continueFromNotice}>
+                {notice.primaryLabel || "ठीक है"}
+              </button>
+              {notice.action ? (
+                <button type="button" className="feedback-secondary-action" onClick={closeNotice}>
+                  बाद में
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
@@ -535,7 +613,7 @@ export function TreasuryPage() {
         </div>
       </section>
 
-      <section className="content-band spaced-band">
+      <section className="content-band spaced-band" ref={allocationSectionRef}>
         <h2>Allocate To Sankalp</h2>
         <p className="section-note">Allocations spend the wallet of the current signed-in member shown in the sidebar.</p>
         {canAllocateFunds ? (
