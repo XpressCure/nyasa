@@ -91,6 +91,7 @@ export function TreasuryPage() {
   const [reductionAmounts, setReductionAmounts] = useState({});
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState(null);
   const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
   const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
@@ -109,6 +110,12 @@ export function TreasuryPage() {
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
+  }
+
+  function notify(type, title, body) {
+    const readableBody = body || title;
+    setMessage(readableBody);
+    setNotice({ body: readableBody, title, type });
   }
 
   async function loadTreasury() {
@@ -200,10 +207,10 @@ export function TreasuryPage() {
         description,
         memberId: contributionMemberId || undefined
       });
-      setMessage("Manual contribution recorded.");
+      notify("success", "Contribution recorded", "The selected Sadasya wallet has been credited.");
       await Promise.all([loadTreasury(), loadKoshAnalytics()]);
     } catch (error) {
-      setMessage(error.message);
+      notify("error", "Contribution not recorded", error.message);
     }
   }
 
@@ -212,12 +219,12 @@ export function TreasuryPage() {
     const familyId = getFamilyId();
     const topUpAmount = Number(selfContributionAmountRupees || 0);
     if (!familyId) {
-      setMessage("Create or select a Kul first.");
+      notify("error", "Kul not selected", "Create or select a Kul before adding money.");
       return;
     }
 
     if (topUpAmount < MIN_WALLET_TOP_UP_RUPEES) {
-      setMessage(`Minimum wallet top-up is ${formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.`);
+      notify("error", "Amount too small", `Minimum wallet top-up is ${formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.`);
       return;
     }
 
@@ -253,24 +260,35 @@ export function TreasuryPage() {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
-            setMessage("Payment verified. Money added to your wallet.");
             await loadTreasury();
             await loadKoshAnalytics();
+            notify(
+              "success",
+              "Payment successful",
+              `${formatMoney(topUpAmount)} has been added to your Kosh wallet. You can now allocate it to a Sankalp.`
+            );
           } catch (error) {
-            setMessage(error.message);
+            notify("error", "Payment verification failed", error.message);
           }
         },
         modal: {
-          ondismiss: () => setMessage("Payment was not completed.")
+          ondismiss: () => notify("warning", "Payment not completed", "The Razorpay window was closed. No money was added to your wallet.")
         },
         theme: {
           color: "#17211c"
         }
       });
 
+      checkout.on("payment.failed", (response) => {
+        notify(
+          "error",
+          "Payment failed",
+          response?.error?.description || "Razorpay could not complete the payment. Please try again or use another payment method."
+        );
+      });
       checkout.open();
     } catch (error) {
-      setMessage(error.message);
+      notify("error", "Could not start payment", error.message);
     }
   }
 
@@ -278,12 +296,12 @@ export function TreasuryPage() {
     event.preventDefault();
     const familyId = getFamilyId();
     if (!familyId) {
-      setMessage("Create or select a family first.");
+      notify("error", "Kul not selected", "Create or select a Kul before allocating funds.");
       return;
     }
 
     if (!allocationProjectId) {
-      setMessage("Choose a Sankalp to allocate funds.");
+      notify("error", "Choose a Sankalp", "Select the Sankalp where this wallet money should go.");
       return;
     }
 
@@ -293,10 +311,10 @@ export function TreasuryPage() {
         amountRupees: allocationAmountRupees,
         description: allocationDescription
       });
-      setMessage(response.message || "Done: Funds allocated to Sankalp.");
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
+      notify("success", "Sankalp allocation done", response.message || "Funds have been allocated from your wallet to this Sankalp.");
     } catch (error) {
-      setMessage(error.message);
+      notify("error", "Allocation not done", error.message);
     }
   }
 
@@ -305,7 +323,7 @@ export function TreasuryPage() {
     const amountRupees = reductionAmounts[transactionId];
 
     if (!familyId || !amountRupees) {
-      setMessage("Enter the amount to return from Sankalp allocation.");
+      notify("error", "Return amount needed", "Enter the amount to return from Sankalp allocation.");
       return;
     }
 
@@ -315,10 +333,10 @@ export function TreasuryPage() {
         description: "Reduced Sankalp allocation"
       });
       setReductionAmounts((current) => ({ ...current, [transactionId]: "" }));
-      setMessage(response.message || "Allocation reduced and returned to wallet.");
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
+      notify("success", "Returned to wallet", response.message || "Allocation reduced and returned to wallet.");
     } catch (error) {
-      setMessage(error.message);
+      notify("error", "Return failed", error.message);
     }
   }
 
@@ -328,12 +346,16 @@ export function TreasuryPage() {
 
     try {
       const response = await apiPost(`/treasury/family/${familyId}/transactions/${transactionId}/reverse`, {});
-      setMessage(response.message || "Kosh entry reversed.");
       await Promise.all([loadTreasury(), loadProjects(), loadKoshAnalytics()]);
+      notify("success", "Kosh entry reversed", response.message || "This ledger entry has been reversed.");
     } catch (error) {
-      setMessage(error.message);
+      notify("error", "Reverse failed", error.message);
     }
   }
+
+  const walletBalanceRupees = summary?.wallet?.balanceRupees || 0;
+  const availableKoshRupees = summary?.treasury?.balanceRupees || 0;
+  const thisYearRupees = summary?.contributionThisYearRupees || 0;
 
   return (
     <section>
@@ -342,18 +364,41 @@ export function TreasuryPage() {
         title="Kosh"
         description="Contribute once, then allocate funds across Kul Sankalp."
       />
+      {notice ? (
+        <div className="feedback-overlay" role="presentation">
+          <div className={`feedback-dialog ${notice.type}`} role="alertdialog" aria-modal="true" aria-labelledby="kosh-feedback-title">
+            <span>{notice.type === "success" ? "Done" : notice.type === "warning" ? "Check" : "Attention"}</span>
+            <h2 id="kosh-feedback-title">{notice.title}</h2>
+            <p>{notice.body}</p>
+            <button type="button" onClick={() => setNotice(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <section className="wallet-spotlight">
+        <div>
+          <span>My Kosh Wallet</span>
+          <strong>{formatMoney(walletBalanceRupees)}</strong>
+          <p>This is your personal wallet balance. Add money here first, then allocate it to a Sankalp.</p>
+        </div>
+        <div className="wallet-spotlight-metrics">
+          <span>Available Kosh: {formatMoney(availableKoshRupees)}</span>
+          <span>This year: {formatMoney(thisYearRupees)}</span>
+        </div>
+      </section>
       <div className="metric-grid">
         <article className="metric-card">
           <span>My Wallet Balance</span>
-          <strong>{formatMoney(summary?.wallet.balanceRupees || 0)}</strong>
+          <strong>{formatMoney(walletBalanceRupees)}</strong>
         </article>
         <article className="metric-card">
           <span>Available Kosh</span>
-          <strong>{formatMoney(summary?.treasury.balanceRupees || 0)}</strong>
+          <strong>{formatMoney(availableKoshRupees)}</strong>
         </article>
         <article className="metric-card">
           <span>This Year</span>
-          <strong>{formatMoney(summary?.contributionThisYearRupees || 0)}</strong>
+          <strong>{formatMoney(thisYearRupees)}</strong>
         </article>
       </div>
 
