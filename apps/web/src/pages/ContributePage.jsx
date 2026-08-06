@@ -39,6 +39,21 @@ function loadRazorpayCheckout() {
   });
 }
 
+function loadCashfreeCheckout() {
+  return new Promise((resolve, reject) => {
+    if (window.Cashfree) {
+      resolve();
+      return;
+    }
+
+    const script = window.document.createElement("script");
+    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Could not load Cashfree Checkout."));
+    window.document.body.appendChild(script);
+  });
+}
+
 function getContributionHint(project) {
   const policy = getContributionPolicy(project);
   if (!policy) return "This Sankalp does not have a funding limit yet.";
@@ -56,13 +71,31 @@ export function ContributePage() {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState(null);
+  const [paymentProviders, setPaymentProviders] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
   const [isAllocating, setIsAllocating] = useState(false);
   const allocationSectionRef = useRef(null);
+  const cashfreeReturnHandledRef = useRef(false);
 
   useEffect(() => {
     loadPage();
   }, []);
+
+  useEffect(() => {
+    if (!session?.familyId) return;
+    loadPaymentProviders(session.familyId);
+  }, [session?.familyId]);
+
+  useEffect(() => {
+    if (!session?.familyId || cashfreeReturnHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const providerOrderId = params.get("order_id");
+    if (params.get("cashfree_return") !== "1" || !providerOrderId) return;
+
+    cashfreeReturnHandledRef.current = true;
+    window.history.replaceState({}, "", window.location.pathname);
+    confirmCashfreeReturn(session.familyId, providerOrderId);
+  }, [session?.familyId]);
 
   function getFamilyId() {
     return localStorage.getItem("nyasa_family_id");
@@ -96,6 +129,42 @@ export function ContributePage() {
     }
   }
 
+  async function loadPaymentProviders(familyId) {
+    try {
+      const response = await apiGet(`/payments/family/${familyId}/providers`);
+      setPaymentProviders(response.data);
+    } catch (error) {
+      setPaymentProviders({ cashfree: { enabled: false }, razorpay: { enabled: false } });
+      setMessage(error.message);
+    }
+  }
+
+  async function confirmCashfreeReturn(familyId, providerOrderId) {
+    setIsPaying(true);
+    setMessage("Cashfree payment received. Verifying it securely...");
+    try {
+      const response = await apiPost(`/payments/family/${familyId}/cashfree-orders/status`, { providerOrderId });
+      const creditedAmount = response.data.amountRupees;
+      setPaymentComplete(true);
+      const refreshedProjects = await loadPage();
+      const selectedProject = refreshedProjects?.find((project) => project.id === allocationProjectId) || refreshedProjects?.[0];
+      setAllocationAmountRupees(String(selectedProject ? getDefaultAllocationAmount(selectedProject, creditedAmount) : creditedAmount));
+      setNotice({
+        amount: formatMoney(creditedAmount),
+        body: "Your Cashfree payment is verified and safely available in your personal Kosh wallet. Choose a Sankalp to carry it forward.",
+        primaryLabel: "Choose a Sankalp",
+        title: "Yogdaan received with gratitude",
+        type: "success"
+      });
+      setMessage(`Done: ${formatMoney(creditedAmount)} has been added to your Kosh wallet.`);
+    } catch (error) {
+      setMessage(error.message);
+      setNotice({ body: error.message, title: "Payment needs attention", type: "error" });
+    } finally {
+      setIsPaying(false);
+    }
+  }
+
   function selectProject(project, preferredAmount = allocationAmountRupees || amountRupees) {
     setAllocationProjectId(project?.id || "");
     setAllocationAmountRupees(project ? String(getDefaultAllocationAmount(project, preferredAmount)) : "");
@@ -123,6 +192,16 @@ export function ContributePage() {
 
     if (topUpAmount < MIN_WALLET_TOP_UP_RUPEES) {
       setMessage(`Minimum wallet top-up is ${formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.`);
+      return;
+    }
+
+    if (paymentProviders?.cashfree?.enabled) {
+      await startCashfreePayment(familyId, topUpAmount);
+      return;
+    }
+
+    if (!paymentProviders?.razorpay?.enabled) {
+      setMessage("No online payment provider is available right now. Please contact the Nyas Kosh team.");
       return;
     }
 
@@ -209,6 +288,34 @@ export function ContributePage() {
       setIsPaying(false);
       setMessage(error.message);
       setNotice({ body: error.message, title: "Could not start payment", type: "error" });
+    }
+  }
+
+  async function startCashfreePayment(familyId, topUpAmount) {
+    try {
+      setIsPaying(true);
+      setMessage("Creating secure Cashfree payment...");
+      const orderResponse = await apiPost(`/payments/family/${familyId}/cashfree-orders`, {
+        amountRupees: topUpAmount,
+        description: "Nyasa Kosh Yogdaan",
+        returnPath: "/contribute"
+      });
+      await loadCashfreeCheckout();
+      const cashfree = window.Cashfree({ mode: orderResponse.data.mode });
+      const checkoutResult = await cashfree.checkout({
+        paymentSessionId: orderResponse.data.paymentSessionId,
+        redirectTarget: "_self"
+      });
+      if (checkoutResult?.error) {
+        setIsPaying(false);
+        const errorMessage = checkoutResult.error.message || "Please try again.";
+        setMessage(errorMessage);
+        setNotice({ body: errorMessage, title: "Cashfree checkout could not open", type: "error" });
+      }
+    } catch (error) {
+      setIsPaying(false);
+      setMessage(error.message);
+      setNotice({ body: error.message, title: "Could not start Cashfree payment", type: "error" });
     }
   }
 
@@ -314,6 +421,9 @@ export function ContributePage() {
             <strong>{formatMoney(summary?.wallet?.balanceRupees || 0)}</strong>.
           </p>
         </div>
+        {paymentProviders?.cashfree?.enabled && paymentProviders.cashfree.mode === "sandbox" ? (
+          <p className="payment-test-banner" role="status"><strong>Cashfree Sandbox</strong> Test payments only. No real money will move.</p>
+        ) : null}
         <form className="contribution-panel" onSubmit={startPayment}>
           <div className="amount-preset-row">
             {presetAmounts.map((amount) => (
@@ -332,7 +442,11 @@ export function ContributePage() {
             />
             <small>Minimum wallet top-up is {formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.</small>
           </label>
-          <button type="submit" disabled={isPaying}>{isPaying ? "Opening secure payment..." : "Pay Securely"}</button>
+          <button type="submit" disabled={isPaying || !paymentProviders}>
+            {isPaying
+              ? "Opening secure payment..."
+              : paymentProviders?.cashfree?.enabled ? "Continue With Cashfree" : "Continue With Razorpay"}
+          </button>
         </form>
       </section>
 

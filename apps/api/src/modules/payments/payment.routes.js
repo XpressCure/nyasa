@@ -34,7 +34,8 @@ const MIN_WALLET_TOP_UP_RUPEES = 2000;
 
 const createOrderSchema = z.object({
   amountRupees: z.coerce.number().positive(),
-  description: z.string().max(280).optional()
+  description: z.string().max(280).optional(),
+  returnPath: z.enum(["/treasury", "/contribute"]).default("/treasury")
 });
 
 const verifyPaymentSchema = z.object({
@@ -436,7 +437,7 @@ paymentRoutes.post(
     if (!req.user.phone) throw httpError(400, "Add your phone number in Parichay before paying.", "PAYMENT_PHONE_REQUIRED");
 
     const providerOrderId = `nyas_${Date.now()}_${String(req.member._id).slice(-6)}`;
-    const returnUrl = `${env.WEB_ORIGIN}/treasury?cashfree_return=1&order_id={order_id}`;
+    const returnUrl = `${env.WEB_ORIGIN}${body.returnPath}?cashfree_return=1&order_id={order_id}`;
     const cashfreeOrder = await createCashfreeOrder({
       orderId: providerOrderId,
       amountRupees: body.amountRupees,
