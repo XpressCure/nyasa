@@ -186,6 +186,13 @@ paymentRoutes.post(
         familyId: env.RAZORPAY_PAYMENT_PAGE_FAMILY_ID,
         normalizedPhone: payment.normalizedPhone
       });
+      console.info("Razorpay Test Payment Page webhook validated", {
+        amountRupees: paiseToRupees(payment.amountPaise),
+        eventId: req.get("x-razorpay-event-id"),
+        matchCount: matches.length,
+        matchedMember: matches.length === 1 ? matches[0].displayName : null,
+        paymentId: payment.providerPaymentId
+      });
       res.json({
         data: {
           amountRupees: paiseToRupees(payment.amountPaise),
