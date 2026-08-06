@@ -124,27 +124,6 @@ const customerSegments = [
   }
 ];
 
-const productPlans = [
-  {
-    name: "Starter Family",
-    price: "₹4,999/year",
-    description: "For families beginning their digital Kul record.",
-    features: ["Up to 50 members", "Parichay and basic Kul Map", "Family gallery", "Invite links"]
-  },
-  {
-    name: "Legacy Family",
-    price: "₹14,999/year",
-    description: "For active families running Sankalp and shared records.",
-    features: ["Up to 200 members", "Kosh and Sankalp", "Sabha voting", "Events and document vault"]
-  },
-  {
-    name: "Nyas Trust",
-    price: "₹49,999/year",
-    description: "For large families, trusts, and high-value legacy work.",
-    features: ["Large family workspace", "Custom branding", "Razorpay collections", "Audit-ready reports"]
-  }
-];
-
 const launchMessageHighlights = [
   "परिवार की विरासत, इतिहास और स्मृतियों को सुरक्षित रखना।",
   "Alahdadpur और पैतृक घर से जुड़े कार्यों को संगठित रूप से आगे बढ़ाना।",
@@ -399,7 +378,6 @@ export function HomePage() {
           <a href="#gallery">Gallery</a>
           <a href="#village">Alahdadpur</a>
           <a href="#market">For families</a>
-          <a href="#pricing">Plans</a>
           <a href="#future">Coming next</a>
           <a href="#kosh">Kosh</a>
           <Link to="/login">Sign in</Link>
@@ -603,34 +581,6 @@ export function HomePage() {
             Use Nyas demo
             <ArrowRight size={18} />
           </Link>
-        </div>
-      </section>
-
-      <section className="home-section pricing-section" id="pricing">
-        <div className="home-section-heading">
-          <span>Subscription direction</span>
-          <h2>Simple plans for families, trusts, and legacy work.</h2>
-        </div>
-        <div className="pricing-grid">
-          {productPlans.map((plan) => (
-            <article key={plan.name}>
-              <span>{plan.name}</span>
-              <strong>{plan.price}</strong>
-              <p>{plan.description}</p>
-              <ul>
-                {plan.features.map((feature) => (
-                  <li key={feature}>
-                    <CheckCircle2 size={16} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-        <div className="pricing-note">
-          <strong>One-time onboarding can be the first revenue driver.</strong>
-          <span>Charge separately for data collection, tree cleanup, photo uploads, document organization, and first Sankalp setup.</span>
         </div>
       </section>
 
