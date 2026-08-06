@@ -19,9 +19,29 @@ export async function requireAuth(req, _res, next) {
       throw httpError(401, "Invalid authenticated user", "INVALID_USER");
     }
 
+    if (payload.authVersion !== undefined && payload.authVersion !== user.authVersion) {
+      throw httpError(401, "Please sign in again.", "SESSION_REVOKED");
+    }
+
     req.user = user;
+    req.auth = payload;
     next();
   } catch (error) {
     next(error.statusCode ? error : httpError(401, "Invalid or expired token", "INVALID_TOKEN"));
   }
+}
+
+export function requirePasswordAuth(req, _res, next) {
+  if (req.auth?.authLevel !== "password") {
+    next(
+      httpError(
+        403,
+        "Password verification is required for this Kosh action. Set your password in Parichay, then sign in again.",
+        "PASSWORD_AUTH_REQUIRED"
+      )
+    );
+    return;
+  }
+
+  next();
 }

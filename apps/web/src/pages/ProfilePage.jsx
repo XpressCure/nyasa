@@ -178,6 +178,9 @@ async function fileToUploadPayload(file) {
 export function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [accountPhone, setAccountPhone] = useState("");
+  const [hasPassword, setHasPassword] = useState(false);
+  const [authLevel, setAuthLevel] = useState("onboarding");
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", password: "", confirmPassword: "" });
   const [form, setForm] = useState(initialForm);
   const [profilePhotoFile, setProfilePhotoFile] = useState(null);
   const [immediateFamily, setImmediateFamily] = useState(initialImmediateFamily);
@@ -310,9 +313,29 @@ export function ProfilePage() {
       ]);
       setProfile(response.data);
       setAccountPhone(sessionResponse.data.user?.phone || "");
+      setHasPassword(Boolean(sessionResponse.data.user?.hasPassword));
+      setAuthLevel(sessionResponse.data.authLevel || "onboarding");
       setForm(hydrateForm(response.data));
       await loadImmediateFamily(familyId);
       setMessage("Parichay loaded.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function savePassword(event) {
+    event.preventDefault();
+    setMessage("");
+
+    try {
+      const path = hasPassword ? "/auth/password/change" : "/auth/password/setup";
+      const response = await apiPost(path, passwordForm);
+      localStorage.setItem("nyasa_token", response.data.token);
+      localStorage.setItem("nyasa_user", JSON.stringify(response.data.user));
+      setHasPassword(true);
+      setAuthLevel("password");
+      setPasswordForm({ currentPassword: "", password: "", confirmPassword: "" });
+      setMessage(response.message || "Password saved.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -486,6 +509,53 @@ export function ProfilePage() {
             </Link>
           </div>
         )}
+
+        <section className="account-security-section">
+          <h3>Account security</h3>
+          <p className="section-note">
+            {authLevel === "password"
+              ? "Your current session is password verified. Kosh transactions are unlocked."
+              : "Set a password to protect real Kosh payments and Sankalp allocations."}
+          </p>
+          <form className="form-grid security-form" onSubmit={savePassword}>
+            {hasPassword ? (
+              <label>
+                Current password
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))}
+                  required
+                />
+              </label>
+            ) : null}
+            <label>
+              {hasPassword ? "New password" : "Create password"}
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength="8"
+                value={passwordForm.password}
+                onChange={(event) => setPasswordForm((current) => ({ ...current, password: event.target.value }))}
+                required
+              />
+              <small>Use at least 8 characters with one letter and one number.</small>
+            </label>
+            <label>
+              Confirm password
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength="8"
+                value={passwordForm.confirmPassword}
+                onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+                required
+              />
+            </label>
+            <button type="submit">{hasPassword ? "Change password" : "Secure my account"}</button>
+          </form>
+        </section>
 
         <form className="form-grid profile-form" onSubmit={saveProfile}>
           <h3 className="form-section-title">Identity</h3>

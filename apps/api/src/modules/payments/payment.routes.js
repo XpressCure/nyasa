@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { env } from "../../config/env.js";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requirePasswordAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
 import { HostedContribution } from "../../models/HostedContribution.js";
@@ -267,6 +267,7 @@ paymentRoutes.use(requireAuth);
 paymentRoutes.post(
   "/family/:familyId/hosted-contributions/claim",
   requireFamilyPermission(permissions.treasuryContribute),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const normalizedPhone = normalizePhone(req.user.phone);
     if (!normalizedPhone) {
@@ -307,6 +308,7 @@ paymentRoutes.get(
 paymentRoutes.post(
   "/family/:familyId/hosted-contributions/:contributionId/link",
   requireFamilyPermission(permissions.treasuryViewLedger),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = linkHostedContributionSchema.parse(req.body);
     const [contribution, member] = await Promise.all([
@@ -333,6 +335,7 @@ paymentRoutes.post(
 paymentRoutes.post(
   "/family/:familyId/razorpay-orders",
   requireFamilyPermission(permissions.treasuryContribute),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = createOrderSchema.parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
@@ -390,6 +393,7 @@ paymentRoutes.post(
 paymentRoutes.post(
   "/family/:familyId/razorpay-payments/verify",
   requireFamilyPermission(permissions.treasuryContribute),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = verifyPaymentSchema.parse(req.body);
 

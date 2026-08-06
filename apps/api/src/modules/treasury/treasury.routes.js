@@ -1,7 +1,7 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requirePasswordAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Expense } from "../../models/Expense.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
@@ -396,6 +396,7 @@ treasuryRoutes.get(
 treasuryRoutes.post(
   "/family/:familyId/manual-contributions",
   requireFamilyPermission(permissions.treasuryViewLedger),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = contributionSchema.parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
@@ -434,6 +435,7 @@ treasuryRoutes.post(
 treasuryRoutes.post(
   "/family/:familyId/my-contributions",
   requireFamilyPermission(permissions.treasuryContribute),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = contributionSchema.omit({ memberId: true }).parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
@@ -472,6 +474,7 @@ treasuryRoutes.post(
 treasuryRoutes.post(
   "/family/:familyId/allocations",
   requireFamilyPermission(permissions.treasuryAllocateOwn),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = allocationSchema.parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
@@ -587,6 +590,7 @@ treasuryRoutes.post(
 treasuryRoutes.post(
   "/family/:familyId/allocations/:transactionId/reduce",
   requireFamilyPermission(permissions.treasuryAllocateOwn),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = allocationReductionSchema.parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
@@ -671,6 +675,7 @@ treasuryRoutes.post(
 treasuryRoutes.post(
   "/family/:familyId/transactions/:transactionId/reverse",
   requireFamilyPermission(permissions.treasuryViewLedger),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     if (!["owner", "admin"].includes(req.member.role)) {
       throw httpError(403, "Only owner/admin can reverse Kosh entries.", "TREASURY_REVERSAL_NOT_ALLOWED");

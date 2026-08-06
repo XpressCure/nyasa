@@ -30,6 +30,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [needsPhone, setNeedsPhone] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,7 +41,8 @@ export function LoginPage() {
     try {
       const response = await apiPost("/auth/dev-login", {
         fullName,
-        ...(needsPhone && phone.trim() ? { phone } : {})
+        ...(needsPhone && phone.trim() ? { phone } : {}),
+        ...(password ? { password } : {})
       });
       localStorage.setItem("nyasa_token", response.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(response.data.user));
@@ -85,6 +87,16 @@ export function LoginPage() {
               <small>Needed only when the name is new or more than one profile matches.</small>
             </label>
           ) : null}
+          <label>
+            Password
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              autoComplete="current-password"
+            />
+            <small>Existing secured accounts require a password. New members can set one after sign-in.</small>
+          </label>
           {error ? <p className="form-error">{error}</p> : null}
           <button type="submit">Continue</button>
         </form>

@@ -2,20 +2,50 @@ import jwt from "jsonwebtoken";
 import { Router } from "express";
 import { z } from "zod";
 import { env } from "../../config/env.js";
+import { requireAuth } from "../../middleware/auth.js";
 import { Family } from "../../models/Family.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
 import { User } from "../../models/User.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { hashPassword, validatePassword, verifyPassword } from "./password.service.js";
 
 export const authRoutes = Router();
 
 const devLoginSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email().optional(),
-  phone: z.string().min(6).optional()
+  phone: z.string().min(6).optional(),
+  password: z.string().optional()
 });
+
+const passwordSetupSchema = z.object({
+  password: z.string(),
+  confirmPassword: z.string()
+});
+
+const passwordChangeSchema = z.object({
+  currentPassword: z.string(),
+  password: z.string(),
+  confirmPassword: z.string()
+});
+
+function createToken(user, authLevel) {
+  return jwt.sign(
+    { sub: String(user._id), authLevel, authVersion: user.authVersion || 0 },
+    env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+}
+
+function validateNewPassword(body) {
+  if (body.password !== body.confirmPassword) {
+    throw httpError(400, "Passwords do not match.", "PASSWORDS_DO_NOT_MATCH");
+  }
+  const validationError = validatePassword(body.password);
+  if (validationError) throw httpError(400, validationError, "PASSWORD_TOO_WEAK");
+}
 
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -178,22 +208,17 @@ async function findOrCreateLoginUser(body) {
   const loginFilter = body.phone ? { phone: body.phone } : { email: body.email.toLowerCase() };
   const authProvider = body.phone ? "phone_otp" : "email_magic_link";
 
-  return User.findOneAndUpdate(
-    loginFilter,
-    {
-      $setOnInsert: {
-        ...(body.email ? { email: body.email.toLowerCase() } : {}),
-        ...(body.phone ? { phone: body.phone } : {}),
-        authProviders: [{ provider: authProvider, verifiedAt: new Date() }]
-      },
-      $set: {
-        fullName: body.fullName,
-        lastLoginAt: new Date(),
-        status: "active"
-      }
-    },
-    { upsert: true, new: true }
-  );
+  const existingUser = await User.findOne(loginFilter);
+  if (existingUser) return existingUser;
+
+  return User.create({
+    fullName: body.fullName,
+    ...(body.email ? { email: body.email.toLowerCase() } : {}),
+    ...(body.phone ? { phone: body.phone } : {}),
+    authProviders: [{ provider: authProvider, verifiedAt: new Date() }],
+    lastLoginAt: new Date(),
+    status: "active"
+  });
 }
 
 async function ensureLaunchFamilyMembership(user, { family, isNewFamily, profileToClaim = null }) {
@@ -277,6 +302,7 @@ authRoutes.post(
     const claimedMatches = profileMatches.filter((member) => member.userId);
     let user;
     let profileToClaim = null;
+    let effectiveLoginBody = body;
 
     if (!body.phone && !body.email) {
       if (profileMatches.length > 1) {
@@ -290,13 +316,13 @@ authRoutes.post(
       if (profileMatches.length === 1) {
         const profile = profileMatches[0];
         const profileBody = { ...body, fullName: profile.displayName };
+        effectiveLoginBody = profileBody;
         user = profile.userId ? await User.findById(profile.userId) : await findOrCreateLoginUser(profileBody);
 
         if (!user) {
           throw httpError(404, "This profile is linked to a user that could not be found.", "LINKED_USER_NOT_FOUND");
         }
 
-        await updateUserLoginFields(user, profileBody);
         profileToClaim = profile.userId ? null : profile;
       } else {
         throw httpError(
@@ -308,6 +334,7 @@ authRoutes.post(
     } else {
       const singleUnclaimedMatch = unclaimedMatches.length === 1 ? unclaimedMatches[0] : null;
       const loginBody = singleUnclaimedMatch ? { ...body, fullName: singleUnclaimedMatch.displayName } : body;
+      effectiveLoginBody = loginBody;
       user = await findOrCreateLoginUser(loginBody);
       if (!preparedFamily.family) {
         preparedFamily = await prepareLaunchFamily(user);
@@ -327,6 +354,24 @@ authRoutes.post(
       }
     }
 
+    const userWithPassword = await User.findById(user._id).select("+passwordHash");
+    const hasPassword = Boolean(userWithPassword?.passwordHash);
+    if (!hasPassword && !body.phone && !body.email) {
+      throw httpError(
+        400,
+        "Enter the phone number linked to this account to set up secure access.",
+        "LOGIN_PHONE_REQUIRED"
+      );
+    }
+    if (hasPassword && !(await verifyPassword(body.password, userWithPassword.passwordHash))) {
+      throw httpError(
+        401,
+        body.password ? "The password is incorrect." : "Enter your password to continue.",
+        body.password ? "INVALID_CREDENTIALS" : "PASSWORD_REQUIRED"
+      );
+    }
+    user = await updateUserLoginFields(userWithPassword || user, effectiveLoginBody);
+
     const launchMembership = await ensureLaunchFamilyMembership(user, {
       ...preparedFamily,
       profileToClaim
@@ -343,7 +388,8 @@ authRoutes.post(
       req
     });
 
-    const token = jwt.sign({ sub: String(user._id) }, env.JWT_SECRET, { expiresIn: "7d" });
+    const authLevel = hasPassword ? "password" : "onboarding";
+    const token = createToken(userWithPassword || user, authLevel);
 
     res.json({
       data: {
@@ -352,11 +398,74 @@ authRoutes.post(
           id: user._id,
           fullName: user.fullName,
           email: user.email,
-          phone: user.phone
+          phone: user.phone,
+          hasPassword
         },
+        authLevel,
         family: launchMembership.family,
         member: launchMembership.member
       }
+    });
+  })
+);
+
+authRoutes.post(
+  "/password/setup",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = passwordSetupSchema.parse(req.body);
+    validateNewPassword(body);
+
+    const user = await User.findById(req.user._id).select("+passwordHash");
+    if (user.passwordHash) {
+      throw httpError(409, "A password is already set. Use change password instead.", "PASSWORD_ALREADY_SET");
+    }
+
+    user.passwordHash = await hashPassword(body.password);
+    user.passwordSetAt = new Date();
+    user.authVersion = (user.authVersion || 0) + 1;
+    if (!user.authProviders.some((provider) => provider.provider === "password")) {
+      user.authProviders.push({ provider: "password", verifiedAt: new Date() });
+    }
+    await user.save();
+
+    const token = createToken(user, "password");
+    res.json({
+      data: {
+        token,
+        authLevel: "password",
+        user: { id: user._id, fullName: user.fullName, email: user.email, phone: user.phone, hasPassword: true }
+      },
+      message: "Password secured. Kosh actions are now unlocked."
+    });
+  })
+);
+
+authRoutes.post(
+  "/password/change",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = passwordChangeSchema.parse(req.body);
+    validateNewPassword(body);
+
+    const user = await User.findById(req.user._id).select("+passwordHash");
+    if (!user.passwordHash || !(await verifyPassword(body.currentPassword, user.passwordHash))) {
+      throw httpError(401, "Current password is incorrect.", "INVALID_CURRENT_PASSWORD");
+    }
+
+    user.passwordHash = await hashPassword(body.password);
+    user.passwordSetAt = new Date();
+    user.authVersion = (user.authVersion || 0) + 1;
+    await user.save();
+
+    const token = createToken(user, "password");
+    res.json({
+      data: {
+        token,
+        authLevel: "password",
+        user: { id: user._id, fullName: user.fullName, email: user.email, phone: user.phone, hasPassword: true }
+      },
+      message: "Password changed successfully."
     });
   })
 );

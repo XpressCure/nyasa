@@ -20,6 +20,9 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     avatarUrl: String,
     authProviders: { type: [authProviderSchema], default: [] },
+    passwordHash: { type: String, select: false },
+    passwordSetAt: Date,
+    authVersion: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ["active", "inactive", "blocked"],

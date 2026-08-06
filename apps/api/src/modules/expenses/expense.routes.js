@@ -1,7 +1,7 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requirePasswordAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Expense } from "../../models/Expense.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
@@ -134,6 +134,7 @@ expenseRoutes.get(
 expenseRoutes.post(
   "/family/:familyId/project/:projectId",
   requireFamilyPermission(permissions.expensesSubmit),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const project = await findProjectOrThrow({ familyId: req.familyId, projectId: req.params.projectId });
     const body = submitExpenseSchema.parse(req.body);
@@ -196,6 +197,7 @@ expenseRoutes.post(
 expenseRoutes.post(
   "/family/:familyId/:expenseId/approve",
   requireFamilyPermission(permissions.expensesApprove),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const expense = await Expense.findOne({ _id: req.params.expenseId, familyId: req.familyId });
 
@@ -265,6 +267,7 @@ expenseRoutes.post(
 expenseRoutes.post(
   "/family/:familyId/:expenseId/reject",
   requireFamilyPermission(permissions.expensesApprove),
+  requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = rejectExpenseSchema.parse(req.body);
     const expense = await Expense.findOne({ _id: req.params.expenseId, familyId: req.familyId });

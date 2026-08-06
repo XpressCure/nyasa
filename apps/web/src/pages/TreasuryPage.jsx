@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { SankalpFundingCarousel } from "../components/SankalpFundingCarousel.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
@@ -84,6 +85,7 @@ export function TreasuryPage() {
   const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
   const canReverseLedger = ["owner", "admin"].includes(session?.member?.role);
+  const passwordVerified = session?.authLevel === "password";
   const selectedAllocationProject = projects.find((project) => project.id === allocationProjectId);
   const selectedContributionPolicy = getContributionPolicy(selectedAllocationProject);
   const allocationBlocked = Boolean(selectedContributionPolicy && selectedContributionPolicy.maxRupees <= 0);
@@ -101,9 +103,9 @@ export function TreasuryPage() {
 
   useEffect(() => {
     if (!session?.familyId) return;
-    if (canContribute) claimHostedContributions();
+    if (canContribute && passwordVerified) claimHostedContributions();
     if (canRecordManualContribution) loadPendingHostedContributions();
-  }, [session?.familyId, canContribute, canRecordManualContribution]);
+  }, [session?.familyId, canContribute, canRecordManualContribution, passwordVerified]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -573,6 +575,16 @@ export function TreasuryPage() {
         </article>
       </div>
 
+      {session && !passwordVerified ? (
+        <section className="transaction-security-callout" aria-live="polite">
+          <div>
+            <strong>Secure Kosh access required</strong>
+            <span>Set your password in Parichay before adding, allocating, returning, or correcting real money.</span>
+          </div>
+          <Link className="secondary-button" to="/profile">Secure my account</Link>
+        </section>
+      ) : null}
+
       <section className="content-band">
         <div className="section-heading-row">
           <div>
@@ -638,7 +650,7 @@ export function TreasuryPage() {
       <section className="content-band">
         <h2>Add To My Wallet</h2>
         <p className="section-note">Sadasya add money through Razorpay first. After verification, wallet balance can be allocated to a Sankalp.</p>
-        {canContribute ? (
+        {canContribute && passwordVerified ? (
           <form className="form-grid" onSubmit={addToMyWallet}>
             <label>
               Amount
@@ -656,6 +668,8 @@ export function TreasuryPage() {
             </label>
             <button type="submit" disabled={isPaying}>{isPaying ? "Opening secure payment..." : "Pay With Razorpay"}</button>
           </form>
+        ) : canContribute ? (
+          <p>Secure your account in Parichay to add money.</p>
         ) : (
           <p>Your current role cannot add money to a wallet.</p>
         )}
@@ -670,7 +684,7 @@ export function TreasuryPage() {
       <section className="content-band spaced-band">
         <h2>Admin Contribution Entry</h2>
         <p className="section-note">Owner/admin tool for recording offline or corrected contributions for a selected member.</p>
-        {canRecordManualContribution ? (
+        {canRecordManualContribution && passwordVerified ? (
           <form className="form-grid" onSubmit={recordContribution}>
             <label>
               Credit Wallet
@@ -694,6 +708,8 @@ export function TreasuryPage() {
             </label>
             <button type="submit">Record Contribution</button>
           </form>
+        ) : canRecordManualContribution ? (
+          <p>Password verification is required before recording money for another member.</p>
         ) : (
           <p>Your current role cannot record contributions for other members.</p>
         )}
@@ -745,7 +761,7 @@ export function TreasuryPage() {
                       ))}
                     </select>
                   </label>
-                  <button type="button" onClick={() => linkHostedContribution(contribution.id)}>
+                  <button type="button" disabled={!passwordVerified} onClick={() => linkHostedContribution(contribution.id)}>
                     Link and Credit
                   </button>
                 </article>
@@ -765,7 +781,7 @@ export function TreasuryPage() {
           </div>
           <strong className="allocation-wallet-pill">Wallet {formatMoney(walletBalanceRupees)}</strong>
         </div>
-        {canAllocateFunds ? (
+        {canAllocateFunds && passwordVerified ? (
           <>
             {projects.length ? (
               <SankalpFundingCarousel
@@ -814,6 +830,8 @@ export function TreasuryPage() {
             </button>
             </form>
           </>
+        ) : canAllocateFunds ? (
+          <p>Secure your account in Parichay to allocate wallet money.</p>
         ) : (
           <p>Your current role cannot allocate funds.</p>
         )}

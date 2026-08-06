@@ -21,8 +21,10 @@ permissionRoutes.get(
           id: req.user._id,
           fullName: req.user.fullName,
           email: req.user.email,
-          phone: req.user.phone
+          phone: req.user.phone,
+          hasPassword: Boolean(req.user.passwordSetAt)
         },
+        authLevel: req.auth?.authLevel || "onboarding",
         member: {
           id: req.member._id,
           displayName: req.member.displayName,
