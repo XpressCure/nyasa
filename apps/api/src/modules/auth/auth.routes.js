@@ -17,7 +17,8 @@ const devLoginSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email().optional(),
   phone: z.string().min(6).optional(),
-  password: z.string().optional()
+  password: z.string().optional(),
+  confirmPassword: z.string().optional()
 });
 
 const passwordSetupSchema = z.object({
@@ -355,7 +356,7 @@ authRoutes.post(
     }
 
     const userWithPassword = await User.findById(user._id).select("+passwordHash");
-    const hasPassword = Boolean(userWithPassword?.passwordHash);
+    let hasPassword = Boolean(userWithPassword?.passwordHash);
     if (!hasPassword && !body.phone && !body.email) {
       throw httpError(
         400,
@@ -369,6 +370,17 @@ authRoutes.post(
         body.password ? "The password is incorrect." : "Enter your password to continue.",
         body.password ? "INVALID_CREDENTIALS" : "PASSWORD_REQUIRED"
       );
+    }
+    if (!hasPassword && body.password) {
+      validateNewPassword({ password: body.password, confirmPassword: body.confirmPassword });
+      userWithPassword.passwordHash = await hashPassword(body.password);
+      userWithPassword.passwordSetAt = new Date();
+      userWithPassword.authVersion = (userWithPassword.authVersion || 0) + 1;
+      if (!userWithPassword.authProviders.some((provider) => provider.provider === "password")) {
+        userWithPassword.authProviders.push({ provider: "password", verifiedAt: new Date() });
+      }
+      await userWithPassword.save();
+      hasPassword = true;
     }
     user = await updateUserLoginFields(userWithPassword || user, effectiveLoginBody);
 

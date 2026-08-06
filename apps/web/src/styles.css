@@ -3338,6 +3338,22 @@ button:disabled {
   color: #4e5e55;
 }
 
+.transaction-security-callout .secondary-button {
+  background: #173c29;
+  border-color: #173c29;
+  color: #ffffff;
+  flex: 0 0 auto;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.transaction-security-callout .secondary-button:hover,
+.transaction-security-callout .secondary-button:focus-visible {
+  background: #245c3f;
+  border-color: #245c3f;
+  color: #ffffff;
+}
+
 .form-section-title {
   border-top: 1px solid #e2ded3;
   color: #17211c;

@@ -31,6 +31,7 @@ export function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [needsPhone, setNeedsPhone] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,7 +43,8 @@ export function LoginPage() {
       const response = await apiPost("/auth/dev-login", {
         fullName,
         ...(needsPhone && phone.trim() ? { phone } : {}),
-        ...(password ? { password } : {})
+        ...(password ? { password } : {}),
+        ...(needsPhone && password ? { confirmPassword } : {})
       });
       localStorage.setItem("nyasa_token", response.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(response.data.user));
@@ -88,17 +90,34 @@ export function LoginPage() {
             </label>
           ) : null}
           <label>
-            Password
+            {needsPhone ? "Create password" : "Password"}
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type="password"
               autoComplete="current-password"
             />
-            <small>Existing secured accounts require a password. New members can set one after sign-in.</small>
+            <small>
+              {needsPhone
+                ? "Use at least 8 characters with one letter and one number."
+                : "Enter your password if this account is already secured."}
+            </small>
           </label>
+          {needsPhone && password ? (
+            <label>
+              Confirm password
+              <input
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                type="password"
+                autoComplete="new-password"
+                minLength="8"
+                required
+              />
+            </label>
+          ) : null}
           {error ? <p className="form-error">{error}</p> : null}
-          <button type="submit">Continue</button>
+          <button type="submit">{needsPhone && password ? "Create password and continue" : "Continue securely"}</button>
         </form>
       </section>
     </main>
