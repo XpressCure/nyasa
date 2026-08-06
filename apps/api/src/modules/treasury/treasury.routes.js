@@ -262,6 +262,7 @@ treasuryRoutes.get(
 
     const transactions = await LedgerTransaction.find(query)
       .populate("memberId", "displayName role")
+      .populate("projectId", "title slug")
       .sort({ createdAt: -1 })
       .limit(100);
 
@@ -274,7 +275,13 @@ treasuryRoutes.get(
         amountRupees: paiseToRupees(transaction.amountPaise),
         description: transaction.description,
         status: transaction.status,
-        projectId: transaction.projectId,
+        projectId: transaction.projectId?._id || transaction.projectId,
+        project: transaction.projectId?.title ? {
+          id: transaction.projectId._id,
+          title: transaction.projectId.title,
+          slug: transaction.projectId.slug
+        } : null,
+        source: transaction.metadata?.source || null,
         referenceTransactionId: transaction.referenceTransactionId,
         member: transaction.memberId,
         createdAt: transaction.createdAt

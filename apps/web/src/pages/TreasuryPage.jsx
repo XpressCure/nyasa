@@ -970,6 +970,17 @@ export function TreasuryPage() {
                   <span>
                     {transaction.type} - {transaction.direction} - {transaction.status}
                   </span>
+                  {transaction.project?.title ? (
+                    <small><strong>Sankalp:</strong> {transaction.project.title}</small>
+                  ) : null}
+                  {transaction.type === "contribution" && transaction.source ? (
+                    <small>
+                      <strong>Received via:</strong>{" "}
+                      {transaction.source.startsWith("cashfree_")
+                        ? `Cashfree ${transaction.source.replace("cashfree_", "")}`
+                        : transaction.source.replaceAll("_", " ")}
+                    </small>
+                  ) : null}
                   {transaction.description ? <small>{transaction.description}</small> : null}
                 </div>
                 <div className="ledger-member">
