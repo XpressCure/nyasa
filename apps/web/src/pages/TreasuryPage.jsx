@@ -56,6 +56,21 @@ function loadRazorpayCheckout() {
   });
 }
 
+function loadCashfreeCheckout() {
+  return new Promise((resolve, reject) => {
+    if (window.Cashfree) {
+      resolve();
+      return;
+    }
+
+    const script = window.document.createElement("script");
+    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Could not load Cashfree Checkout."));
+    window.document.body.appendChild(script);
+  });
+}
+
 export function TreasuryPage() {
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
@@ -79,9 +94,11 @@ export function TreasuryPage() {
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState(null);
+  const [paymentProviders, setPaymentProviders] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
   const [isAllocating, setIsAllocating] = useState(false);
   const allocationSectionRef = useRef(null);
+  const cashfreeReturnHandledRef = useRef(false);
   const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
   const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
@@ -107,6 +124,22 @@ export function TreasuryPage() {
     if (canContribute && passwordVerified) claimHostedContributions();
     if (canRecordManualContribution) loadPendingHostedContributions();
   }, [session?.familyId, canContribute, canRecordManualContribution, passwordVerified]);
+
+  useEffect(() => {
+    if (!session?.familyId || !canContribute) return;
+    loadPaymentProviders();
+  }, [session?.familyId, canContribute]);
+
+  useEffect(() => {
+    if (!session?.familyId || !passwordVerified || cashfreeReturnHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const providerOrderId = params.get("order_id");
+    if (params.get("cashfree_return") !== "1" || !providerOrderId) return;
+
+    cashfreeReturnHandledRef.current = true;
+    window.history.replaceState({}, "", window.location.pathname);
+    confirmCashfreeReturn(providerOrderId);
+  }, [session?.familyId, passwordVerified]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -167,6 +200,41 @@ export function TreasuryPage() {
       setMessage("Kosh loaded.");
     } catch (error) {
       setMessage(error.message);
+    }
+  }
+
+  async function loadPaymentProviders() {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+    try {
+      const response = await apiGet(`/payments/family/${familyId}/providers`);
+      setPaymentProviders(response.data);
+    } catch (error) {
+      setPaymentProviders({ cashfree: { enabled: false }, razorpay: { enabled: false } });
+      setMessage(error.message);
+    }
+  }
+
+  async function confirmCashfreeReturn(providerOrderId) {
+    const familyId = getFamilyId();
+    if (!familyId) return;
+    setIsPaying(true);
+    notify("success", "Payment verification in progress", "Cashfree has returned you safely to Nyas. We are confirming the payment before crediting your wallet.");
+    try {
+      const response = await apiPost(`/payments/family/${familyId}/cashfree-orders/status`, { providerOrderId });
+      const creditedAmount = response.data.amountRupees;
+      await Promise.all([loadTreasury(), loadKoshAnalytics()]);
+      notify("success", "Thank you! Your Yogdaan is secure", "The verified amount has been added to your personal Nyas wallet. You can now dedicate it to a Sankalp.", {
+        action: "allocate",
+        amount: formatMoney(creditedAmount),
+        celebration: "wallet",
+        eyebrow: "Sahyog • Vishwas • Sankalp",
+        primaryLabel: "Allocate to a Sankalp"
+      });
+    } catch (error) {
+      notify("warning", "Payment not confirmed", error.message || "Cashfree has not confirmed this payment. No wallet credit was made.");
+    } finally {
+      setIsPaying(false);
     }
   }
 
@@ -310,6 +378,16 @@ export function TreasuryPage() {
       return;
     }
 
+    if (paymentProviders?.cashfree?.enabled) {
+      await addToWalletWithCashfree({ familyId, topUpAmount });
+      return;
+    }
+
+    if (!paymentProviders?.razorpay?.enabled) {
+      notify("error", "Payment service unavailable", "No online payment provider is configured. Please contact the Nyas Kosh team.");
+      return;
+    }
+
     try {
       setIsPaying(true);
       setMessage("Creating secure payment order...");
@@ -394,6 +472,30 @@ export function TreasuryPage() {
     } catch (error) {
       setIsPaying(false);
       notify("error", "Could not start payment", error.message);
+    }
+  }
+
+  async function addToWalletWithCashfree({ familyId, topUpAmount }) {
+    try {
+      setIsPaying(true);
+      setMessage("Creating Cashfree sandbox payment order...");
+      const orderResponse = await apiPost(`/payments/family/${familyId}/cashfree-orders`, {
+        amountRupees: selfContributionAmountRupees,
+        description: selfContributionDescription
+      });
+      await loadCashfreeCheckout();
+      const cashfree = window.Cashfree({ mode: orderResponse.data.mode });
+      const checkoutResult = await cashfree.checkout({
+        paymentSessionId: orderResponse.data.paymentSessionId,
+        redirectTarget: "_self"
+      });
+      if (checkoutResult?.error) {
+        setIsPaying(false);
+        notify("error", "Cashfree checkout could not open", checkoutResult.error.message || "Please try again.");
+      }
+    } catch (error) {
+      setIsPaying(false);
+      notify("error", "Could not start Cashfree payment", error.message);
     }
   }
 
@@ -650,7 +752,10 @@ export function TreasuryPage() {
 
       <section className="content-band">
         <h2>Add To My Wallet</h2>
-        <p className="section-note">Sadasya add money through Razorpay first. After verification, wallet balance can be allocated to a Sankalp.</p>
+        <p className="section-note">Add money securely first. Only a payment verified by the provider is credited to your wallet; it can then be allocated to a Sankalp.</p>
+        {paymentProviders?.cashfree?.enabled && paymentProviders.cashfree.mode === "sandbox" ? (
+          <p className="payment-test-banner" role="status"><strong>Cashfree Sandbox</strong> Test payments only. No real money will move.</p>
+        ) : null}
         {canContribute && passwordVerified ? (
           <form className="form-grid" onSubmit={addToMyWallet}>
             <label>
@@ -667,7 +772,11 @@ export function TreasuryPage() {
               Description
               <input value={selfContributionDescription} onChange={(event) => setSelfContributionDescription(event.target.value)} />
             </label>
-            <button type="submit" disabled={isPaying}>{isPaying ? "Opening secure payment..." : "Pay With Razorpay"}</button>
+            <button type="submit" disabled={isPaying || !paymentProviders}>
+              {isPaying
+                ? "Opening secure payment..."
+                : paymentProviders?.cashfree?.enabled ? "Test With Cashfree" : "Pay With Razorpay"}
+            </button>
           </form>
         ) : canContribute ? (
           <p>Secure your account in Parichay to add money.</p>

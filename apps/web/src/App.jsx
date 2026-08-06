@@ -8,10 +8,13 @@ import { FamilyTreePage } from "./pages/FamilyTreePage.jsx";
 import { InviteAcceptPage } from "./pages/InviteAcceptPage.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
+import { LegalPage } from "./pages/LegalPage.jsx";
 import { MembersPage } from "./pages/MembersPage.jsx";
 import { ProfilePage } from "./pages/ProfilePage.jsx";
 import { ProjectsPage } from "./pages/ProjectsPage.jsx";
+import { PrivacyPage } from "./pages/PrivacyPage.jsx";
 import { SankalpSabhaPage } from "./pages/SankalpSabhaPage.jsx";
+import { TermsPage } from "./pages/TermsPage.jsx";
 import { TreasuryPage } from "./pages/TreasuryPage.jsx";
 
 export function App() {
@@ -19,6 +22,9 @@ export function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/legal" element={<LegalPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="/invite/:token" element={<InviteAcceptPage />} />
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />

@@ -29,7 +29,7 @@ export function createApp() {
   app.use(express.json({
     limit: "12mb",
     verify: (req, _res, buffer) => {
-      if (["/api/payments/razorpay-webhook", "/api/bank-contributions/sms-ingest"].includes(req.originalUrl)) {
+      if (["/api/payments/razorpay-webhook", "/api/payments/cashfree-webhook", "/api/bank-contributions/sms-ingest"].includes(req.originalUrl)) {
         req.rawBody = Buffer.from(buffer);
       }
     }

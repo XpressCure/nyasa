@@ -3636,6 +3636,359 @@ button:disabled {
   color: #ffffff;
 }
 
+.payment-test-banner {
+  align-items: center;
+  background: #fff7dd;
+  border: 1px solid #d7a84f;
+  border-left: 4px solid #a26e11;
+  border-radius: 6px;
+  color: #57461f;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 11px 13px;
+}
+
+.payment-test-banner strong {
+  color: #17211c;
+}
+
+.home-legal-footer {
+  align-items: center;
+  background: #111d17;
+  color: #edf2ee;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(280px, 1.4fr) auto;
+  margin-top: 34px;
+  padding: 34px max(5vw, 28px);
+}
+
+.home-legal-footer > div:first-child {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.home-legal-footer img {
+  background: #fff;
+  border-radius: 6px;
+  height: 52px;
+  object-fit: contain;
+  width: 52px;
+}
+
+.home-legal-footer strong,
+.home-legal-footer span {
+  display: block;
+}
+
+.home-legal-footer p {
+  color: #c8d2cc;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.home-legal-links {
+  display: grid;
+  gap: 9px;
+  justify-items: end;
+}
+
+.home-legal-links a {
+  color: #fff;
+}
+
+.legal-page {
+  background: #f7f4ee;
+  color: #17211c;
+  min-height: 100vh;
+}
+
+.legal-header,
+.legal-content,
+.legal-page-footer {
+  margin: 0 auto;
+  max-width: 1120px;
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+.legal-header {
+  padding-bottom: 48px;
+  padding-top: 30px;
+}
+
+.legal-header img {
+  display: block;
+  height: 74px;
+  margin: 54px 0 28px;
+  object-fit: contain;
+  width: 74px;
+}
+
+.legal-header > span,
+.legal-identity-band span,
+.legal-contact-band span {
+  color: #6c5b32;
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.legal-header h1 {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.02;
+  margin: 10px 0 16px;
+}
+
+.legal-header p {
+  color: #526158;
+  font-size: 20px;
+  margin: 0;
+}
+
+.legal-back-link {
+  align-items: center;
+  color: #17211c;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.legal-identity-band {
+  background: #17211c;
+  color: #fff;
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0 max(calc((100vw - 1120px) / 2 + 28px), 28px);
+}
+
+.legal-identity-band div {
+  border-left: 1px solid #38483f;
+  min-width: 0;
+  padding: 25px 20px;
+}
+
+.legal-identity-band div:last-child {
+  border-right: 1px solid #38483f;
+}
+
+.legal-identity-band span {
+  color: #d7b86e;
+  margin-bottom: 7px;
+}
+
+.legal-identity-band strong {
+  overflow-wrap: anywhere;
+}
+
+.legal-content {
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-bottom: 58px;
+  padding-top: 58px;
+}
+
+.legal-content article {
+  border-bottom: 1px solid #dcd6ca;
+  padding: 30px 34px 30px 0;
+}
+
+.legal-content article:nth-child(even) {
+  border-left: 1px solid #dcd6ca;
+  padding-left: 34px;
+}
+
+.legal-content article svg {
+  color: #a26e11;
+}
+
+.legal-content h2 {
+  font-size: 24px;
+  margin: 14px 0 12px;
+}
+
+.legal-content p {
+  color: #4f5e55;
+  line-height: 1.68;
+}
+
+.legal-contact-band {
+  align-items: center;
+  background: #ead7a6;
+  display: grid;
+  gap: 26px;
+  grid-template-columns: 0.7fr 1.5fr auto;
+  padding: 30px max(calc((100vw - 1120px) / 2 + 28px), 28px);
+}
+
+.legal-contact-band p {
+  line-height: 1.55;
+  margin: 0;
+}
+
+.legal-contact-band a {
+  background: #17211c;
+  border-radius: 6px;
+  color: #fff;
+  padding: 12px 16px;
+  white-space: nowrap;
+}
+
+.legal-page-footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 32px;
+  padding-top: 32px;
+}
+
+.legal-page-footer a {
+  color: #17211c;
+}
+
+.legal-page-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.policy-page {
+  background: #f7f4ee;
+  color: #17211c;
+  min-height: 100vh;
+}
+
+.policy-page > header,
+.policy-body,
+.policy-page > footer {
+  margin: 0 auto;
+  max-width: 940px;
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+.policy-page > header {
+  padding-bottom: 42px;
+  padding-top: 30px;
+}
+
+.policy-page > header > a {
+  align-items: center;
+  color: #17211c;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.policy-page > header img {
+  display: block;
+  height: 68px;
+  margin: 50px 0 24px;
+  object-fit: contain;
+  width: 68px;
+}
+
+.policy-page > header span {
+  color: #765a21;
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.policy-page > header h1 {
+  font-size: clamp(36px, 5vw, 58px);
+  line-height: 1.05;
+  margin: 10px 0 14px;
+}
+
+.policy-page > header p {
+  color: #5b685f;
+  margin: 0;
+}
+
+.policy-body {
+  background: #fff;
+  border-bottom: 1px solid #ded8cc;
+  border-top: 1px solid #ded8cc;
+  padding-bottom: 42px;
+  padding-top: 42px;
+}
+
+.policy-body section + section {
+  border-top: 1px solid #e5e0d6;
+  margin-top: 28px;
+  padding-top: 28px;
+}
+
+.policy-body h2 {
+  font-size: 22px;
+  margin: 0 0 10px;
+}
+
+.policy-body p {
+  color: #4f5e55;
+  line-height: 1.72;
+  margin: 8px 0;
+}
+
+.policy-page > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-bottom: 34px;
+  padding-top: 34px;
+}
+
+.policy-page > footer a {
+  color: #17211c;
+}
+
+@media (max-width: 760px) {
+  .home-legal-footer,
+  .legal-contact-band {
+    grid-template-columns: 1fr;
+  }
+
+  .home-legal-links {
+    justify-items: start;
+  }
+
+  .legal-identity-band,
+  .legal-content {
+    grid-template-columns: 1fr;
+  }
+
+  .legal-identity-band div,
+  .legal-identity-band div:last-child {
+    border-bottom: 1px solid #38483f;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .legal-content article,
+  .legal-content article:nth-child(even) {
+    border-left: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .legal-page-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .legal-page-footer nav {
+    display: grid;
+    gap: 10px;
+  }
+}
+
 .form-section-title {
   border-top: 1px solid #e2ded3;
   color: #17211c;

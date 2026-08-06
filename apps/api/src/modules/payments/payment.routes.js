@@ -13,6 +13,13 @@ import { writeAuditLog } from "../audit/audit.service.js";
 import { permissions } from "../permissions/permissions.js";
 import { paiseToRupees, rupeesToPaise } from "../treasury/money.js";
 import { getOrCreateMainTreasury, getOrCreateWallet } from "../treasury/treasury.service.js";
+import {
+  createCashfreeOrder,
+  getCashfreeOrder,
+  getCashfreeOrderPayments,
+  isCashfreeConfigured,
+  verifyCashfreeWebhookSignature
+} from "./cashfree.service.js";
 import { extractHostedPayment, normalizePhone, payloadContainsValue } from "./hosted-contribution.service.js";
 import {
   createRazorpayOrder,
@@ -35,6 +42,10 @@ const verifyPaymentSchema = z.object({
   razorpayOrderId: z.string().min(1),
   razorpayPaymentId: z.string().min(1),
   razorpaySignature: z.string().min(1)
+});
+
+const cashfreeStatusSchema = z.object({
+  providerOrderId: z.string().min(3).max(45)
 });
 
 const linkHostedContributionSchema = z.object({
@@ -71,6 +82,108 @@ async function findPhoneMatches({ familyId, normalizedPhone }) {
   return members.filter((member) => (
     member.userId?.status === "active" && normalizePhone(member.userId.phone) === normalizedPhone
   ));
+}
+
+async function creditCashfreeOrder({ paymentOrder, cashfreeOrder, cashfreePayment, req }) {
+  if (paymentOrder.status === "paid") return paymentOrder;
+  if (cashfreeOrder.order_status !== "PAID" || cashfreePayment?.payment_status !== "SUCCESS") {
+    throw httpError(409, "Cashfree has not confirmed this payment yet.", "CASHFREE_PAYMENT_NOT_PAID");
+  }
+  if (cashfreeOrder.order_currency !== "INR" || rupeesToPaise(cashfreeOrder.order_amount) !== paymentOrder.amountPaise) {
+    throw httpError(409, "Cashfree order amount does not match Nyas.", "CASHFREE_AMOUNT_MISMATCH");
+  }
+
+  const providerPaymentId = String(cashfreePayment.cf_payment_id);
+  const ledgerPaymentId = `cashfree:${providerPaymentId}`;
+  const existingTransaction = await LedgerTransaction.findOne({ paymentId: ledgerPaymentId });
+  if (existingTransaction) {
+    paymentOrder.status = "paid";
+    paymentOrder.providerPaymentId = providerPaymentId;
+    paymentOrder.ledgerTransactionId = existingTransaction._id;
+    paymentOrder.paidAt = existingTransaction.postedAt || existingTransaction.createdAt;
+    paymentOrder.rawProviderResponse = { order: cashfreeOrder, payment: cashfreePayment };
+    await paymentOrder.save();
+    return paymentOrder;
+  }
+
+  const lockedOrder = await PaymentOrder.findOneAndUpdate(
+    { _id: paymentOrder._id, status: { $in: ["created", "failed"] } },
+    { $set: { status: "processing" } },
+    { new: true }
+  );
+  if (!lockedOrder) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const latestOrder = await PaymentOrder.findById(paymentOrder._id);
+      if (latestOrder?.status === "paid") return latestOrder;
+      if (latestOrder?.status !== "processing") break;
+    }
+    throw httpError(409, "This payment is still being verified. Refresh Kosh in a few seconds.", "CASHFREE_PAYMENT_PROCESSING");
+  }
+
+  try {
+    const treasury = await getOrCreateMainTreasury({ familyId: lockedOrder.familyId, userId: lockedOrder.createdBy });
+    const wallet = await getOrCreateWallet({ familyId: lockedOrder.familyId, memberId: lockedOrder.memberId });
+    let transaction;
+    try {
+      transaction = await LedgerTransaction.create({
+        familyId: lockedOrder.familyId,
+        treasuryAccountId: treasury._id,
+        walletId: wallet._id,
+        memberId: lockedOrder.memberId,
+        paymentId: ledgerPaymentId,
+        type: "contribution",
+        direction: "credit",
+        amountPaise: lockedOrder.amountPaise,
+        description: lockedOrder.description || "Cashfree wallet top-up",
+        status: "posted",
+        postedAt: new Date(cashfreePayment.payment_time || Date.now()),
+        metadata: {
+          source: `cashfree_${env.CASHFREE_ENV}`,
+          cashfreeOrderId: lockedOrder.providerOrderId,
+          cashfreePaymentId: providerPaymentId,
+          paymentOrderId: lockedOrder._id
+        },
+        createdBy: lockedOrder.createdBy
+      });
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+      transaction = await LedgerTransaction.findOne({ paymentId: ledgerPaymentId });
+      if (!transaction) throw error;
+    }
+
+    lockedOrder.status = "paid";
+    lockedOrder.providerPaymentId = providerPaymentId;
+    lockedOrder.ledgerTransactionId = transaction._id;
+    lockedOrder.paidAt = transaction.postedAt || new Date();
+    lockedOrder.rawProviderResponse = { order: cashfreeOrder, payment: cashfreePayment };
+    await lockedOrder.save();
+
+    await writeAuditLog({
+      familyId: lockedOrder.familyId,
+      actorUserId: lockedOrder.createdBy,
+      actorMemberId: lockedOrder.memberId,
+      action: "payment.cashfree_wallet_top_up_verified",
+      entityType: "PaymentOrder",
+      entityId: String(lockedOrder._id),
+      summary: `Verified Cashfree wallet top-up of INR ${paiseToRupees(lockedOrder.amountPaise)}`,
+      after: { paymentOrderId: lockedOrder._id, transactionId: transaction._id, providerPaymentId },
+      req
+    });
+    return lockedOrder;
+  } catch (error) {
+    await PaymentOrder.updateOne({ _id: lockedOrder._id, status: "processing" }, { $set: { status: "created" } });
+    throw error;
+  }
+}
+
+async function confirmCashfreeOrder({ paymentOrder, req }) {
+  const [cashfreeOrder, payments] = await Promise.all([
+    getCashfreeOrder(paymentOrder.providerOrderId),
+    getCashfreeOrderPayments(paymentOrder.providerOrderId)
+  ]);
+  const successfulPayment = payments.find((payment) => payment.payment_status === "SUCCESS");
+  return creditCashfreeOrder({ paymentOrder, cashfreeOrder, cashfreePayment: successfulPayment, req });
 }
 
 async function creditHostedContribution({ contribution, member, actorUser, matchReason, req }) {
@@ -148,6 +261,37 @@ async function creditHostedContribution({ contribution, member, actorUser, match
 
   return contribution;
 }
+
+paymentRoutes.post(
+  "/cashfree-webhook",
+  asyncHandler(async (req, res) => {
+    if (!isCashfreeConfigured()) throw httpError(503, "Cashfree webhook is not configured.", "CASHFREE_NOT_CONFIGURED");
+    if (!verifyCashfreeWebhookSignature({
+      rawBody: req.rawBody,
+      timestamp: req.get("x-webhook-timestamp"),
+      signature: req.get("x-webhook-signature")
+    })) {
+      throw httpError(400, "Invalid Cashfree webhook signature.", "CASHFREE_WEBHOOK_SIGNATURE_INVALID");
+    }
+
+    if (req.body?.type !== "PAYMENT_SUCCESS_WEBHOOK") {
+      res.json({ data: { ignored: true, reason: "event_not_used" } });
+      return;
+    }
+
+    const providerOrderId = req.body?.data?.order?.order_id;
+    const paymentOrder = providerOrderId
+      ? await PaymentOrder.findOne({ provider: "cashfree", providerOrderId })
+      : null;
+    if (!paymentOrder) {
+      res.json({ data: { ignored: true, reason: "order_not_found" } });
+      return;
+    }
+
+    await confirmCashfreeOrder({ paymentOrder, req });
+    res.json({ data: { credited: true, paymentOrderId: paymentOrder._id } });
+  })
+);
 
 paymentRoutes.post(
   "/razorpay-webhook",
@@ -263,6 +407,92 @@ paymentRoutes.post(
 );
 
 paymentRoutes.use(requireAuth);
+
+paymentRoutes.get(
+  "/family/:familyId/providers",
+  requireFamilyPermission(permissions.treasuryContribute),
+  asyncHandler(async (_req, res) => {
+    res.json({ data: {
+      cashfree: {
+        enabled: isCashfreeConfigured(),
+        mode: env.CASHFREE_ENV
+      },
+      razorpay: {
+        enabled: Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET)
+      }
+    } });
+  })
+);
+
+paymentRoutes.post(
+  "/family/:familyId/cashfree-orders",
+  requireFamilyPermission(permissions.treasuryContribute),
+  requirePasswordAuth,
+  asyncHandler(async (req, res) => {
+    const body = createOrderSchema.parse(req.body);
+    if (body.amountRupees < MIN_WALLET_TOP_UP_RUPEES) {
+      throw httpError(400, `Minimum wallet top-up is INR ${MIN_WALLET_TOP_UP_RUPEES}.`, "WALLET_TOP_UP_BELOW_MINIMUM");
+    }
+    if (!req.user.phone) throw httpError(400, "Add your phone number in Parichay before paying.", "PAYMENT_PHONE_REQUIRED");
+
+    const providerOrderId = `nyas_${Date.now()}_${String(req.member._id).slice(-6)}`;
+    const returnUrl = `${env.WEB_ORIGIN}/treasury?cashfree_return=1&order_id={order_id}`;
+    const cashfreeOrder = await createCashfreeOrder({
+      orderId: providerOrderId,
+      amountRupees: body.amountRupees,
+      customer: {
+        id: String(req.member._id),
+        name: req.user.fullName || req.member.displayName,
+        email: req.user.email,
+        phone: req.user.phone
+      },
+      description: body.description,
+      returnUrl
+    });
+    const paymentOrder = await PaymentOrder.create({
+      familyId: req.familyId,
+      memberId: req.member._id,
+      provider: "cashfree",
+      providerOrderId,
+      amountPaise: rupeesToPaise(body.amountRupees),
+      currency: "INR",
+      description: body.description || "Wallet top-up",
+      status: "created",
+      rawProviderResponse: cashfreeOrder,
+      createdBy: req.user._id
+    });
+
+    res.status(201).json({ data: {
+      paymentOrderId: paymentOrder._id,
+      providerOrderId,
+      paymentSessionId: cashfreeOrder.payment_session_id,
+      mode: env.CASHFREE_ENV,
+      amountRupees: body.amountRupees
+    } });
+  })
+);
+
+paymentRoutes.post(
+  "/family/:familyId/cashfree-orders/status",
+  requireFamilyPermission(permissions.treasuryContribute),
+  requirePasswordAuth,
+  asyncHandler(async (req, res) => {
+    const body = cashfreeStatusSchema.parse(req.body);
+    const paymentOrder = await PaymentOrder.findOne({
+      familyId: req.familyId,
+      memberId: req.member._id,
+      provider: "cashfree",
+      providerOrderId: body.providerOrderId
+    });
+    if (!paymentOrder) throw httpError(404, "Cashfree order not found.", "PAYMENT_ORDER_NOT_FOUND");
+    const confirmedOrder = await confirmCashfreeOrder({ paymentOrder, req });
+    res.json({ data: {
+      amountRupees: paiseToRupees(confirmedOrder.amountPaise),
+      paidAt: confirmedOrder.paidAt,
+      status: confirmedOrder.status
+    } });
+  })
+);
 
 paymentRoutes.post(
   "/family/:familyId/hosted-contributions/claim",

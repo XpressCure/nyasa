@@ -380,6 +380,7 @@ export function HomePage() {
           <a href="#market">For families</a>
           <a href="#future">Coming next</a>
           <a href="#kosh">Kosh</a>
+          <Link to="/legal">Legal</Link>
           <Link to="/login">Sign in</Link>
           <Link className="home-primary-link" to="/dashboard">
             Open portal
@@ -718,6 +719,26 @@ export function HomePage() {
           <p>Yes. Wallet top-up, mission allocation, expenses, bills, and approvals are ready for a controlled Alahdadpur mission demo.</p>
         </div>
       </section>
+
+      <footer className="home-legal-footer">
+        <div>
+          <img src={nyasaLogo} alt="Nyas logo" />
+          <div>
+            <strong>Nyas</strong>
+            <span>A private family membership platform</span>
+          </div>
+        </div>
+        <p>
+          Platform operated by <strong>Kumar Saurabh</strong>. Payments are accepted only from verified members for internal Kul activities and
+          approved Sankalp. Nyas does not solicit public donations.
+        </p>
+        <div className="home-legal-links">
+          <Link to="/legal">Legal, membership and payments</Link>
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Terms, cancellation and refunds</Link>
+          <Link to="/login">Member sign in</Link>
+        </div>
+      </footer>
     </main>
   );
 }
