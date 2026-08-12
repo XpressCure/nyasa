@@ -47,6 +47,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AddCircle
@@ -342,6 +343,8 @@ private fun WelcomeAndLogin(
 private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, onLogout: () -> Unit) {
     var route by rememberSaveable { mutableStateOf(routeFromDeepLink(deepLink)) }
     var moreOpen by rememberSaveable { mutableStateOf(false) }
+    var legacyRoute by rememberSaveable { mutableStateOf<AppRoute?>(null) }
+    var fundingProjectId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbars = remember { SnackbarHostState() }
     val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Kosh, AppRoute.Sankalp, AppRoute.More)
 
@@ -356,7 +359,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                     primaryRoutes.forEach { item ->
                         NavigationRailItem(
                             selected = route == item,
-                            onClick = { if (item == AppRoute.More) moreOpen = true else route = item },
+                            onClick = { if (item == AppRoute.More) moreOpen = true else { route = item; legacyRoute = null } },
                             icon = { Icon(item.icon, item.label) },
                             label = { Text(item.hindi) }
                         )
@@ -368,6 +371,11 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                 snackbarHost = { SnackbarHost(snackbars) },
                 topBar = {
                     TopAppBar(
+                        navigationIcon = {
+                            if (legacyRoute == route) IconButton(onClick = { legacyRoute = null }) {
+                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
+                            }
+                        },
                         title = {
                             Column {
                                 Text(route.hindi, style = MaterialTheme.typography.titleLarge)
@@ -386,7 +394,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         primaryRoutes.forEach { item ->
                             NavigationBarItem(
                                 selected = route == item,
-                                onClick = { if (item == AppRoute.More) moreOpen = true else route = item },
+                                onClick = { if (item == AppRoute.More) moreOpen = true else { route = item; legacyRoute = null } },
                                 icon = { Icon(item.icon, item.label) },
                                 label = { Text(item.hindi, maxLines = 1) }
                             )
@@ -397,10 +405,20 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                 AnimatedContent(route, modifier = Modifier.padding(padding), transitionSpec = {
                     (fadeIn(tween(260)) + slideInVertically(tween(300)) { it / 18 }) togetherWith fadeOut(tween(160))
                 }, label = "route") { destination ->
-                    if (destination == AppRoute.Darshan) {
-                        DarshanScreen(state, onNavigate = { route = it }, onRefresh = onRefresh)
-                    } else {
-                        LegacyFeatureScreen(destination, state.session!!)
+                    when {
+                        legacyRoute == destination -> LegacyFeatureScreen(destination, state.session!!)
+                        destination == AppRoute.Darshan -> DarshanScreen(state, onNavigate = { route = it; legacyRoute = null }, onRefresh = onRefresh)
+                        destination == AppRoute.Kosh -> KoshScreen(
+                            session = state.session!!,
+                            preferredProjectId = fundingProjectId,
+                            onOpenWorkspace = { legacyRoute = AppRoute.Kosh }
+                        )
+                        destination == AppRoute.Sankalp -> SankalpScreen(
+                            session = state.session!!,
+                            onFund = { projectId -> fundingProjectId = projectId; route = AppRoute.Kosh; legacyRoute = null },
+                            onOpenWorkspace = { legacyRoute = AppRoute.Sankalp }
+                        )
+                        else -> LegacyFeatureScreen(destination, state.session!!)
                     }
                 }
             }
@@ -411,7 +429,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
         ModalBottomSheet(onDismissRequest = { moreOpen = false }, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
             MoreSheet(
                 session = state.session!!,
-                onRoute = { route = it; moreOpen = false },
+                onRoute = { route = it; legacyRoute = null; moreOpen = false },
                 onLogout = { moreOpen = false; onLogout() }
             )
         }
