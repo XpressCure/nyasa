@@ -162,6 +162,7 @@ function formatPreviewMoney(value) {
   if (value >= 100000) return `₹${(value / 100000).toFixed(value >= 1000000 ? 1 : 0)}L`;
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
     style: "currency"
   }).format(value);

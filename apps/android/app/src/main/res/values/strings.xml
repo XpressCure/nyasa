@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">न्यास</string>
+    <string name="offline_title">Internet connection नहीं मिल रहा</string>
+    <string name="offline_message">Mobile data या Wi-Fi जाँचें। आपका account सुरक्षित रूप से signed in रहेगा।</string>
+    <string name="retry">फिर कोशिश करें</string>
+    <string name="choose_file">Choose from camera or files</string>
+    <string name="no_file_app">No suitable camera or file app was found.</string>
+    <string name="cannot_open_link">This link cannot be opened on this phone.</string>
+    <string name="downloading">Saving to your Downloads folder</string>
+    <string name="download_started">Download started</string>
+    <string name="download_complete">Saved in Downloads/Nyas</string>
+    <string name="download_failed">The file could not be downloaded.</string>
+    <string name="share_with">Share Nyas with</string>
+</resources>

@@ -5,6 +5,7 @@ import { apiGet, apiPost } from "../lib/api.js";
 function formatMoney(value = 0) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
     style: "currency"
   }).format(value || 0);

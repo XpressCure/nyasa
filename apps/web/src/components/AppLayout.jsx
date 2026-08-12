@@ -1,4 +1,4 @@
-import { Archive, BookOpenText, CalendarDays, ClipboardCheck, GitBranch, HeartHandshake, Home, Images, Landmark, Menu, Search, UserCircle, Users, X } from "lucide-react";
+import { Archive, BookOpenText, CalendarDays, ClipboardCheck, GitBranch, HeartHandshake, Home, Images, Landmark, Menu, MoreHorizontal, Search, UserCircle, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
@@ -30,6 +30,13 @@ const navSections = [
       { label: "Virasat Library", icon: BookOpenText, planned: true }
     ]
   }
+];
+
+const mobilePrimaryItems = [
+  { to: "/dashboard", label: "Darshan", icon: Home },
+  { to: "/family", label: "Kul", icon: Users },
+  { to: "/contribute", label: "Kosh", icon: Landmark },
+  { to: "/projects", label: "Sankalp", icon: GitBranch }
 ];
 
 export function AppLayout() {
@@ -76,7 +83,13 @@ export function AppLayout() {
                 }
 
                 return (
-                  <NavLink end={item.end} key={item.to} to={item.to} className="nav-link" onClick={() => setMenuOpen(false)}>
+                  <NavLink
+                    end={item.end}
+                    key={item.to}
+                    to={item.to}
+                    className={`nav-link ${mobilePrimaryItems.some((primaryItem) => primaryItem.to === item.to) ? "mobile-primary-duplicate" : ""}`}
+                    onClick={() => setMenuOpen(false)}
+                  >
                     <Icon size={18} />
                     <span>{item.label}</span>
                   </NavLink>
@@ -91,6 +104,26 @@ export function AppLayout() {
       <main className="main-panel">
         <Outlet />
       </main>
+      <nav className="mobile-bottom-nav" aria-label="Main app navigation">
+        {mobilePrimaryItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink key={item.to} to={item.to} className="mobile-bottom-link" onClick={() => setMenuOpen(false)}>
+              <Icon size={22} aria-hidden="true" />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
+        <button
+          type="button"
+          className={`mobile-bottom-link mobile-more-button ${menuOpen ? "active" : ""}`}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((current) => !current)}
+        >
+          <MoreHorizontal size={23} aria-hidden="true" />
+          <span>More</span>
+        </button>
+      </nav>
     </div>
   );
 }

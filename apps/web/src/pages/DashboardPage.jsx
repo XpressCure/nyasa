@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Flag, Trophy } from "lucide-react";
+import { ArrowRight, Flag, GitBranch, Landmark, Trophy, UserCircle, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
@@ -7,6 +7,7 @@ import { apiGet, apiPost } from "../lib/api.js";
 function formatMoney(value) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
     style: "currency"
   }).format(value || 0);
@@ -220,6 +221,34 @@ export function DashboardPage() {
         title="Darshan"
         description="A live overview of the Alahdadpur Kul workspace, Kosh, Sankalp, decisions, and legacy."
       />
+      <section className="mobile-quick-start" aria-label="Quick actions">
+        <div>
+          <span>Aaj Nyas mein</span>
+          <h2>Aap kya karna chahenge?</h2>
+        </div>
+        <div className="mobile-quick-grid">
+          <Link to="/profile">
+            <UserCircle size={22} />
+            <span><strong>Parichay</strong><small>Apni jankari jodein</small></span>
+            <ArrowRight size={18} />
+          </Link>
+          <Link to="/family">
+            <Users size={22} />
+            <span><strong>Kul</strong><small>Parivar aur Kul Map dekhein</small></span>
+            <ArrowRight size={18} />
+          </Link>
+          <Link to="/contribute">
+            <Landmark size={22} />
+            <span><strong>Kosh</strong><small>Rashi jodein ya Sankalp chunein</small></span>
+            <ArrowRight size={18} />
+          </Link>
+          <Link to="/projects">
+            <GitBranch size={22} />
+            <span><strong>Sankalp</strong><small>Pragati aur agla kadam dekhein</small></span>
+            <ArrowRight size={18} />
+          </Link>
+        </div>
+      </section>
       <div className="metric-grid">
         {stats.map(([label, value]) => (
           <article className="metric-card" key={label}>
@@ -373,7 +402,7 @@ export function DashboardPage() {
           </div>
         </div>
       </section>
-      <section className="content-band age-band">
+      <section className="content-band age-band mobile-deferred-section">
         <div className="tree-register-header">
           <div>
             <h2>Age Groups / आयु वर्ग</h2>
@@ -395,7 +424,7 @@ export function DashboardPage() {
           )}
         </div>
       </section>
-      <section className="content-band rally-band">
+      <section className="content-band rally-band mobile-deferred-section">
         <div className="tree-register-header">
           <div>
             <h2>न्यास Rally</h2>
@@ -573,7 +602,7 @@ export function DashboardPage() {
           </form>
         </article>
       </section>
-      <section className="content-band">
+      <section className="content-band mobile-deferred-section">
         <h2>Launch Workspace</h2>
         <p>
           The live database is prepared with Alahdadpur Kul Parichay, Kosh, and launch Sankalp. Invite family members and ask them to complete

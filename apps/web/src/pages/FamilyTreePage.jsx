@@ -3,6 +3,7 @@ import { BookOpenText, CircleUserRound, Download, HeartPulse, Network } from "lu
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { apiGet, apiPost } from "../lib/api.js";
+import { saveTextFileInAndroid } from "../lib/nativeBridge.js";
 
 const treeModes = [
   { id: "general", label: "General", icon: Network },
@@ -401,11 +402,17 @@ export function FamilyTreePage() {
       .join("\n");
     const html = new XMLSerializer().serializeToString(clonedMap);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${styles}</style>${html}</div></foreignObject></svg>`;
+    const fileName = `nyas-kul-map-${new Date().toISOString().slice(0, 10)}.svg`;
+    if (saveTextFileInAndroid(fileName, "image/svg+xml", svg)) {
+      setMessage("Kul Map image saved in Downloads/Nyas.");
+      return;
+    }
+
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `nyas-kul-map-${new Date().toISOString().slice(0, 10)}.svg`;
+    link.download = fileName;
     link.click();
     URL.revokeObjectURL(url);
     setMessage("Kul Map image downloaded.");

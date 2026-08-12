@@ -1,0 +1,59 @@
+plugins {
+    id 'com.android.application'
+}
+
+def releaseStorePath = System.getenv('NYAS_KEYSTORE_PATH')
+def releaseStorePassword = System.getenv('NYAS_KEYSTORE_PASSWORD')
+def releaseKeyAlias = System.getenv('NYAS_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('NYAS_KEY_PASSWORD')
+def hasReleaseSigning = releaseStorePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
+android {
+    namespace 'com.xpresscure.nyas'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.xpresscure.nyas'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+
+        buildConfigField 'String', 'WEB_APP_URL', '"https://nyasa.xpresscure.com/dashboard"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStorePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

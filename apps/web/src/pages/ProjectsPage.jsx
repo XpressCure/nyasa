@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
 import { API_BASE_URL, apiGet, apiPatch, apiPost } from "../lib/api.js";
+import { downloadInAndroid } from "../lib/nativeBridge.js";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
 
 const lifecycleStages = [
@@ -49,6 +50,7 @@ const expenseCategories = [
 function formatMoney(amountRupees = 0) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
     style: "currency"
   }).format(amountRupees);
@@ -477,9 +479,16 @@ export function ProjectsPage() {
     const familyId = getFamilyId();
     const token = localStorage.getItem("nyasa_token");
     const documentId = document.id || document._id;
+    const documentUrl = `${API_BASE_URL}/documents/family/${familyId}/${documentId}/download`;
+    const fileName = document.originalName || "sankalp-document";
+
+    if (downloadInAndroid(documentUrl, fileName, token || "")) {
+      setMessage("Download started. The document will be saved on your phone.");
+      return;
+    }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/documents/family/${familyId}/${documentId}/download`, {
+      const response = await fetch(documentUrl, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
@@ -491,7 +500,7 @@ export function ProjectsPage() {
       const downloadUrl = URL.createObjectURL(blob);
       const link = window.document.createElement("a");
       link.href = downloadUrl;
-      link.download = document.originalName || "sankalp-document";
+      link.download = fileName;
       link.click();
       URL.revokeObjectURL(downloadUrl);
     } catch (error) {

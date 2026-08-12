@@ -19,7 +19,9 @@
     "db:seed-paanch-sankalp": "npm run db:seed-paanch-sankalp --workspace @nyasa/api",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "android:debug": "cd apps/android && gradlew.bat assembleDebug",
+    "android:clean": "cd apps/android && gradlew.bat clean"
   },
   "engines": {
     "node": ">=16.13.0"
