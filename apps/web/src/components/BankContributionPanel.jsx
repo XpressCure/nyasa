@@ -1,278 +1,164 @@
-import { useEffect, useState } from "react";
-import { apiDownload, apiGet, apiPost } from "../lib/api.js";
+import { useEffect, useMemo, useState } from "react";
+import { apiGet, apiPost } from "../lib/api.js";
 
 function formatMoney(amountRupees = 0) {
   return new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 2, style: "currency" }).format(amountRupees);
 }
 
-function formatStatus(status = "") {
-  return status.replaceAll("_", " ");
+function formatDate(value) {
+  return value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "Not supplied";
 }
 
-function fileToPayload(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({
-      originalName: file.name,
-      mimeType: file.type,
-      sizeBytes: file.size,
-      dataBase64: String(reader.result).split(",")[1]
-    });
-    reader.onerror = () => reject(new Error("Could not read the selected proof."));
-    reader.readAsDataURL(file);
-  });
+function localDateTimeValue(date = new Date()) {
+  const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return adjusted.toISOString().slice(0, 16);
 }
 
-function highestConfidence(claim) {
-  return Math.max(0, ...claim.evidence.map((item) => item.analysis?.confidence || 0));
+function newDeclarationToken() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function BankContributionPanel({ canReview, onLedgerChanged, passwordVerified, notify }) {
+export function BankContributionPanel({ onLedgerChanged, passwordVerified, notify }) {
   const [config, setConfig] = useState(null);
-  const [claims, setClaims] = useState([]);
-  const [reviewClaims, setReviewClaims] = useState([]);
-  const [unmatchedSms, setUnmatchedSms] = useState([]);
+  const [declarations, setDeclarations] = useState([]);
   const [amountRupees, setAmountRupees] = useState("2000");
-  const [activeClaimId, setActiveClaimId] = useState("");
-  const [smsText, setSmsText] = useState("");
+  const [paidAt, setPaidAt] = useState(localDateTimeValue());
   const [utr, setUtr] = useState("");
-  const [paidAt, setPaidAt] = useState("");
-  const [proofFile, setProofFile] = useState(null);
+  const [sourceAccountLast4, setSourceAccountLast4] = useState("");
+  const [note, setNote] = useState("");
+  const [attested, setAttested] = useState(false);
+  const [declarationToken, setDeclarationToken] = useState(newDeclarationToken);
   const [busy, setBusy] = useState(false);
-  const [reviewValues, setReviewValues] = useState({});
-  const [bankSmsValues, setBankSmsValues] = useState({});
-
   const familyId = localStorage.getItem("nyasa_family_id");
-  const activeClaim = claims.find((claim) => claim.id === activeClaimId);
+
+  const upiLink = useMemo(() => {
+    if (!config?.upiId) return "";
+    const params = new URLSearchParams({
+      pa: config.upiId,
+      pn: config.accountName || "Nyas Kul Kosh",
+      am: String(Number(amountRupees || 0).toFixed(2)),
+      cu: "INR",
+      tn: "Nyas Kul Kosh contribution"
+    });
+    return `upi://pay?${params.toString()}`;
+  }, [config, amountRupees]);
 
   useEffect(() => {
     if (!familyId) return;
-    Promise.all([
-      apiGet(`/bank-contributions/family/${familyId}/config`),
-      apiGet(`/bank-contributions/family/${familyId}/mine`),
-      canReview ? apiGet(`/bank-contributions/family/${familyId}/review`) : Promise.resolve({ data: [] }),
-      canReview ? apiGet(`/bank-contributions/family/${familyId}/sms-receipts`) : Promise.resolve({ data: [] })
-    ]).then(([configResponse, mineResponse, reviewResponse, smsResponse]) => {
+    loadData();
+  }, [familyId]);
+
+  async function loadData() {
+    try {
+      const [configResponse, mineResponse] = await Promise.all([
+        apiGet(`/bank-contributions/family/${familyId}/config`),
+        apiGet(`/bank-contributions/family/${familyId}/mine`)
+      ]);
       setConfig(configResponse.data);
-      setClaims(mineResponse.data);
-      setReviewClaims(reviewResponse.data);
-      setUnmatchedSms(smsResponse.data);
-      setActiveClaimId(mineResponse.data.find((claim) => ["awaiting_payment", "pending_review"].includes(claim.status))?.id || "");
-    }).catch((error) => notify("error", "Bank contribution unavailable", error.message));
-  }, [familyId, canReview]);
-
-  async function refresh() {
-    const [mineResponse, reviewResponse, smsResponse] = await Promise.all([
-      apiGet(`/bank-contributions/family/${familyId}/mine`),
-      canReview ? apiGet(`/bank-contributions/family/${familyId}/review`) : Promise.resolve({ data: [] }),
-      canReview ? apiGet(`/bank-contributions/family/${familyId}/sms-receipts`) : Promise.resolve({ data: [] })
-    ]);
-    setClaims(mineResponse.data);
-    setReviewClaims(reviewResponse.data);
-    setUnmatchedSms(smsResponse.data);
-    setActiveClaimId(mineResponse.data.find((claim) => ["awaiting_payment", "pending_review"].includes(claim.status))?.id || "");
-  }
-
-  async function createClaim(event) {
-    event.preventDefault();
-    setBusy(true);
-    try {
-      const response = await apiPost(`/bank-contributions/family/${familyId}/claims`, { amountRupees });
-      setClaims((current) => [response.data, ...current]);
-      setActiveClaimId(response.data.id);
-      notify("success", "Bank payment reference ready", response.message);
+      setDeclarations(mineResponse.data);
     } catch (error) {
-      notify("error", "Could not start contribution", error.message);
-    } finally {
-      setBusy(false);
+      notify("error", "Kosh contribution unavailable", error.message);
     }
   }
 
-  async function submitEvidence(event) {
+  async function recordDeclaration(event) {
     event.preventDefault();
-    if (!activeClaim) return;
+    if (!attested) {
+      notify("warning", "Confirmation needed", "Please confirm that this amount has actually been transferred to the Nyas bank account.");
+      return;
+    }
     setBusy(true);
     try {
-      const proof = proofFile ? await fileToPayload(proofFile) : undefined;
-      const response = await apiPost(`/bank-contributions/family/${familyId}/claims/${activeClaim.id}/evidence`, {
-        type: proof ? "payment_screenshot" : "contributor_sms",
-        smsText,
-        amountRupees: activeClaim.requestedAmountRupees,
-        paidAt: paidAt ? new Date(paidAt).toISOString() : undefined,
+      const response = await apiPost(`/bank-contributions/family/${familyId}/declarations`, {
+        amountRupees,
+        paidAt: new Date(paidAt).toISOString(),
         utr: utr || undefined,
-        proof
+        sourceAccountLast4: sourceAccountLast4 || undefined,
+        note,
+        attested,
+        declarationToken
       });
-      setClaims((current) => current.map((claim) => claim.id === response.data.id ? response.data : claim));
-      setSmsText("");
+      setAmountRupees("2000");
+      setPaidAt(localDateTimeValue());
       setUtr("");
-      setPaidAt("");
-      setProofFile(null);
-      notify("success", "Proof sent for verification", response.message);
-      await refresh();
-    } catch (error) {
-      notify("error", "Proof not submitted", error.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function updateReviewValue(claimId, field, value) {
-    setReviewValues((current) => ({ ...current, [claimId]: { ...current[claimId], [field]: value } }));
-  }
-
-  async function decide(claim, decision) {
-    const values = reviewValues[claim.id] || {};
-    setBusy(true);
-    try {
-      const response = await apiPost(`/bank-contributions/family/${familyId}/claims/${claim.id}/${decision}`, {
-        amountRupees: values.amountRupees || claim.requestedAmountRupees,
-        utr: values.utr || claim.utr || undefined,
-        note: values.note || (decision === "approve" ? "Evidence checked by Kosh Pramukh." : "")
+      setSourceAccountLast4("");
+      setNote("");
+      setAttested(false);
+      setDeclarationToken(newDeclarationToken());
+      await Promise.all([loadData(), onLedgerChanged?.()]);
+      notify("success", "धन्यवाद! आपका सहयोग दर्ज हो गया", response.message, {
+        action: "allocate",
+        amount: formatMoney(response.data.amountRupees),
+        celebration: "wallet",
+        eyebrow: "विश्वास • पारदर्शिता • संकल्प",
+        primaryLabel: "अब संकल्प चुनें"
       });
-      notify("success", decision === "approve" ? "Wallet credited" : "Claim returned", response.message);
-      await refresh();
-      if (decision === "approve") await onLedgerChanged?.();
     } catch (error) {
-      notify("error", "Review not completed", error.message);
+      notify("error", "Contribution not recorded", error.message);
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function addBankSms(claim) {
-    const sms = bankSmsValues[claim.id] || "";
-    if (!sms.trim()) return;
-    setBusy(true);
-    try {
-      const response = await apiPost(`/bank-contributions/family/${familyId}/claims/${claim.id}/evidence`, {
-        type: "bank_sms",
-        smsText: sms,
-        amountRupees: claim.requestedAmountRupees,
-        utr: reviewValues[claim.id]?.utr || claim.utr || undefined
-      });
-      setBankSmsValues((current) => ({ ...current, [claim.id]: "" }));
-      notify("success", "Bank SMS added", response.message);
-      await refresh();
-    } catch (error) {
-      notify("error", "Bank SMS not added", error.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function openProof(documentId) {
-    try {
-      const blob = await apiDownload(`/documents/family/${familyId}/${documentId}/download`);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) {
-      notify("error", "Proof could not be opened", error.message);
     }
   }
 
   if (!config?.enabled) return null;
 
   return (
-    <>
-      <section className="content-band spaced-band bank-contribution-panel">
-        <div className="section-heading-row">
+    <section className="content-band spaced-band trust-contribution-panel">
+      <div className="section-heading-row">
+        <div>
+          <span className="section-kicker">विश्वास आधारित योगदान</span>
+          <h2>Bank se apne Kosh Wallet mein jodein</h2>
+          <p className="section-note">पहले QR, UPI या bank details से राशि भेजें। फिर वही राशि नीचे दर्ज करें; वह तुरंत आपके wallet में जुड़ जाएगी।</p>
+        </div>
+        <span className="trust-badge">Kul trust system</span>
+      </div>
+
+      <div className="direct-payment-layout">
+        <div className="bank-destination-card">
+          {config.qrImageUrl ? <img className="bank-qr-image" src={config.qrImageUrl} alt="Nyas Kul Kosh payment QR code" /> : (
+            <div className="bank-qr-placeholder"><strong>QR</strong><span>Add BANK_QR_IMAGE_URL</span></div>
+          )}
           <div>
-            <span className="section-kicker">Direct bank contribution</span>
-            <h2>Bank se Kosh mein Yogdaan</h2>
-            <p className="section-note">Pay from your bank, then submit the debit SMS or receipt. Money appears in your wallet only after Kosh verification.</p>
+            <span>Send money to</span>
+            <h3>{config.accountName || "Nyas Kul Kosh"}</h3>
+            <dl>
+              {config.accountNumber ? <div><dt>Account</dt><dd>{config.accountNumber}</dd></div> : null}
+              {config.ifsc ? <div><dt>IFSC</dt><dd>{config.ifsc}</dd></div> : null}
+              {config.upiId ? <div><dt>UPI</dt><dd>{config.upiId}</dd></div> : null}
+            </dl>
+            <div className="button-row">
+              {upiLink ? <a className="primary-link-button" href={upiLink}>Open UPI app</a> : null}
+              {config.paymentLink ? <a className="secondary-button" href={config.paymentLink} target="_blank" rel="noreferrer">Open bank link</a> : null}
+            </div>
           </div>
-          <span className="verification-badge">Human verified</span>
         </div>
 
-        {!passwordVerified ? <p className="bank-security-note">Secure your account in Parichay before submitting a real payment.</p> : null}
-        {passwordVerified && !activeClaim ? (
-          <form className="bank-start-form" onSubmit={createClaim}>
-            <label>
-              Contribution amount
-              <input type="number" min={config.minimumAmountRupees} value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} />
-              <small>Minimum {formatMoney(config.minimumAmountRupees)}</small>
-            </label>
-            <button type="submit" disabled={busy}>{busy ? "Preparing..." : "Create payment reference"}</button>
+        {passwordVerified ? (
+          <form className="self-declaration-form" onSubmit={recordDeclaration}>
+            <h3>I have transferred this amount</h3>
+            <label>Amount transferred<input type="number" min={config.minimumAmountRupees} value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} required /></label>
+            <label>Date and time<input type="datetime-local" max={localDateTimeValue()} value={paidAt} onChange={(event) => setPaidAt(event.target.value)} required /></label>
+            <label>UTR / transaction reference <span>(recommended)</span><input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Helps identify the bank entry" /></label>
+            <label>Sending account last 4 digits <span>(optional)</span><input inputMode="numeric" maxLength="4" pattern="[0-9]{4}" value={sourceAccountLast4} onChange={(event) => setSourceAccountLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="1234" /></label>
+            <label>Note <span>(optional)</span><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Bank, transfer note, or context" /></label>
+            <label className="attestation-check"><input type="checkbox" checked={attested} onChange={(event) => setAttested(event.target.checked)} /><span>I confirm that I have transferred this amount to the Nyas account and entered it correctly.</span></label>
+            <button type="submit" disabled={busy || !attested}>{busy ? "Recording..." : "Add to my Kosh Wallet"}</button>
+            <small>Minimum contribution: {formatMoney(config.minimumAmountRupees)}. Kosh Pramukh will later match this declaration with the bank statement.</small>
           </form>
-        ) : null}
+        ) : <div className="bank-security-note"><strong>Secure your account first</strong><span>Set or verify your password in Parichay before recording real money.</span></div>}
+      </div>
 
-        {activeClaim ? (
-          <div className="bank-claim-workflow">
-            <div className="bank-payment-card">
-              <span>Pay exactly</span>
-              <strong>{formatMoney(activeClaim.requestedAmountRupees)}</strong>
-              <dl>
-                <div><dt>Account name</dt><dd>{config.accountName || "Ask Kosh Pramukh"}</dd></div>
-                <div><dt>Account number</dt><dd>{config.accountNumber || "Not configured"}</dd></div>
-                <div><dt>IFSC</dt><dd>{config.ifsc || "Not configured"}</dd></div>
-                {config.upiId ? <div><dt>UPI</dt><dd>{config.upiId}</dd></div> : null}
-                <div><dt>Nyas reference</dt><dd>{activeClaim.paymentReference}</dd></div>
-              </dl>
-            </div>
-            <form className="bank-proof-form" onSubmit={submitEvidence}>
-              <h3>Submit payment proof</h3>
-              <label>UTR / RRN<input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Bank transaction reference" /></label>
-              <label>Payment time<input type="datetime-local" value={paidAt} onChange={(event) => setPaidAt(event.target.value)} /></label>
-              <label>Paste debit SMS<textarea value={smsText} onChange={(event) => setSmsText(event.target.value)} placeholder="Paste the complete bank SMS here" /></label>
-              <label>Receipt screenshot or PDF<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setProofFile(event.target.files?.[0] || null)} /></label>
-              <button type="submit" disabled={busy || (!smsText && !proofFile)}>{busy ? "Submitting..." : "Send for Kosh verification"}</button>
-            </form>
-          </div>
-        ) : null}
-
-        {claims.length ? (
-          <div className="bank-claim-history">
-            <h3>My bank contributions</h3>
-            {claims.map((claim) => (
-              <button className={`bank-claim-summary ${claim.status}`} key={claim.id} type="button" onClick={() => ["awaiting_payment", "pending_review"].includes(claim.status) && setActiveClaimId(claim.id)}>
-                <span>{claim.paymentReference}</span><strong>{formatMoney(claim.approvedAmountRupees || claim.requestedAmountRupees)}</strong><em>{formatStatus(claim.status)}</em>
-                {claim.reviewerNote ? <small>{claim.reviewerNote}</small> : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      {canReview ? (
-        <section className="content-band spaced-band bank-review-panel">
-          <div className="section-heading-row"><div><h2>Kosh Verification Desk</h2><p className="section-note">Automated checks assist you. Compare bank records and proof before approving.</p></div><button type="button" className="secondary-button" onClick={refresh}>Refresh</button></div>
-          {reviewClaims.length ? reviewClaims.map((claim) => (
-            <article className="bank-review-card" key={claim.id}>
-              <header><div><span>{claim.paymentReference}</span><h3>{claim.member?.displayName || "Sadasya"}</h3></div><strong>{formatMoney(claim.requestedAmountRupees)}</strong><span className="confidence-meter">Checks {highestConfidence(claim)}%</span></header>
-              <div className="evidence-list">
-                {claim.evidence.map((evidence) => (
-                  <div className="evidence-item" key={evidence.id}>
-                    <strong>{formatStatus(evidence.type)}</strong>
-                    {evidence.smsText ? <blockquote>{evidence.smsText}</blockquote> : null}
-                    <span>UTR: {evidence.analysis?.extractedUtr || evidence.declaredUtr || "not found"}</span>
-                    <span>Amount read: {evidence.analysis?.extractedAmountRupees ? formatMoney(evidence.analysis.extractedAmountRupees) : "manual check"}</span>
-                    {evidence.analysis?.warnings?.map((warning) => <small key={warning}>{warning}</small>)}
-                    {evidence.proofDocumentId ? <button type="button" className="secondary-button" onClick={() => openProof(evidence.proofDocumentId)}>Open proof</button> : null}
-                  </div>
-                ))}
-              </div>
-              <div className="bank-review-fields">
-                <label>Final amount<input type="number" min={config.minimumAmountRupees} value={reviewValues[claim.id]?.amountRupees ?? claim.requestedAmountRupees} onChange={(event) => updateReviewValue(claim.id, "amountRupees", event.target.value)} /></label>
-                <label>Verified UTR<input value={reviewValues[claim.id]?.utr ?? claim.utr ?? ""} onChange={(event) => updateReviewValue(claim.id, "utr", event.target.value)} /></label>
-                <label>Reviewer note<input value={reviewValues[claim.id]?.note || ""} onChange={(event) => updateReviewValue(claim.id, "note", event.target.value)} /></label>
-              </div>
-              <div className="bank-sms-check">
-                <label>Bank credit SMS (optional)<textarea value={bankSmsValues[claim.id] || ""} onChange={(event) => setBankSmsValues((current) => ({ ...current, [claim.id]: event.target.value }))} placeholder="Paste the credit SMS received on the registered Kosh phone" /></label>
-                <button type="button" className="secondary-button" disabled={busy || !bankSmsValues[claim.id]?.trim()} onClick={() => addBankSms(claim)}>Run bank SMS checks</button>
-              </div>
-              <div className="button-row"><button type="button" disabled={busy || !passwordVerified} onClick={() => decide(claim, "approve")}>Verify and credit wallet</button><button type="button" className="danger-button" disabled={busy || !passwordVerified} onClick={() => decide(claim, "reject")}>Reject with reason</button></div>
+      {declarations.length ? (
+        <div className="declaration-history">
+          <h3>My recent declarations</h3>
+          {declarations.slice(0, 8).map((item) => (
+            <article key={item.id}>
+              <div><strong>{formatMoney(item.amountRupees)}</strong><span>{formatDate(item.paidAt)}</span></div>
+              <div><span>{item.utr ? `UTR ${item.utr}` : item.paymentReference}</span><em className={item.reconciliationStatus}>{item.reconciliationStatus.replaceAll("_", " ")}</em></div>
             </article>
-          )) : <p className="empty-copy">No bank contributions are waiting for review.</p>}
-          {unmatchedSms.length ? (
-            <div className="unmatched-sms-list">
-              <h3>Unmatched bank SMS</h3>
-              <p className="section-note">These could not be tied safely to one claim. Do not approve them until the member and UTR are confirmed.</p>
-              {unmatchedSms.map((sms) => <article key={sms.id}><strong>{sms.extractedAmountRupees ? formatMoney(sms.extractedAmountRupees) : "Amount unread"}</strong><span>{sms.extractedUtr || "UTR unread"}</span><small>{new Date(sms.receivedAt).toLocaleString("en-IN")}</small><blockquote>{sms.body}</blockquote></article>)}
-            </div>
-          ) : null}
-        </section>
+          ))}
+        </div>
       ) : null}
-    </>
+    </section>
   );
 }

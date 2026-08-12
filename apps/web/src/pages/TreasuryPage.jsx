@@ -26,8 +26,6 @@ function formatRole(role = "") {
   return role.replaceAll("_", " ");
 }
 
-const MIN_WALLET_TOP_UP_RUPEES = 2000;
-
 function getContributionHint(project) {
   const policy = getContributionPolicy(project);
   if (!policy) return "No funding limit is set for this Sankalp yet.";
@@ -41,36 +39,6 @@ function getContributionHint(project) {
   return `Your contribution: ${formatMoney(policy.memberAllocatedRupees)}. You can add up to ${formatMoney(policy.maxRupees)} more. ${contributorText}`;
 }
 
-function loadRazorpayCheckout() {
-  return new Promise((resolve, reject) => {
-    if (window.Razorpay) {
-      resolve();
-      return;
-    }
-
-    const script = window.document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = resolve;
-    script.onerror = () => reject(new Error("Could not load Razorpay Checkout."));
-    window.document.body.appendChild(script);
-  });
-}
-
-function loadCashfreeCheckout() {
-  return new Promise((resolve, reject) => {
-    if (window.Cashfree) {
-      resolve();
-      return;
-    }
-
-    const script = window.document.createElement("script");
-    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
-    script.onload = resolve;
-    script.onerror = () => reject(new Error("Could not load Cashfree Checkout."));
-    window.document.body.appendChild(script);
-  });
-}
-
 export function TreasuryPage() {
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
@@ -79,14 +47,6 @@ export function TreasuryPage() {
   const [analyticsDateTo, setAnalyticsDateTo] = useState("");
   const [transactions, setTransactions] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [pendingHostedContributions, setPendingHostedContributions] = useState([]);
-  const [hostedLinkMemberIds, setHostedLinkMemberIds] = useState({});
-  const [selfContributionAmountRupees, setSelfContributionAmountRupees] = useState("5000");
-  const [selfContributionDescription, setSelfContributionDescription] = useState("Added to my Kosh wallet");
-  const [amountRupees, setAmountRupees] = useState("5000");
-  const [description, setDescription] = useState("Manual Kul contribution");
-  const [contributionMemberId, setContributionMemberId] = useState("");
   const [allocationAmountRupees, setAllocationAmountRupees] = useState("1000");
   const [allocationProjectId, setAllocationProjectId] = useState("");
   const [allocationDescription, setAllocationDescription] = useState("Allocated from Kosh wallet");
@@ -94,13 +54,8 @@ export function TreasuryPage() {
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState(null);
-  const [paymentProviders, setPaymentProviders] = useState(null);
-  const [isPaying, setIsPaying] = useState(false);
   const [isAllocating, setIsAllocating] = useState(false);
   const allocationSectionRef = useRef(null);
-  const cashfreeReturnHandledRef = useRef(false);
-  const canRecordManualContribution = hasPermission(session, "treasury.view_ledger");
-  const canContribute = hasPermission(session, "treasury.contribute");
   const canAllocateFunds = hasPermission(session, "treasury.allocate_own");
   const canReverseLedger = ["owner", "admin"].includes(session?.member?.role);
   const passwordVerified = session?.authLevel === "password";
@@ -115,31 +70,8 @@ export function TreasuryPage() {
       .catch((error) => setMessage(error.message));
     loadTreasury();
     loadProjects();
-    loadMembers();
     loadKoshAnalytics();
   }, []);
-
-  useEffect(() => {
-    if (!session?.familyId) return;
-    if (canContribute && passwordVerified) claimHostedContributions();
-    if (canRecordManualContribution) loadPendingHostedContributions();
-  }, [session?.familyId, canContribute, canRecordManualContribution, passwordVerified]);
-
-  useEffect(() => {
-    if (!session?.familyId || !canContribute) return;
-    loadPaymentProviders();
-  }, [session?.familyId, canContribute]);
-
-  useEffect(() => {
-    if (!session?.familyId || !passwordVerified || cashfreeReturnHandledRef.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const providerOrderId = params.get("order_id");
-    if (params.get("cashfree_return") !== "1" || !providerOrderId) return;
-
-    cashfreeReturnHandledRef.current = true;
-    window.history.replaceState({}, "", window.location.pathname);
-    confirmCashfreeReturn(providerOrderId);
-  }, [session?.familyId, passwordVerified]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -203,41 +135,6 @@ export function TreasuryPage() {
     }
   }
 
-  async function loadPaymentProviders() {
-    const familyId = getFamilyId();
-    if (!familyId) return;
-    try {
-      const response = await apiGet(`/payments/family/${familyId}/providers`);
-      setPaymentProviders(response.data);
-    } catch (error) {
-      setPaymentProviders({ cashfree: { enabled: false }, razorpay: { enabled: false } });
-      setMessage(error.message);
-    }
-  }
-
-  async function confirmCashfreeReturn(providerOrderId) {
-    const familyId = getFamilyId();
-    if (!familyId) return;
-    setIsPaying(true);
-    notify("success", "Payment verification in progress", "Cashfree has returned you safely to Nyas. We are confirming the payment before crediting your wallet.");
-    try {
-      const response = await apiPost(`/payments/family/${familyId}/cashfree-orders/status`, { providerOrderId });
-      const creditedAmount = response.data.amountRupees;
-      await Promise.all([loadTreasury(), loadKoshAnalytics()]);
-      notify("success", "Thank you! Your Yogdaan is secure", "The verified amount has been added to your personal Nyas wallet. You can now dedicate it to a Sankalp.", {
-        action: "allocate",
-        amount: formatMoney(creditedAmount),
-        celebration: "wallet",
-        eyebrow: "Sahyog • Vishwas • Sankalp",
-        primaryLabel: "Allocate to a Sankalp"
-      });
-    } catch (error) {
-      notify("warning", "Payment not confirmed", error.message || "Cashfree has not confirmed this payment. No wallet credit was made.");
-    } finally {
-      setIsPaying(false);
-    }
-  }
-
   async function loadKoshAnalytics() {
     const familyId = getFamilyId();
     if (!familyId) return;
@@ -276,226 +173,6 @@ export function TreasuryPage() {
     } catch (error) {
       setMessage(error.message);
       return [];
-    }
-  }
-
-  async function loadMembers() {
-    const familyId = getFamilyId();
-    if (!familyId) {
-      setMessage("Create or select a Kul first.");
-      return;
-    }
-
-    try {
-      const response = await apiGet(`/members/family/${familyId}`);
-      setMembers(response.data.filter((member) => (member.livingStatus || "living") === "living"));
-      setMessage("Loaded living Sadasya for contribution entry.");
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }
-
-  async function claimHostedContributions() {
-    const familyId = getFamilyId();
-    if (!familyId) return;
-
-    try {
-      const response = await apiPost(`/payments/family/${familyId}/hosted-contributions/claim`, {});
-      if (response.data.claimed > 0) {
-        notify(
-          "success",
-          "Payment Page Yogdaan received",
-          `${response.data.claimed} pending contribution${response.data.claimed === 1 ? " has" : "s have"} been added to your Kosh wallet.`
-        );
-        await Promise.all([loadTreasury(), loadKoshAnalytics()]);
-      }
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }
-
-  async function loadPendingHostedContributions() {
-    const familyId = getFamilyId();
-    if (!familyId) return;
-
-    try {
-      const response = await apiGet(`/payments/family/${familyId}/hosted-contributions/pending`);
-      setPendingHostedContributions(response.data);
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }
-
-  async function linkHostedContribution(contributionId) {
-    const familyId = getFamilyId();
-    const memberId = hostedLinkMemberIds[contributionId];
-    if (!familyId || !memberId) {
-      notify("warning", "Choose a Sadasya", "Select the living family member whose wallet should receive this contribution.");
-      return;
-    }
-
-    try {
-      await apiPost(`/payments/family/${familyId}/hosted-contributions/${contributionId}/link`, { memberId });
-      notify("success", "Contribution linked", "The Payment Page contribution is now safely credited to the selected wallet.");
-      await Promise.all([loadPendingHostedContributions(), loadTreasury(), loadKoshAnalytics()]);
-    } catch (error) {
-      notify("error", "Could not link contribution", error.message);
-    }
-  }
-
-  async function recordContribution(event) {
-    event.preventDefault();
-    const familyId = getFamilyId();
-    if (!familyId) {
-      setMessage("Create or select a Kul first.");
-      return;
-    }
-
-    try {
-      await apiPost(`/treasury/family/${familyId}/manual-contributions`, {
-        amountRupees,
-        description,
-        memberId: contributionMemberId || undefined
-      });
-      notify("success", "Contribution recorded", "The selected Sadasya wallet has been credited.");
-      await Promise.all([loadTreasury(), loadKoshAnalytics()]);
-    } catch (error) {
-      notify("error", "Contribution not recorded", error.message);
-    }
-  }
-
-  async function addToMyWallet(event) {
-    event.preventDefault();
-    const familyId = getFamilyId();
-    const topUpAmount = Number(selfContributionAmountRupees || 0);
-    if (!familyId) {
-      notify("error", "Kul not selected", "Create or select a Kul before adding money.");
-      return;
-    }
-
-    if (topUpAmount < MIN_WALLET_TOP_UP_RUPEES) {
-      notify("error", "Amount too small", `Minimum wallet top-up is ${formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.`);
-      return;
-    }
-
-    if (paymentProviders?.cashfree?.enabled) {
-      await addToWalletWithCashfree({ familyId, topUpAmount });
-      return;
-    }
-
-    if (!paymentProviders?.razorpay?.enabled) {
-      notify("error", "Payment service unavailable", "No online payment provider is configured. Please contact the Nyas Kosh team.");
-      return;
-    }
-
-    try {
-      setIsPaying(true);
-      setMessage("Creating secure payment order...");
-      const orderResponse = await apiPost(`/payments/family/${familyId}/razorpay-orders`, {
-        amountRupees: selfContributionAmountRupees,
-        description: selfContributionDescription
-      });
-      await loadRazorpayCheckout();
-
-      const paymentOrder = orderResponse.data;
-      const checkout = new window.Razorpay({
-        key: paymentOrder.razorpayKeyId,
-        amount: paymentOrder.amountPaise,
-        currency: paymentOrder.currency,
-        name: "Nyasa",
-        description: paymentOrder.description,
-        order_id: paymentOrder.providerOrderId,
-        prefill: {
-          name: paymentOrder.user.fullName,
-          email: paymentOrder.user.email,
-          contact: paymentOrder.user.phone
-        },
-        notes: {
-          familyId,
-          paymentOrderId: paymentOrder.paymentOrderId
-        },
-        handler: async (response) => {
-          try {
-            await apiPost(`/payments/family/${familyId}/razorpay-payments/verify`, {
-              paymentOrderId: paymentOrder.paymentOrderId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature
-            });
-            notify(
-              "success",
-              "धन्यवाद! आपका योगदान सुरक्षित है",
-              "राशि आपके व्यक्तिगत Nyas Wallet में जुड़ गई है। अब आप इसे अपनी पसंद के Sankalp को समर्पित कर सकते हैं।",
-              {
-                action: "allocate",
-                amount: formatMoney(topUpAmount),
-                balance: formatMoney(walletBalanceRupees + topUpAmount),
-                celebration: "wallet",
-                eyebrow: "सहयोग • विश्वास • संकल्प",
-                primaryLabel: "Sankalp को आवंटित करें"
-              }
-            );
-            setIsPaying(false);
-            await Promise.all([loadTreasury(), loadKoshAnalytics()]);
-          } catch (error) {
-            setIsPaying(false);
-            notify("error", "Payment verification failed", error.message);
-          }
-        },
-        modal: {
-          backdropclose: false,
-          confirm_close: true,
-          escape: false,
-          ondismiss: () => {
-            setIsPaying(false);
-            notify("warning", "Payment not completed", "The Razorpay window was closed. No money was added to your wallet.");
-          }
-        },
-        theme: {
-          color: "#17211c"
-        },
-        retry: {
-          enabled: true,
-          max_count: 3
-        }
-      });
-
-      checkout.on("payment.failed", (response) => {
-        setIsPaying(false);
-        notify(
-          "error",
-          "Payment failed",
-          response?.error?.description || "Razorpay could not complete the payment. Please try again or use another payment method."
-        );
-      });
-      checkout.open();
-    } catch (error) {
-      setIsPaying(false);
-      notify("error", "Could not start payment", error.message);
-    }
-  }
-
-  async function addToWalletWithCashfree({ familyId, topUpAmount }) {
-    try {
-      setIsPaying(true);
-      setMessage("Creating Cashfree sandbox payment order...");
-      const orderResponse = await apiPost(`/payments/family/${familyId}/cashfree-orders`, {
-        amountRupees: selfContributionAmountRupees,
-        description: selfContributionDescription
-      });
-      await loadCashfreeCheckout();
-      const cashfree = window.Cashfree({ mode: orderResponse.data.mode });
-      const checkoutResult = await cashfree.checkout({
-        paymentSessionId: orderResponse.data.paymentSessionId,
-        redirectTarget: "_self"
-      });
-      if (checkoutResult?.error) {
-        setIsPaying(false);
-        notify("error", "Cashfree checkout could not open", checkoutResult.error.message || "Please try again.");
-      }
-    } catch (error) {
-      setIsPaying(false);
-      notify("error", "Could not start Cashfree payment", error.message);
     }
   }
 
@@ -603,6 +280,7 @@ export function TreasuryPage() {
         title="Kosh"
         description="Contribute once, then allocate funds across Kul Sankalp."
       />
+      {message && !notice ? <p className="status-message" role="status">{message}</p> : null}
       {notice ? (
         <div className={`feedback-overlay ${notice.celebration ? "is-celebrating" : ""}`} role="presentation">
           <div
@@ -663,6 +341,14 @@ export function TreasuryPage() {
           <span>This year: {formatMoney(thisYearRupees)}</span>
         </div>
       </section>
+      {walletBalanceRupees < 0 ? (
+        <section className="transaction-security-callout wallet-shortfall-callout" role="alert">
+          <div>
+            <strong>Kosh wallet correction pending</strong>
+            <span>Your bank-confirmed contributions are {formatMoney(Math.abs(walletBalanceRupees))} below money already allocated. New allocations are paused until this shortfall is resolved.</span>
+          </div>
+        </section>
+      ) : null}
       <div className="metric-grid">
         <article className="metric-card">
           <span>My Wallet Balance</span>
@@ -750,145 +436,11 @@ export function TreasuryPage() {
         </div>
       </section>
 
-      <section className="content-band">
-        <h2>Add To My Wallet</h2>
-        <p className="section-note">Add money securely first. Only a payment verified by the provider is credited to your wallet; it can then be allocated to a Sankalp.</p>
-        {paymentProviders?.cashfree?.enabled && paymentProviders.cashfree.mode === "sandbox" ? (
-          <p className="payment-test-banner" role="status"><strong>Cashfree Sandbox</strong> Test payments only. No real money will move.</p>
-        ) : null}
-        {canContribute && passwordVerified ? (
-          <form className="form-grid" onSubmit={addToMyWallet}>
-            <label>
-              Amount
-              <input
-                value={selfContributionAmountRupees}
-                onChange={(event) => setSelfContributionAmountRupees(event.target.value)}
-                type="number"
-                min={MIN_WALLET_TOP_UP_RUPEES}
-              />
-              <small>Minimum wallet top-up is {formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.</small>
-            </label>
-            <label>
-              Description
-              <input value={selfContributionDescription} onChange={(event) => setSelfContributionDescription(event.target.value)} />
-            </label>
-            <button type="submit" disabled={isPaying || !paymentProviders}>
-              {isPaying
-                ? "Opening secure payment..."
-                : paymentProviders?.cashfree?.enabled ? "Test With Cashfree" : "Pay With Razorpay"}
-            </button>
-          </form>
-        ) : canContribute ? (
-          <p>Secure your account in Parichay to add money.</p>
-        ) : (
-          <p>Your current role cannot add money to a wallet.</p>
-        )}
-        <div className="button-row">
-          <button type="button" className="secondary-button" onClick={loadTreasury}>
-            Load Kosh
-          </button>
-        </div>
-        {message ? <p className="form-message">{message}</p> : null}
-      </section>
-
       <BankContributionPanel
-        canReview={canRecordManualContribution}
         notify={notify}
         onLedgerChanged={loadTreasury}
         passwordVerified={passwordVerified}
       />
-
-      <section className="content-band spaced-band">
-        <h2>Admin Contribution Entry</h2>
-        <p className="section-note">Owner/admin tool for recording offline or corrected contributions for a selected member.</p>
-        {canRecordManualContribution && passwordVerified ? (
-          <form className="form-grid" onSubmit={recordContribution}>
-            <label>
-              Credit Wallet
-              <select value={contributionMemberId} onChange={(event) => setContributionMemberId(event.target.value)}>
-                <option value="">Current signed-in member</option>
-                {members.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.displayName} ({formatRole(member.role)})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Amount
-              <input value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} type="number" min={MIN_WALLET_TOP_UP_RUPEES} />
-              <small>Minimum wallet top-up is {formatMoney(MIN_WALLET_TOP_UP_RUPEES)}.</small>
-            </label>
-            <label>
-              Description
-              <input value={description} onChange={(event) => setDescription(event.target.value)} />
-            </label>
-            <button type="submit">Record Contribution</button>
-          </form>
-        ) : canRecordManualContribution ? (
-          <p>Password verification is required before recording money for another member.</p>
-        ) : (
-          <p>Your current role cannot record contributions for other members.</p>
-        )}
-        <div className="button-row">
-          {canRecordManualContribution ? (
-            <button type="button" className="secondary-button" onClick={loadMembers}>
-              Load Sadasya
-            </button>
-          ) : null}
-        </div>
-      </section>
-
-      {canRecordManualContribution ? (
-        <section className="content-band spaced-band">
-          <div className="section-heading-row">
-            <div>
-              <h2>Payment Page Review</h2>
-              <p className="section-note">
-                Payments from registered phone numbers are credited automatically. Link only the entries Nyas could not identify safely.
-              </p>
-            </div>
-            <button type="button" className="secondary-button" onClick={loadPendingHostedContributions}>
-              Refresh
-            </button>
-          </div>
-          {pendingHostedContributions.length ? (
-            <div className="hosted-contribution-list">
-              {pendingHostedContributions.map((contribution) => (
-                <article className="hosted-contribution-row" key={contribution.id}>
-                  <div>
-                    <span className="hosted-contribution-status">Needs review</span>
-                    <strong>{contribution.donorName || "Name not supplied"}</strong>
-                    <span>{contribution.donorPhone || "Phone not supplied"}</span>
-                    <small>Razorpay payment {contribution.providerPaymentId}</small>
-                  </div>
-                  <strong className="hosted-contribution-amount">{formatMoney(contribution.amountRupees)}</strong>
-                  <label>
-                    Credit living Sadasya
-                    <select
-                      value={hostedLinkMemberIds[contribution.id] || ""}
-                      onChange={(event) => setHostedLinkMemberIds((current) => ({
-                        ...current,
-                        [contribution.id]: event.target.value
-                      }))}
-                    >
-                      <option value="">Select Sadasya</option>
-                      {members.map((member) => (
-                        <option key={member._id} value={member._id}>{member.displayName}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <button type="button" disabled={!passwordVerified} onClick={() => linkHostedContribution(contribution.id)}>
-                    Link and Credit
-                  </button>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="empty-copy">No Payment Page contributions need manual matching.</p>
-          )}
-        </section>
-      ) : null}
 
       <section className="content-band spaced-band" ref={allocationSectionRef}>
         <div className="section-heading-row">
@@ -976,9 +528,7 @@ export function TreasuryPage() {
                   {transaction.type === "contribution" && transaction.source ? (
                     <small>
                       <strong>Received via:</strong>{" "}
-                      {transaction.source.startsWith("cashfree_")
-                        ? `Cashfree ${transaction.source.replace("cashfree_", "")}`
-                        : transaction.source.replaceAll("_", " ")}
+                      {transaction.source.replaceAll("_", " ")}
                     </small>
                   ) : null}
                   {transaction.description ? <small>{transaction.description}</small> : null}

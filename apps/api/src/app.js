@@ -7,7 +7,7 @@ import { errorHandler } from "./middleware/error-handler.js";
 import { notFound } from "./middleware/not-found.js";
 import { auditRoutes } from "./modules/audit/audit.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
-import { bankContributionRoutes } from "./modules/bank-contributions/bank-contribution.routes.js";
+import { selfDeclaredContributionRoutes } from "./modules/bank-contributions/self-declared-contribution.routes.js";
 import { documentRoutes } from "./modules/documents/document.routes.js";
 import { expenseRoutes } from "./modules/expenses/expense.routes.js";
 import { familyHubRoutes } from "./modules/family-hub/family-hub.routes.js";
@@ -15,7 +15,6 @@ import { familyRoutes } from "./modules/families/family.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { invitationRoutes } from "./modules/invitations/invitation.routes.js";
 import { memberRoutes } from "./modules/members/member.routes.js";
-import { paymentRoutes } from "./modules/payments/payment.routes.js";
 import { permissionRoutes } from "./modules/permissions/permission.routes.js";
 import { projectRoutes } from "./modules/projects/project.routes.js";
 import { proposalRoutes } from "./modules/proposals/proposal.routes.js";
@@ -29,20 +28,17 @@ export function createApp() {
   app.use(express.json({
     limit: "12mb",
     verify: (req, _res, buffer) => {
-      if (["/api/payments/razorpay-webhook", "/api/payments/cashfree-webhook", "/api/bank-contributions/sms-ingest"].includes(req.originalUrl)) {
-        req.rawBody = Buffer.from(buffer);
-      }
+      req.rawBody = Buffer.from(buffer);
     }
   }));
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
   app.use("/api/health", healthRoutes);
   app.use("/api/auth", authRoutes);
-  app.use("/api/bank-contributions", bankContributionRoutes);
+  app.use("/api/bank-contributions", selfDeclaredContributionRoutes);
   app.use("/api/families", familyRoutes);
   app.use("/api/invitations", invitationRoutes);
   app.use("/api/members", memberRoutes);
-  app.use("/api/payments", paymentRoutes);
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/projects", projectRoutes);
   app.use("/api/proposals", proposalRoutes);

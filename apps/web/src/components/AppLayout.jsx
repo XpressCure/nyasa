@@ -1,4 +1,4 @@
-import { Archive, BookOpenText, CalendarDays, GitBranch, HeartHandshake, Home, Images, Landmark, Menu, Search, UserCircle, Users, X } from "lucide-react";
+import { Archive, BookOpenText, CalendarDays, ClipboardCheck, GitBranch, HeartHandshake, Home, Images, Landmark, Menu, Search, UserCircle, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
@@ -14,8 +14,8 @@ const navSections = [
       { to: "/calendar", label: "Panchang", icon: CalendarDays },
       { to: "/family", label: "Kul", icon: Users },
       { to: "/profile", label: "Parichay", icon: UserCircle },
-      { to: "/contribute", label: "Yogdaan", icon: HeartHandshake },
       { to: "/treasury", label: "Kosh", icon: Landmark },
+      { to: "/kosh-reconciliation", label: "Kosh Milan", icon: ClipboardCheck, permission: "treasury.view_ledger" },
       { to: "/projects", label: "Sankalp", icon: GitBranch },
       { to: "/sankalp-sabha", label: "Sankalp Sabha", icon: Users },
       { to: "/members", label: "Sadasya", icon: Archive, permission: "members.manage" }

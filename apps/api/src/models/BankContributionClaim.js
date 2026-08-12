@@ -46,10 +46,30 @@ const bankContributionClaimSchema = new mongoose.Schema(
     utr: { type: String, trim: true, uppercase: true },
     status: {
       type: String,
-      enum: ["awaiting_payment", "pending_review", "approved", "rejected", "cancelled", "processing"],
+      enum: ["awaiting_payment", "pending_review", "approved", "rejected", "cancelled", "processing", "self_recorded"],
       default: "awaiting_payment",
       index: true
     },
+    contributionMode: {
+      type: String,
+      enum: ["legacy_verified", "member_declared"],
+      default: "legacy_verified",
+      index: true
+    },
+    declarationToken: { type: String, trim: true },
+    declaredPaidAt: Date,
+    sourceAccountLast4: { type: String, trim: true, match: /^\d{4}$/ },
+    attestedAt: Date,
+    reconciliationVersion: { type: Number, default: 0, min: 0 },
+    reconciliationStatus: {
+      type: String,
+      enum: ["unreconciled", "reconciled", "flagged"],
+      default: "unreconciled",
+      index: true
+    },
+    reconciliationNote: { type: String, trim: true, maxlength: 1000 },
+    reconciledBy: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember" },
+    reconciledAt: Date,
     evidence: [contributionEvidenceSchema],
     reviewerNote: { type: String, trim: true, maxlength: 1000 },
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "FamilyMember" },
@@ -63,6 +83,10 @@ const bankContributionClaimSchema = new mongoose.Schema(
 bankContributionClaimSchema.index({ familyId: 1, memberId: 1, createdAt: -1 });
 bankContributionClaimSchema.index({ familyId: 1, status: 1, createdAt: -1 });
 bankContributionClaimSchema.index({ familyId: 1, paymentReference: 1 }, { unique: true });
+bankContributionClaimSchema.index(
+  { familyId: 1, memberId: 1, declarationToken: 1 },
+  { unique: true, partialFilterExpression: { declarationToken: { $type: "string" } } }
+);
 bankContributionClaimSchema.index(
   { familyId: 1, utr: 1 },
   { unique: true, partialFilterExpression: { utr: { $type: "string" } } }
