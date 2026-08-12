@@ -72,6 +72,86 @@ data class ActionResult(
     val projectId: String = ""
 )
 
+data class EducationEntry(
+    val institution: String = "",
+    val degree: String = "",
+    val year: Int? = null
+)
+
+data class WorkProfile(
+    val currentPlace: String = "",
+    val currentRole: String = "",
+    val previousPlaces: String = "",
+    val experienceYears: Int? = null
+)
+
+data class FamilyMemberProfile(
+    val id: String,
+    val displayName: String,
+    val role: String = "member",
+    val status: String = "active",
+    val gender: String = "prefer_not_to_say",
+    val livingStatus: String = "living",
+    val dateOfBirth: String = "",
+    val dateOfDeath: String = "",
+    val yearOfDeath: Int? = null,
+    val maritalStatus: String = "unknown",
+    val anniversaryDate: String = "",
+    val relationLabel: String = "",
+    val placeOfResidence: String = "",
+    val city: String = "",
+    val state: String = "",
+    val country: String = "",
+    val profession: String = "",
+    val bio: String = "",
+    val photoUrl: String = "",
+    val fatherMemberId: String = "",
+    val motherMemberId: String = "",
+    val spouseMemberId: String = "",
+    val childrenCount: Int = 0,
+    val intermediate: EducationEntry = EducationEntry(),
+    val graduation: EducationEntry = EducationEntry(),
+    val postGraduation: EducationEntry = EducationEntry(),
+    val work: WorkProfile = WorkProfile()
+)
+
+data class ImmediateFamily(
+    val father: FamilyMemberProfile? = null,
+    val mother: FamilyMemberProfile? = null,
+    val spouse: FamilyMemberProfile? = null,
+    val children: List<FamilyMemberProfile> = emptyList()
+)
+
+data class ProfileUpdate(
+    val displayName: String,
+    val gender: String,
+    val dateOfBirth: String,
+    val livingStatus: String,
+    val maritalStatus: String,
+    val anniversaryDate: String,
+    val placeOfResidence: String,
+    val city: String,
+    val state: String,
+    val country: String,
+    val profession: String,
+    val bio: String,
+    val currentPlace: String,
+    val currentRole: String,
+    val experienceYears: Int?
+)
+
+data class VirasatEvent(
+    val id: String,
+    val title: String,
+    val eventDate: String = "",
+    val eventYear: Int? = null,
+    val location: String = "",
+    val category: String = "family",
+    val description: String = "",
+    val sourceNote: String = "",
+    val automatic: Boolean = false
+)
+
 sealed interface LoginChallenge {
     data object None : LoginChallenge
     data object Phone : LoginChallenge

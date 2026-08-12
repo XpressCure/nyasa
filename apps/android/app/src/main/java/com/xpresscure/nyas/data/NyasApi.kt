@@ -12,6 +12,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 import java.time.Instant
 import java.util.UUID
+import android.util.Base64
 
 class ApiException(val code: String, message: String) : Exception(message)
 
@@ -149,13 +150,100 @@ class NyasApi {
             )
         }
 
+    suspend fun members(session: NyasSession): List<FamilyMemberProfile> = withContext(Dispatchers.IO) {
+        execute("/members/family/${session.familyId}", token = session.token).arrayAt("data").mapNotNull {
+            it.takeIf { element -> element.isJsonObject }?.asJsonObject?.let(::parseMember)
+        }
+    }
+
+    suspend fun myProfile(session: NyasSession): FamilyMemberProfile = withContext(Dispatchers.IO) {
+        parseMember(execute("/members/family/${session.familyId}/me", token = session.token).objectAt("data"))
+    }
+
+    suspend fun immediateFamily(session: NyasSession): ImmediateFamily = withContext(Dispatchers.IO) {
+        val data = execute("/members/family/${session.familyId}/immediate-family", token = session.token).objectAt("data")
+        ImmediateFamily(
+            father = data.objectOrNull("father")?.let(::parseMember),
+            mother = data.objectOrNull("mother")?.let(::parseMember),
+            spouse = data.objectOrNull("spouse")?.let(::parseMember),
+            children = data.arrayAt("children").mapNotNull { it.takeIf { element -> element.isJsonObject }?.asJsonObject?.let(::parseMember) }
+        )
+    }
+
+    suspend fun updateMyProfile(session: NyasSession, update: ProfileUpdate): FamilyMemberProfile = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("displayName", update.displayName.trim())
+            addProperty("gender", update.gender)
+            if (update.dateOfBirth.isNotBlank()) addProperty("dateOfBirth", update.dateOfBirth)
+            addProperty("livingStatus", update.livingStatus)
+            addProperty("maritalStatus", update.maritalStatus)
+            if (update.anniversaryDate.isNotBlank()) addProperty("anniversaryDate", update.anniversaryDate)
+            addProperty("placeOfResidence", update.placeOfResidence.trim())
+            addProperty("city", update.city.trim())
+            addProperty("state", update.state.trim())
+            addProperty("country", update.country.trim())
+            addProperty("profession", update.profession.trim())
+            addProperty("bio", update.bio.trim())
+            add("work", JsonObject().apply {
+                addProperty("currentPlace", update.currentPlace.trim())
+                addProperty("currentRole", update.currentRole.trim())
+                update.experienceYears?.let { addProperty("experienceYears", it) }
+            })
+        }
+        parseMember(execute("/members/family/${session.familyId}/me", "PATCH", body, session.token).objectAt("data"))
+    }
+
+    suspend fun uploadProfilePhoto(
+        session: NyasSession,
+        memberId: String,
+        originalName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): FamilyMemberProfile = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("originalName", originalName)
+            addProperty("mimeType", mimeType)
+            addProperty("sizeBytes", bytes.size)
+            addProperty("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+        }
+        val data = execute("/members/family/${session.familyId}/$memberId/photo", "POST", body, session.token).objectAt("data")
+        parseMember(data.objectAt("member"))
+    }
+
+    suspend fun virasat(session: NyasSession): List<VirasatEvent> = withContext(Dispatchers.IO) {
+        execute("/family-hub/family/${session.familyId}/history", token = session.token).arrayAt("data").mapNotNull {
+            it.takeIf { element -> element.isJsonObject }?.asJsonObject?.let(::parseVirasat)
+        }
+    }
+
+    suspend fun addVirasatEvent(
+        session: NyasSession,
+        title: String,
+        year: Int,
+        category: String,
+        location: String,
+        description: String
+    ): VirasatEvent = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("title", title.trim())
+            addProperty("eventYear", year)
+            addProperty("category", category)
+            addProperty("location", location.trim())
+            addProperty("description", description.trim())
+        }
+        parseVirasat(execute("/family-hub/family/${session.familyId}/history", "POST", body, session.token).objectAt("data"))
+    }
+
     private fun execute(path: String, method: String = "GET", body: JsonObject? = null, token: String = ""): JsonObject {
         val request = Request.Builder()
             .url(BuildConfig.API_BASE_URL.trimEnd('/') + path)
             .header("Accept", "application/json")
             .apply {
                 if (token.isNotBlank()) header("Authorization", "Bearer $token")
-                if (method == "POST") post((body ?: JsonObject()).toString().toRequestBody(jsonType))
+                when (method) {
+                    "POST" -> post((body ?: JsonObject()).toString().toRequestBody(jsonType))
+                    "PATCH" -> patch((body ?: JsonObject()).toString().toRequestBody(jsonType))
+                }
             }
             .build()
         client.newCall(request).execute().use { response ->
@@ -170,6 +258,61 @@ class NyasApi {
     }
 }
 
+private fun parseMember(data: JsonObject): FamilyMemberProfile {
+    val education = data.objectOrNull("education") ?: JsonObject()
+    val work = data.objectOrNull("work") ?: JsonObject()
+    fun educationAt(name: String): EducationEntry {
+        val item = education.objectOrNull(name) ?: JsonObject()
+        return EducationEntry(item.string("institution"), item.string("degree"), item.nullableInt("year"))
+    }
+    return FamilyMemberProfile(
+        id = data.string("_id", data.string("id")),
+        displayName = data.string("displayName", "Family member"),
+        role = data.string("role", "member"),
+        status = data.string("status", "active"),
+        gender = data.string("gender", "prefer_not_to_say"),
+        livingStatus = data.string("livingStatus", "living"),
+        dateOfBirth = data.string("dateOfBirth"),
+        dateOfDeath = data.string("dateOfDeath"),
+        yearOfDeath = data.nullableInt("yearOfDeath"),
+        maritalStatus = data.string("maritalStatus", "unknown"),
+        anniversaryDate = data.string("anniversaryDate"),
+        relationLabel = data.string("relationLabel"),
+        placeOfResidence = data.string("placeOfResidence"),
+        city = data.string("city"),
+        state = data.string("state"),
+        country = data.string("country"),
+        profession = data.string("profession"),
+        bio = data.string("bio"),
+        photoUrl = data.string("photoUrl"),
+        fatherMemberId = data.idString("fatherMemberId"),
+        motherMemberId = data.idString("motherMemberId"),
+        spouseMemberId = data.idString("spouseMemberId"),
+        childrenCount = data.int("childrenCount"),
+        intermediate = educationAt("intermediate"),
+        graduation = educationAt("graduation"),
+        postGraduation = educationAt("postGraduation"),
+        work = WorkProfile(
+            currentPlace = work.string("currentPlace"),
+            currentRole = work.string("currentRole"),
+            previousPlaces = work.string("previousPlaces"),
+            experienceYears = work.nullableInt("experienceYears")
+        )
+    )
+}
+
+private fun parseVirasat(data: JsonObject) = VirasatEvent(
+    id = data.string("id", data.string("_id")),
+    title = data.string("title", "Family memory"),
+    eventDate = data.string("eventDate"),
+    eventYear = data.nullableInt("eventYear"),
+    location = data.string("location"),
+    category = data.string("category", "family"),
+    description = data.string("description"),
+    sourceNote = data.string("sourceNote"),
+    automatic = data.string("source") == "profile"
+)
+
 private fun JsonObject.objectAt(name: String): JsonObject = getAsJsonObject(name) ?: JsonObject()
 private fun JsonObject.objectOrNull(name: String): JsonObject? = get(name)?.takeIf { it.isJsonObject }?.asJsonObject
 private fun JsonObject.arrayOrNull(name: String) = get(name)?.takeIf { it.isJsonArray }?.asJsonArray
@@ -178,3 +321,12 @@ private fun JsonObject.string(name: String, fallback: String = ""): String = get
 private fun JsonObject.int(name: String, fallback: Int = 0): Int = get(name)?.takeIf { !it.isJsonNull }?.asInt ?: fallback
 private fun JsonObject.long(name: String, fallback: Long = 0): Long = get(name)?.takeIf { !it.isJsonNull }?.asLong ?: fallback
 private fun JsonObject.bool(name: String, fallback: Boolean = false): Boolean = get(name)?.takeIf { !it.isJsonNull }?.asBoolean ?: fallback
+private fun JsonObject.nullableInt(name: String): Int? = get(name)?.takeIf { !it.isJsonNull }?.runCatching { asInt }?.getOrNull()
+private fun JsonObject.idString(name: String): String {
+    val value = get(name) ?: return ""
+    return when {
+        value.isJsonPrimitive -> value.asString
+        value.isJsonObject -> value.asJsonObject.string("_id", value.asJsonObject.string("id"))
+        else -> ""
+    }
+}

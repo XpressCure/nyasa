@@ -51,6 +51,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AddCircle
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FamilyRestroom
@@ -139,7 +140,8 @@ private enum class AppRoute(val label: String, val hindi: String, val icon: Imag
     Sabha("Sankalp Sabha", "संकल्प सभा", Icons.Outlined.HowToVote, "/sankalp-sabha"),
     Panchang("Calendar", "पंचांग", Icons.Outlined.CalendarMonth, "/calendar"),
     Parichay("Profile", "परिचय", Icons.Outlined.Person, "/profile"),
-    Tree("Kul Map", "कुल मानचित्र", Icons.Outlined.AccountBalance, "/family-tree")
+    Tree("Kul Map", "कुल मानचित्र", Icons.Outlined.AccountBalance, "/family-tree"),
+    Virasat("Virasat", "विरासत", Icons.Outlined.AutoStories, null)
 }
 
 data class AppUiState(
@@ -408,6 +410,11 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                     when {
                         legacyRoute == destination -> LegacyFeatureScreen(destination, state.session!!)
                         destination == AppRoute.Darshan -> DarshanScreen(state, onNavigate = { route = it; legacyRoute = null }, onRefresh = onRefresh)
+                        destination == AppRoute.Kul -> KulScreen(
+                            session = state.session!!,
+                            onOpenMap = { route = AppRoute.Tree; legacyRoute = AppRoute.Tree },
+                            onOpenRegister = { legacyRoute = AppRoute.Kul }
+                        )
                         destination == AppRoute.Kosh -> KoshScreen(
                             session = state.session!!,
                             preferredProjectId = fundingProjectId,
@@ -418,6 +425,12 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                             onFund = { projectId -> fundingProjectId = projectId; route = AppRoute.Kosh; legacyRoute = null },
                             onOpenWorkspace = { legacyRoute = AppRoute.Sankalp }
                         )
+                        destination == AppRoute.Parichay -> ParichayScreen(
+                            session = state.session!!,
+                            onManageFamily = { legacyRoute = AppRoute.Parichay },
+                            onAdvancedProfile = { legacyRoute = AppRoute.Parichay }
+                        )
+                        destination == AppRoute.Virasat -> VirasatScreen(session = state.session!!)
                         else -> LegacyFeatureScreen(destination, state.session!!)
                     }
                 }
@@ -556,7 +569,7 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
             }
         }
         Spacer(Modifier.height(18.dp))
-        listOf(AppRoute.Parichay, AppRoute.Tree, AppRoute.Panchang, AppRoute.Sabha).forEach { item ->
+        listOf(AppRoute.Parichay, AppRoute.Tree, AppRoute.Virasat, AppRoute.Panchang, AppRoute.Sabha).forEach { item ->
             Surface(onClick = { onRoute(item) }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
                 Row(Modifier.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(item.icon, null)

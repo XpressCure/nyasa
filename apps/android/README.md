@@ -20,10 +20,12 @@ Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp
 | Activity | Primary member action | Native migration |
 | --- | --- | --- |
 | Darshan | See what matters today and continue an action | Native |
-| Parichay | Maintain identity and immediate family | Compatibility, next native form |
-| Kul | Browse members, memories, and family map | Compatibility, native graph planned |
-| Kosh | Record a bank contribution and allocate it | Compatibility, biometric native flow planned |
-| Sankalp | Follow, fund, and manage family work | Compatibility, native cards in Darshan |
+| Parichay | Maintain identity and immediate family | Native essentials, advanced compatibility form |
+| Kul | Search and browse the member directory | Native |
+| Kul Map | Explore relationships and generations | Separate compatibility activity, native graph planned |
+| Virasat | Read and add chronological family memories | Native |
+| Kosh | Record a bank contribution and allocate it | Native guided flow |
+| Sankalp | Follow, fund, and manage family work | Native overview and funding actions |
 | Sankalp Sabha | Propose and vote | Compatibility, native voting planned |
 | Panchang | Celebrations and family events | Compatibility, native calendar planned |
 
