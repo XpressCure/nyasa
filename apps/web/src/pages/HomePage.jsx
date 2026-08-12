@@ -706,7 +706,7 @@ export function HomePage() {
         <div>
           <Users size={24} />
           <strong>Can family members create accounts?</strong>
-          <p>Yes. Today they can sign in with name and phone or accept an invite link. Production OTP/Google login is the next auth upgrade.</p>
+          <p>Yes. Members sign in with their name and simple password. A phone number is requested only during first-time setup or when similar names need to be distinguished.</p>
         </div>
         <div>
           <ShieldCheck size={24} />

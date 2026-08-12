@@ -9,6 +9,8 @@ export function InviteAcceptPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("Loading invitation...");
 
   useEffect(() => {
@@ -33,10 +35,12 @@ export function InviteAcceptPage() {
     setMessage("");
 
     try {
-      const login = await apiPost("/auth/dev-login", {
+      const login = await apiPost("/auth/login", {
         fullName,
         ...(email ? { email } : {}),
-        ...(phone ? { phone } : {})
+        ...(phone ? { phone } : {}),
+        password,
+        confirmPassword
       });
       localStorage.setItem("nyasa_token", login.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(login.data.user));
@@ -74,6 +78,15 @@ export function InviteAcceptPage() {
             <label>
               Phone number
               <input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" />
+            </label>
+            <label>
+              Password
+              <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" minLength="8" maxLength="128" autoComplete="new-password" required />
+              <small>Use any 8 or more characters.</small>
+            </label>
+            <label>
+              Type it once more
+              <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" minLength="8" maxLength="128" autoComplete="new-password" required />
             </label>
             {message ? <p className="form-error">{message}</p> : null}
             <button type="submit">Accept Invitation</button>

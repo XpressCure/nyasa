@@ -9,6 +9,7 @@ import { User } from "../../models/User.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
+import { clearFailedLogins, getLoginLock, recordFailedLogin } from "./login-attempts.service.js";
 import { hashPassword, validatePassword, verifyPassword } from "./password.service.js";
 
 export const authRoutes = Router();
@@ -17,8 +18,8 @@ const devLoginSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email().optional(),
   phone: z.string().min(6).optional(),
-  password: z.string().optional(),
-  confirmPassword: z.string().optional()
+  password: z.string().max(128).optional(),
+  confirmPassword: z.string().max(128).optional()
 });
 
 const passwordSetupSchema = z.object({
@@ -294,7 +295,7 @@ async function ensureLaunchFamilyMembership(user, { family, isNewFamily, profile
 }
 
 authRoutes.post(
-  "/dev-login",
+  ["/login", "/dev-login"],
   asyncHandler(async (req, res) => {
     const body = devLoginSchema.parse(req.body);
     let preparedFamily = await prepareLaunchFamily();
@@ -364,12 +365,41 @@ authRoutes.post(
         "LOGIN_PHONE_REQUIRED"
       );
     }
-    if (hasPassword && !(await verifyPassword(body.password, userWithPassword.passwordHash))) {
+    if (hasPassword && !body.password) {
       throw httpError(
         401,
-        body.password ? "The password is incorrect." : "Enter your password to continue.",
-        body.password ? "INVALID_CREDENTIALS" : "PASSWORD_REQUIRED"
+        "Enter your password to continue.",
+        "PASSWORD_REQUIRED"
       );
+    }
+    if (!hasPassword && !body.password) {
+      throw httpError(
+        409,
+        "Create a simple password to protect this account.",
+        "PASSWORD_SETUP_REQUIRED"
+      );
+    }
+    if (hasPassword) {
+      const loginIdentity = { userId: userWithPassword._id, ip: req.ip };
+      const lock = getLoginLock(loginIdentity);
+      if (lock) {
+        throw httpError(
+          429,
+          `Too many incorrect attempts. Try again in ${Math.ceil(lock.retryAfterSeconds / 60)} minutes.`,
+          "LOGIN_TEMPORARILY_LOCKED"
+        );
+      }
+      if (!(await verifyPassword(body.password, userWithPassword.passwordHash))) {
+        const newLock = recordFailedLogin(loginIdentity);
+        throw httpError(
+          newLock ? 429 : 401,
+          newLock
+            ? "Too many incorrect attempts. Please wait 15 minutes before trying again."
+            : "The password is incorrect.",
+          newLock ? "LOGIN_TEMPORARILY_LOCKED" : "INVALID_CREDENTIALS"
+        );
+      }
+      clearFailedLogins(loginIdentity);
     }
     if (!hasPassword && body.password) {
       validateNewPassword({ password: body.password, confirmPassword: body.confirmPassword });

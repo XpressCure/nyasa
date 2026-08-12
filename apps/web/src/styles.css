@@ -1835,6 +1835,39 @@ select {
   line-height: 1.5;
 }
 
+.password-input-wrap {
+  position: relative;
+  display: block;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 52px;
+}
+
+.password-visibility-button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #4e5b53;
+}
+
+.login-progress-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid #d6a63e;
+  background: #f7f4ed;
+  font-size: 0.9rem;
+}
+
 .form-stack {
   display: grid;
   gap: 14px;

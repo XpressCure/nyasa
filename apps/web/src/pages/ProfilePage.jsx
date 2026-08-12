@@ -515,7 +515,7 @@ export function ProfilePage() {
           <p className="section-note">
             {authLevel === "password"
               ? "Your current session is password verified. Kosh transactions are unlocked."
-              : "Set a password to protect real Kosh payments and Sankalp allocations."}
+              : "Set a simple password to protect real Kosh entries and Sankalp allocations. Use any 8 or more characters."}
           </p>
           <form className="form-grid security-form" onSubmit={savePassword}>
             {hasPassword ? (
@@ -566,7 +566,7 @@ export function ProfilePage() {
           <label>
             Mobile number
             <input value={accountPhone || "Not provided"} type="tel" readOnly />
-            <small>This account number is used for sign-in and matching Razorpay Kosh contributions.</small>
+            <small>This number is used for sign-in identification and matching Kosh contribution records.</small>
           </label>
           <label>
             Gender

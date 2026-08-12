@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiGet, apiPost } from "../lib/api.js";
@@ -25,6 +26,35 @@ function hasProfileDetails(member) {
   );
 }
 
+function PasswordField({ label, value, onChange, autoComplete, visible, onToggle, hint }) {
+  return (
+    <label>
+      {label}
+      <span className="password-input-wrap">
+        <input
+          value={value}
+          onChange={onChange}
+          type={visible ? "text" : "password"}
+          autoComplete={autoComplete}
+          minLength="8"
+          maxLength="128"
+          required
+        />
+        <button
+          className="password-visibility-button"
+          type="button"
+          onClick={onToggle}
+          aria-label={visible ? "Hide password" : "Show password"}
+          title={visible ? "Hide password" : "Show password"}
+        >
+          {visible ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
+      </span>
+      {hint ? <small>{hint}</small> : null}
+    </label>
+  );
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -33,18 +63,31 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [needsPhone, setNeedsPhone] = useState(false);
+  const [passwordMode, setPasswordMode] = useState(null);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  function resetFollowUpFields() {
+    setPhone("");
+    setPassword("");
+    setConfirmPassword("");
+    setNeedsPhone(false);
+    setPasswordMode(null);
+    setError("");
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
+    setBusy(true);
 
     try {
-      const response = await apiPost("/auth/dev-login", {
-        fullName,
-        ...(needsPhone && phone.trim() ? { phone } : {}),
-        ...(password ? { password } : {}),
-        ...(needsPhone && password ? { confirmPassword } : {})
+      const response = await apiPost("/auth/login", {
+        fullName: fullName.trim(),
+        ...(needsPhone ? { phone: phone.trim() } : {}),
+        ...(passwordMode ? { password } : {}),
+        ...(passwordMode === "create" ? { confirmPassword } : {})
       });
       localStorage.setItem("nyasa_token", response.data.token);
       localStorage.setItem("nyasa_user", JSON.stringify(response.data.user));
@@ -66,58 +109,99 @@ export function LoginPage() {
     } catch (apiError) {
       if (apiError.code === "LOGIN_PHONE_REQUIRED") {
         setNeedsPhone(true);
+        setPasswordMode(null);
+        setError("Please add your phone number so Nyas can identify the correct profile.");
+      } else if (apiError.code === "PASSWORD_SETUP_REQUIRED") {
+        setPasswordMode("create");
+        setError("");
+      } else if (["PASSWORD_REQUIRED", "INVALID_CREDENTIALS", "LOGIN_TEMPORARILY_LOCKED"].includes(apiError.code)) {
+        setPasswordMode("existing");
+        setError(apiError.code === "PASSWORD_REQUIRED" ? "" : apiError.message);
+      } else {
+        setError(apiError.message);
       }
-      setError(apiError.message);
+    } finally {
+      setBusy(false);
     }
   }
+
+  const buttonLabel = busy
+    ? "Please wait..."
+    : passwordMode === "create"
+      ? "Create password and enter"
+      : passwordMode === "existing"
+        ? "Sign in"
+        : needsPhone
+          ? "Continue"
+          : "Find my profile";
 
   return (
     <main className="login-page">
       <section className="login-panel">
         <span className="brand-mark">N</span>
         <h1>न्यास में स्वागत है</h1>
-        <p>अपना नाम लिखिए। अगर न्यास को एक साफ परिवार प्रोफाइल मिलती है, तो वह सीधे खुल जाएगी।</p>
+        <p>पहले अपना नाम लिखिए। न्यास केवल वही अगला विवरण पूछेगा जिसकी वास्तव में आवश्यकता है।</p>
         <form className="form-stack" onSubmit={handleSubmit}>
           <label>
             Full name
-            <input autoFocus value={fullName} onChange={(event) => setFullName(event.target.value)} type="text" />
+            <input
+              autoFocus
+              value={fullName}
+              onChange={(event) => {
+                setFullName(event.target.value);
+                if (needsPhone || passwordMode) resetFollowUpFields();
+              }}
+              type="text"
+              autoComplete="name"
+              minLength="2"
+              required
+            />
           </label>
+
           {needsPhone ? (
             <label>
               Phone number
-              <input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" />
-              <small>Needed only when the name is new or more than one profile matches.</small>
-            </label>
-          ) : null}
-          <label>
-            {needsPhone ? "Create password" : "Password"}
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              autoComplete="current-password"
-            />
-            <small>
-              {needsPhone
-                ? "Use at least 8 characters with one letter and one number."
-                : "Enter your password if this account is already secured."}
-            </small>
-          </label>
-          {needsPhone && password ? (
-            <label>
-              Confirm password
               <input
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                type="password"
-                autoComplete="new-password"
-                minLength="8"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                minLength="6"
                 required
               />
+              <small>Needed only for a new name or when similar profiles exist.</small>
             </label>
           ) : null}
-          {error ? <p className="form-error">{error}</p> : null}
-          <button type="submit">{needsPhone && password ? "Create password and continue" : "Continue securely"}</button>
+
+          {passwordMode ? (
+            <PasswordField
+              label={passwordMode === "create" ? "Create a password" : "Password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete={passwordMode === "create" ? "new-password" : "current-password"}
+              visible={passwordVisible}
+              onToggle={() => setPasswordVisible((current) => !current)}
+              hint={passwordMode === "create" ? "Use any 8 or more characters. A short phrase is easy to remember." : null}
+            />
+          ) : null}
+
+          {passwordMode === "create" ? (
+            <PasswordField
+              label="Type it once more"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete="new-password"
+              visible={passwordVisible}
+              onToggle={() => setPasswordVisible((current) => !current)}
+            />
+          ) : null}
+
+          {passwordMode === "create" ? (
+            <p className="login-progress-note">This is a one-time step. Your browser can remember the password for you.</p>
+          ) : null}
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          <button type="submit" disabled={busy}>{buttonLabel}</button>
         </form>
       </section>
     </main>
