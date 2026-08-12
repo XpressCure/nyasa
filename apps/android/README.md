@@ -35,3 +35,9 @@ apps/android/app/build/outputs/apk/debug/app-debug.apk
 ## Release signing
 
 Do not commit a keystore or passwords. Create one release keystore, store it outside Git, and configure Gradle signing through environment variables before producing the family release APK.
+
+The first signed release is published at:
+
+`https://github.com/XpressCure/nyasa/releases/tag/android-v1.0.0`
+
+Keep the permanent signing key and its recovery details backed up securely. Every future update to the installed app must be signed with the same key.

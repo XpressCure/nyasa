@@ -2,6 +2,7 @@ import {
   ArrowRight,
   BookOpenText,
   CheckCircle2,
+  Download,
   HeartHandshake,
   Home,
   Images,
@@ -18,6 +19,8 @@ import familyHouse from "../assets/family-house.jpeg";
 import familyPhoto from "../assets/family-photo.jpeg";
 import nyasaLogo from "../assets/nyasa-logo.png";
 import { apiGet } from "../lib/api.js";
+
+const androidAppUrl = "https://github.com/XpressCure/nyasa/releases/download/android-v1.0.0/nyas-1.0.0.apk";
 
 const launchItems = [
   {
@@ -383,6 +386,7 @@ export function HomePage() {
           <a href="#kosh">Kosh</a>
           <Link to="/legal">Legal</Link>
           <Link to="/login">Sign in</Link>
+          <a href={androidAppUrl}>Android app</a>
           <Link className="home-primary-link" to="/dashboard">
             Open portal
           </Link>
@@ -408,6 +412,10 @@ export function HomePage() {
             <span>Village Sankalp</span>
           </div>
           <div className="home-actions">
+            <a className="home-cta" href={androidAppUrl}>
+              Download Android app
+              <Download size={18} />
+            </a>
             <Link className="home-cta" to="/login">
               Start profile today
               <ArrowRight size={18} />
@@ -416,6 +424,7 @@ export function HomePage() {
               Open dashboard
             </Link>
           </div>
+          <small className="home-app-note">Android 8 or newer. Download the APK, open it, and allow installation when your phone asks.</small>
         </div>
 
         <div className="family-hero-card" aria-label="Nyasa family photo and portal preview">

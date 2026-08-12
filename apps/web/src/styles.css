@@ -3805,6 +3805,13 @@ button:disabled {
   text-decoration: none;
 }
 
+.home-app-note {
+  color: #68756e;
+  display: block;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
 .transaction-security-callout .secondary-button:hover,
 .transaction-security-callout .secondary-button:focus-visible {
   background: #245c3f;
