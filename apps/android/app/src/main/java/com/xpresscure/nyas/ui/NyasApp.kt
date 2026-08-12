@@ -54,6 +54,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -128,7 +129,8 @@ internal enum class AppRoute(val label: String, val context: String, val icon: I
     Panchang("Calendar", "Family events", Icons.Outlined.CalendarMonth, "/calendar"),
     Parichay("You", "Parichay", Icons.Outlined.Person, "/profile"),
     Tree("Kul Map", "Family tree", Icons.Outlined.AccountBalance, "/family-tree"),
-    Virasat("Virasat", "Family history", Icons.Outlined.AutoStories, null)
+    Virasat("Virasat", "Family history", Icons.Outlined.AutoStories, null),
+    Settings("Settings", "Account & security", Icons.Outlined.Settings, null)
 }
 
 data class AppUiState(
@@ -207,6 +209,13 @@ class NyasViewModel : ViewModel() {
         state = AppUiState(checkingSession = false)
     }
 
+    fun updateSessionToken(store: SessionStore, token: String) {
+        val session = state.session ?: return
+        val updated = session.copy(token = token)
+        store.save(updated)
+        state = state.copy(session = updated)
+    }
+
     private fun friendlyError(error: ApiException): String = when (error.code) {
         "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> "More than one member has this name. Enter your phone number to continue."
         "PASSWORD_SETUP_REQUIRED" -> "Create a simple password for your first sign-in."
@@ -236,6 +245,7 @@ fun NyasApp(deepLink: Uri?) {
                 state = model.state,
                 deepLink = deepLink,
                 onRefresh = model::loadDashboard,
+                onTokenChanged = { model.updateSessionToken(store, it) },
                 onLogout = { model.logout(store) }
             )
         }
@@ -339,7 +349,7 @@ private fun WelcomeAndLogin(
 }
 
 @Composable
-private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, onLogout: () -> Unit) {
+private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, onTokenChanged: (String) -> Unit, onLogout: () -> Unit) {
     var route by rememberSaveable { mutableStateOf(routeFromDeepLink(deepLink)) }
     var moreOpen by rememberSaveable { mutableStateOf(false) }
     var fundingProjectId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -434,6 +444,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         destination == AppRoute.Virasat -> VirasatScreen(session = state.session!!)
                         destination == AppRoute.Panchang -> CalendarScreen(session = state.session!!)
                         destination == AppRoute.Sabha -> SabhaScreen(session = state.session!!)
+                        destination == AppRoute.Settings -> SettingsScreen(state.session!!, onTokenChanged, onLogout)
                         else -> HomeScreen(
                             session = state.session!!,
                             dashboard = state.dashboard,
@@ -475,7 +486,7 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
             }
         }
         Spacer(Modifier.height(18.dp))
-        listOf(AppRoute.Tree, AppRoute.Virasat, AppRoute.Panchang, AppRoute.Sabha).forEach { item ->
+        listOf(AppRoute.Tree, AppRoute.Virasat, AppRoute.Panchang, AppRoute.Sabha, AppRoute.Settings).forEach { item ->
             Surface(onClick = { onRoute(item) }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
                 Row(Modifier.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(item.icon, null)

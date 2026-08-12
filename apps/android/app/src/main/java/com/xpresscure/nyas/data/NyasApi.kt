@@ -48,6 +48,20 @@ class NyasApi {
             )
         }
 
+    suspend fun changePassword(
+        session: NyasSession,
+        currentPassword: String,
+        password: String,
+        confirmPassword: String
+    ): String = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("currentPassword", currentPassword)
+            addProperty("password", password)
+            addProperty("confirmPassword", confirmPassword)
+        }
+        execute("/auth/password/change", "POST", body, session.token).objectAt("data").string("token")
+    }
+
     suspend fun dashboard(session: NyasSession): DashboardData = withContext(Dispatchers.IO) {
         if (session.familyId.isBlank()) return@withContext DashboardData()
         val data = execute("/families/${session.familyId}/dashboard", token = session.token).objectAt("data")

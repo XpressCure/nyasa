@@ -9,12 +9,13 @@ Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp
 - Encrypted on-device session storage backed by Android Keystore
 - Native Darshan with real family, Kosh, and Sankalp data
 - Adaptive bottom navigation on phones and navigation rail on larger screens
-- Role-aware account surface and secure sign-out
+- Role-aware Account & Security surface with password change, preferences, legal links, and secure sign-out
 - Verified `https://nyasa.xpresscure.com` deep links
 - Edge-to-edge and safe-area-aware layouts
 - Stable loading, empty, retry, and error states
-- Native Kul Map with real generation, spouse, and parent-child relationships
+- Native Kul Map with real generation, spouse, and parent-child relationships plus high-resolution image sharing
 - Native Calendar, Sankalp Sabha, Virasat, profile, Kul Map, Kosh, and Sankalp workspace journeys
+- Assigned Sankalp managers can advance stages, add or complete milestones, and publish progress reports
 - First-time members are guided into Parichay before entering the wider family workspace
 
 ## Product navigation
