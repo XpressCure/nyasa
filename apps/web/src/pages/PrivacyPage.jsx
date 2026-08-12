@@ -10,7 +10,7 @@ export function PrivacyPage() {
         <img src={nyasaLogo} alt="Nyas logo" />
         <span>Nyas • Operated by Kumar Saurabh</span>
         <h1>Privacy Policy</h1>
-        <p>Effective and last updated: 6 August 2026</p>
+        <p>Effective and last updated: 12 August 2026</p>
       </header>
 
       <div className="policy-body">
@@ -29,8 +29,8 @@ export function PrivacyPage() {
             only when a member chooses to contribute it for the private family health map.
           </p>
           <p>
-            For Kosh activity, Nyas records payment-provider order and transaction references, amount, status, member wallet entries, Sankalp
-            allocations, corrections, and audit history. Nyas does not store card numbers, UPI PINs, CVV, or internet-banking passwords.
+            For Kosh activity, Nyas records the amount and bank reference declared by a member, optional source-account suffix, wallet entries,
+            Sankalp allocations, reconciliation corrections, and audit history. Nyas does not store UPI PINs or banking passwords.
           </p>
         </section>
         <section>
@@ -41,11 +41,11 @@ export function PrivacyPage() {
           </p>
         </section>
         <section>
-          <h2>4. Sharing and payment providers</h2>
+          <h2>4. Sharing and banking reconciliation</h2>
           <p>
             Family information is available only according to the roles and permissions of the private workspace. Necessary transaction and contact
-            details may be shared with the selected payment provider and banking partners to initiate, verify, reconcile, or refund a payment.
-            Nyas does not sell member data.
+            transaction details are reviewed by authorised Kosh administrators against family bank records for reconciliation and correction.
+            Nyas does not sell member data or send member profile data to a payment gateway.
           </p>
         </section>
         <section>
@@ -74,7 +74,7 @@ export function PrivacyPage() {
           <h2>8. Contact and changes</h2>
           <p>
             Privacy and account requests are handled by the platform operator, Kumar Saurabh, through the authenticated Nyas portal and the formal
-            contact details supplied during membership or payment-provider onboarding. Material policy changes will be published on this page.
+            contact details supplied for the private family workspace. Material policy changes will be published on this page.
           </p>
         </section>
       </div>

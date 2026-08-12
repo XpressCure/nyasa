@@ -11,9 +11,9 @@ export function LegalPage() {
           Back to Nyas
         </Link>
         <img src={nyasaLogo} alt="Nyas logo" />
-        <span>Legal, Membership and Payments</span>
+        <span>Legal, Membership and Kosh</span>
         <h1>Nyas platform information</h1>
-        <p>Clear information for members, payment partners, and service providers.</p>
+        <p>Clear information for members using the private Kul workspace and Kosh.</p>
       </header>
 
       <section className="legal-identity-band">
@@ -51,14 +51,14 @@ export function LegalPage() {
 
         <article>
           <Landmark size={22} />
-          <h2>Membership payments</h2>
+          <h2>Member contributions</h2>
           <p>
-            Online payments are accepted only from authenticated members for their personal Nyas wallet. A member may later allocate an available
-            wallet balance to an approved family Sankalp, subject to the contribution limits shown in the portal.
+            Nyas does not collect money through a payment gateway. An authenticated member sends money directly to the official family bank account
+            or UPI ID and records the same amount in Nyas. The declaration remains subject to bank reconciliation.
           </p>
           <p>
-            A payment is credited only after the payment provider confirms its successful status, INR amount, and transaction identity. Failed,
-            cancelled, or unverified attempts are not credited.
+            A member may allocate available wallet balance to an approved family Sankalp. A Kosh Pramukh may correct a declaration to the amount
+            actually received in the bank account, with an audit record.
           </p>
         </article>
 
@@ -67,11 +67,11 @@ export function LegalPage() {
           <h2>Cancellation, correction and refund requests</h2>
           <p>
             Members should review the amount before authorising payment. A duplicate, mistaken, or unmatched payment can be reported to the Kosh
-            administrators from the authenticated portal. Each request is checked against the provider reference and Nyas ledger.
+            administrators from the authenticated portal. Each request is checked against the bank reference, bank statement, and Nyas ledger.
           </p>
           <p>
-            Where a refund is approved, it will be processed to the original payment method in accordance with the payment provider and banking
-            timelines. Amounts already allocated or committed to an active Sankalp require an additional Kosh review before correction.
+            Any approved bank refund or correction is handled by the Kosh administrators according to banking timelines. Amounts already allocated
+            or committed to an active Sankalp require an additional Kosh review before correction.
           </p>
         </article>
 
@@ -80,8 +80,7 @@ export function LegalPage() {
           <h2>Privacy and account security</h2>
           <p>
             Nyas stores member profile, relationship, event, and transaction records only for operating the private family workspace. Financial
-            actions require password-authenticated access. Payment card, UPI PIN, and banking credentials are entered on the payment provider's
-            secure interface and are not stored by Nyas.
+            actions require password-authenticated access. Nyas never asks for or stores a UPI PIN, card number, CVV, or banking password.
           </p>
           <p>
             Members can request correction of their account or transaction information through the owner or Kosh administrators shown after sign-in.
@@ -95,14 +94,13 @@ export function LegalPage() {
           <strong>Kumar Saurabh</strong>
         </div>
         <p>
-          Member support, payment matching, and correction requests are handled through the authenticated Nyas portal. Formal contact information
-          submitted during payment-provider onboarding applies to this website and operator.
+          Member support, bank matching, and correction requests are handled through the authenticated Nyas portal by the owner and Kosh Pramukh.
         </p>
         <Link to="/login">Open member sign in</Link>
       </section>
 
       <footer className="legal-page-footer">
-        <span>Last updated: 6 August 2026</span>
+        <span>Last updated: 12 August 2026</span>
         <nav>
           <Link to="/privacy">Privacy Policy</Link>
           <Link to="/terms">Terms & Conditions</Link>

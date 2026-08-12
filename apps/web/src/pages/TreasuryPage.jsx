@@ -39,7 +39,7 @@ function getContributionHint(project) {
   return `Your contribution: ${formatMoney(policy.memberAllocatedRupees)}. You can add up to ${formatMoney(policy.maxRupees)} more. ${contributorText}`;
 }
 
-export function TreasuryPage() {
+export function TreasuryPage({ simple = false }) {
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsRange, setAnalyticsRange] = useState("3m");
@@ -70,8 +70,8 @@ export function TreasuryPage() {
       .catch((error) => setMessage(error.message));
     loadTreasury();
     loadProjects();
-    loadKoshAnalytics();
-  }, []);
+    if (!simple) loadKoshAnalytics();
+  }, [simple]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -125,7 +125,7 @@ export function TreasuryPage() {
     try {
       const [summaryResponse, transactionResponse] = await Promise.all([
         apiGet(`/treasury/family/${familyId}/summary`),
-        apiGet(`/treasury/family/${familyId}/transactions`)
+        simple ? Promise.resolve({ data: [] }) : apiGet(`/treasury/family/${familyId}/transactions`)
       ]);
       setSummary(summaryResponse.data);
       setTransactions(transactionResponse.data);
@@ -276,9 +276,9 @@ export function TreasuryPage() {
   return (
     <section>
       <PageHeader
-        eyebrow="Kosh"
-        title="Kosh"
-        description="Contribute once, then allocate funds across Kul Sankalp."
+        eyebrow={simple ? "Yogdaan" : "Kosh"}
+        title={simple ? "Add and allot your contribution" : "Kosh"}
+        description={simple ? "A simple path from your bank account to the Sankalp you care about." : "Contribute once, then allocate funds across Kul Sankalp."}
       />
       {message && !notice ? <p className="status-message" role="status">{message}</p> : null}
       {notice ? (
@@ -330,6 +330,13 @@ export function TreasuryPage() {
           </div>
         </div>
       ) : null}
+      {simple ? (
+        <section className="contribution-steps" aria-label="Contribution steps">
+          <div><span>1</span><strong>Send money</strong><small>Use the official QR or UPI link.</small></div>
+          <div><span>2</span><strong>Record it</strong><small>Enter the same amount in Nyas.</small></div>
+          <div><span>3</span><strong>Choose Sankalp</strong><small>Allot any available wallet balance.</small></div>
+        </section>
+      ) : null}
       <section className="wallet-spotlight">
         <div>
           <span>My Kosh Wallet</span>
@@ -349,7 +356,7 @@ export function TreasuryPage() {
           </div>
         </section>
       ) : null}
-      <div className="metric-grid">
+      {!simple ? <div className="metric-grid">
         <article className="metric-card">
           <span>My Wallet Balance</span>
           <strong>{formatMoney(walletBalanceRupees)}</strong>
@@ -362,7 +369,7 @@ export function TreasuryPage() {
           <span>This Year</span>
           <strong>{formatMoney(thisYearRupees)}</strong>
         </article>
-      </div>
+      </div> : null}
 
       {session && !passwordVerified ? (
         <section className="transaction-security-callout" aria-live="polite">
@@ -374,7 +381,7 @@ export function TreasuryPage() {
         </section>
       ) : null}
 
-      <section className="content-band">
+      {!simple ? <section className="content-band">
         <div className="section-heading-row">
           <div>
             <h2>Kosh Darshan</h2>
@@ -434,9 +441,10 @@ export function TreasuryPage() {
             <strong>{formatMoney(analytics?.totalSpent?.amountRupees || 0)}</strong>
           </div>
         </div>
-      </section>
+      </section> : null}
 
       <BankContributionPanel
+        compact={simple}
         notify={notify}
         onLedgerChanged={loadTreasury}
         passwordVerified={passwordVerified}
@@ -511,7 +519,7 @@ export function TreasuryPage() {
         </div>
       </section>
 
-      <section className="content-band spaced-band">
+      {!simple ? <section className="content-band spaced-band">
         <h2>Ledger</h2>
         {transactions.length ? (
           <div className="list-stack">
@@ -562,7 +570,12 @@ export function TreasuryPage() {
         ) : (
           <p>Load Kosh to see ledger transactions.</p>
         )}
-      </section>
+      </section> : (
+        <section className="simple-kosh-footer">
+          <p>Want to see every transaction and Kosh report?</p>
+          <Link className="secondary-button" to="/treasury">Open detailed Kosh</Link>
+        </section>
+      )}
     </section>
   );
 }

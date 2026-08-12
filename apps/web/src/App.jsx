@@ -29,7 +29,7 @@ export function App() {
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/contribute" element={<Navigate to="/treasury" replace />} />
+        <Route path="/contribute" element={<TreasuryPage simple />} />
         <Route path="/family" element={<FamilyPage />} />
         <Route path="/family-tree" element={<FamilyTreePage />} />
         <Route path="/profile" element={<ProfilePage />} />

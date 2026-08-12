@@ -314,7 +314,7 @@ export function DashboardPage() {
             <p className="section-note">A quick money picture for contribution, allocation, implementation, and spending.</p>
           </div>
           <div className="button-row">
-            <Link className="secondary-button" to="/treasury">
+            <Link className="secondary-button" to="/contribute">
               Add or Allocate Kosh
             </Link>
             <Link className="secondary-button" to="/projects">

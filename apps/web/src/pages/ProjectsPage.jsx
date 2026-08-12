@@ -682,7 +682,7 @@ export function ProjectsPage() {
               You can see all Sankalp, rules, team, funding status, milestones, progress reports, and submitted bills. To support a
               Sankalp, add money in Kosh and allocate your wallet balance.
             </p>
-            <Link className="secondary-button" to="/treasury">
+            <Link className="secondary-button" to="/contribute">
               Open Kosh
             </Link>
           </div>

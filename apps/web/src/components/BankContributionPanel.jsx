@@ -18,7 +18,34 @@ function newDeclarationToken() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function BankContributionPanel({ onLedgerChanged, passwordVerified, notify }) {
+const smallNumbers = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const tensNumbers = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+function belowThousand(value) {
+  if (value < 20) return smallNumbers[value];
+  if (value < 100) return `${tensNumbers[Math.floor(value / 10)]}${value % 10 ? ` ${smallNumbers[value % 10]}` : ""}`;
+  return `${smallNumbers[Math.floor(value / 100)]} Hundred${value % 100 ? ` ${belowThousand(value % 100)}` : ""}`;
+}
+
+function amountInIndianWords(amount) {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount < 0) return "Enter a valid amount";
+  let remaining = Math.floor(numericAmount);
+  if (remaining === 0) return "Zero Rupees Only";
+  const parts = [];
+  const groups = [[10000000, "Crore"], [100000, "Lakh"], [1000, "Thousand"]];
+  groups.forEach(([size, label]) => {
+    const groupValue = Math.floor(remaining / size);
+    if (groupValue) {
+      parts.push(`${belowThousand(groupValue)} ${label}`);
+      remaining %= size;
+    }
+  });
+  if (remaining) parts.push(belowThousand(remaining));
+  return `${parts.join(" ")} Rupees Only`;
+}
+
+export function BankContributionPanel({ compact = false, onLedgerChanged, passwordVerified, notify }) {
   const [config, setConfig] = useState(null);
   const [declarations, setDeclarations] = useState([]);
   const [amountRupees, setAmountRupees] = useState("2000");
@@ -29,6 +56,7 @@ export function BankContributionPanel({ onLedgerChanged, passwordVerified, notif
   const [attested, setAttested] = useState(false);
   const [declarationToken, setDeclarationToken] = useState(newDeclarationToken);
   const [busy, setBusy] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const familyId = localStorage.getItem("nyasa_family_id");
 
   const upiLink = useMemo(() => {
@@ -61,12 +89,17 @@ export function BankContributionPanel({ onLedgerChanged, passwordVerified, notif
     }
   }
 
-  async function recordDeclaration(event) {
+  function reviewDeclaration(event) {
     event.preventDefault();
     if (!attested) {
       notify("warning", "Confirmation needed", "Please confirm that this amount has actually been transferred to the Nyas bank account.");
       return;
     }
+    setReviewing(true);
+  }
+
+  async function recordDeclaration() {
+    setReviewing(false);
     setBusy(true);
     try {
       const response = await apiPost(`/bank-contributions/family/${familyId}/declarations`, {
@@ -107,8 +140,8 @@ export function BankContributionPanel({ onLedgerChanged, passwordVerified, notif
       <div className="section-heading-row">
         <div>
           <span className="section-kicker">विश्वास आधारित योगदान</span>
-          <h2>Bank se apne Kosh Wallet mein jodein</h2>
-          <p className="section-note">पहले QR, UPI या bank details से राशि भेजें। फिर वही राशि नीचे दर्ज करें; वह तुरंत आपके wallet में जुड़ जाएगी।</p>
+          <h2>Bank से अपने Kosh Wallet में जोड़ें</h2>
+          <p className="section-note">QR या UPI से राशि भेजें, फिर वही राशि नीचे दर्ज करें।</p>
         </div>
         <span className="trust-badge">Kul trust system</span>
       </div>
@@ -134,13 +167,24 @@ export function BankContributionPanel({ onLedgerChanged, passwordVerified, notif
         </div>
 
         {passwordVerified ? (
-          <form className="self-declaration-form" onSubmit={recordDeclaration}>
+          <form className="self-declaration-form" onSubmit={reviewDeclaration}>
             <h3>I have transferred this amount</h3>
             <label>Amount transferred<input type="number" min={config.minimumAmountRupees} value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} required /></label>
             <label>Date and time<input type="datetime-local" max={localDateTimeValue()} value={paidAt} onChange={(event) => setPaidAt(event.target.value)} required /></label>
-            <label>UTR / transaction reference <span>(recommended)</span><input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Helps identify the bank entry" /></label>
-            <label>Sending account last 4 digits <span>(optional)</span><input inputMode="numeric" maxLength="4" pattern="[0-9]{4}" value={sourceAccountLast4} onChange={(event) => setSourceAccountLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="1234" /></label>
-            <label>Note <span>(optional)</span><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Bank, transfer note, or context" /></label>
+            {compact ? (
+              <details className="optional-contribution-details">
+                <summary>Add payment reference (optional)</summary>
+                <label>UTR / transaction reference<input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Helps match the bank entry" /></label>
+                <label>Sending account last 4 digits<input inputMode="numeric" maxLength="4" pattern="[0-9]{4}" value={sourceAccountLast4} onChange={(event) => setSourceAccountLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="1234" /></label>
+                <label>Note<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Bank or transfer note" /></label>
+              </details>
+            ) : (
+              <>
+                <label>UTR / transaction reference <span>(recommended)</span><input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Helps identify the bank entry" /></label>
+                <label>Sending account last 4 digits <span>(optional)</span><input inputMode="numeric" maxLength="4" pattern="[0-9]{4}" value={sourceAccountLast4} onChange={(event) => setSourceAccountLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="1234" /></label>
+                <label>Note <span>(optional)</span><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Bank, transfer note, or context" /></label>
+              </>
+            )}
             <label className="attestation-check"><input type="checkbox" checked={attested} onChange={(event) => setAttested(event.target.checked)} /><span>I confirm that I have transferred this amount to the Nyas account and entered it correctly.</span></label>
             <button type="submit" disabled={busy || !attested}>{busy ? "Recording..." : "Add to my Kosh Wallet"}</button>
             <small>Minimum contribution: {formatMoney(config.minimumAmountRupees)}. Kosh Pramukh will later match this declaration with the bank statement.</small>
@@ -148,7 +192,17 @@ export function BankContributionPanel({ onLedgerChanged, passwordVerified, notif
         ) : <div className="bank-security-note"><strong>Secure your account first</strong><span>Set or verify your password in Parichay before recording real money.</span></div>}
       </div>
 
-      {declarations.length ? (
+      {declarations.length ? (compact ? (
+        <details className="declaration-history declaration-history-collapsed">
+          <summary>View my recent contributions ({declarations.length})</summary>
+          {declarations.slice(0, 5).map((item) => (
+            <article key={item.id}>
+              <div><strong>{formatMoney(item.amountRupees)}</strong><span>{formatDate(item.paidAt)}</span></div>
+              <div><span>{item.utr ? `UTR ${item.utr}` : item.paymentReference}</span><em className={item.reconciliationStatus}>{item.reconciliationStatus.replaceAll("_", " ")}</em></div>
+            </article>
+          ))}
+        </details>
+      ) : (
         <div className="declaration-history">
           <h3>My recent declarations</h3>
           {declarations.slice(0, 8).map((item) => (
@@ -157,6 +211,28 @@ export function BankContributionPanel({ onLedgerChanged, passwordVerified, notif
               <div><span>{item.utr ? `UTR ${item.utr}` : item.paymentReference}</span><em className={item.reconciliationStatus}>{item.reconciliationStatus.replaceAll("_", " ")}</em></div>
             </article>
           ))}
+        </div>
+      )) : null}
+
+      {reviewing ? (
+        <div className="contribution-review-overlay" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setReviewing(false);
+        }}>
+          <section className="contribution-review-dialog" role="alertdialog" aria-modal="true" aria-labelledby="contribution-review-title">
+            <span className="section-kicker">Please check carefully</span>
+            <h2 id="contribution-review-title">Is this amount correct?</h2>
+            <strong className="contribution-review-amount">{formatMoney(Number(amountRupees || 0))}</strong>
+            <p className="contribution-review-words">{amountInIndianWords(amountRupees)}</p>
+            <dl>
+              <div><dt>Transferred on</dt><dd>{formatDate(paidAt)}</dd></div>
+              {utr ? <div><dt>Reference</dt><dd>{utr}</dd></div> : null}
+            </dl>
+            <p className="contribution-review-warning">This amount will be added to your Kosh Wallet immediately and later matched with the bank statement.</p>
+            <div className="contribution-review-actions">
+              <button type="button" className="secondary-button" onClick={() => setReviewing(false)}>Go back and edit</button>
+              <button type="button" onClick={recordDeclaration} disabled={busy}>{busy ? "Recording..." : "Yes, record this amount"}</button>
+            </div>
+          </section>
         </div>
       ) : null}
     </section>

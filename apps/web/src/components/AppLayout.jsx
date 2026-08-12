@@ -14,7 +14,7 @@ const navSections = [
       { to: "/calendar", label: "Panchang", icon: CalendarDays },
       { to: "/family", label: "Kul", icon: Users },
       { to: "/profile", label: "Parichay", icon: UserCircle },
-      { to: "/treasury", label: "Kosh", icon: Landmark },
+      { to: "/contribute", label: "Kosh", icon: Landmark },
       { to: "/kosh-reconciliation", label: "Kosh Milan", icon: ClipboardCheck, permission: "treasury.view_ledger" },
       { to: "/projects", label: "Sankalp", icon: GitBranch },
       { to: "/sankalp-sabha", label: "Sankalp Sabha", icon: Users },
