@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout.jsx";
+import { RequireAuth } from "./components/RequireAuth.jsx";
 import { CalendarPage } from "./pages/CalendarPage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { FamilyPage } from "./pages/FamilyPage.jsx";
@@ -26,18 +27,20 @@ export function App() {
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/invite/:token" element={<InviteAcceptPage />} />
-      <Route element={<AppLayout />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/contribute" element={<TreasuryPage simple />} />
-        <Route path="/family" element={<FamilyPage />} />
-        <Route path="/family-tree" element={<FamilyTreePage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/members" element={<MembersPage />} />
-        <Route path="/treasury" element={<TreasuryPage />} />
-        <Route path="/kosh-reconciliation" element={<KoshReconciliationPage />} />
-        <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/sankalp-sabha" element={<SankalpSabhaPage />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/contribute" element={<TreasuryPage simple />} />
+          <Route path="/family" element={<FamilyPage />} />
+          <Route path="/family-tree" element={<FamilyTreePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/members" element={<MembersPage />} />
+          <Route path="/treasury" element={<TreasuryPage />} />
+          <Route path="/kosh-reconciliation" element={<KoshReconciliationPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/sankalp-sabha" element={<SankalpSabhaPage />} />
+        </Route>
       </Route>
     </Routes>
   );
