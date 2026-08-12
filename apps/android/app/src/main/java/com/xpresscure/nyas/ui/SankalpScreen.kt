@@ -89,15 +89,15 @@ fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit, onOpenWorkspac
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("हमारे साझा संकल्प", style = MaterialTheme.typography.headlineSmall)
-                    Text("हर विचार से पूर्णता तक की पारदर्शी यात्रा", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Family Sankalp", style = MaterialTheme.typography.headlineSmall)
+                    Text("Shared projects, visible from idea to completion", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh") }
             }
         }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf("all" to "सभी", "funding" to "सहयोग", "work" to "कार्य जारी", "complete" to "पूर्ण")) { item ->
+                items(listOf("all" to "All", "funding" to "Needs funding", "work" to "In progress", "complete" to "Completed")) { item ->
                     AssistChip(onClick = { filter = item.first }, label = { Text(item.second, fontWeight = if (filter == item.first) FontWeight.Bold else FontWeight.Normal) }, leadingIcon = if (filter == item.first) ({ Icon(Icons.Outlined.Route, null, Modifier.size(18.dp)) }) else null)
                 }
             }
@@ -106,19 +106,19 @@ fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit, onOpenWorkspac
         if (error.isNotBlank()) item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(error, Modifier.weight(1f)); TextButton(onClick = { refresh() }) { Text("फिर कोशिश") }
+                    Text(error, Modifier.weight(1f)); TextButton(onClick = { refresh() }) { Text("Try again") }
                 }
             }
         }
         if (!loading && visible.isEmpty()) item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                Text("इस श्रेणी में अभी कोई संकल्प नहीं है।", Modifier.fillMaxWidth().padding(20.dp))
+                Text("No Sankalp in this category yet.", Modifier.fillMaxWidth().padding(20.dp))
             }
         }
         items(visible, key = { it.id }) { project -> SankalpCard(project) { selected = project } }
         item {
             OutlinedButton(onClick = onOpenWorkspace, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                Text("पूर्ण Sankalp workspace खोलें")
+                Text("Open full Sankalp workspace")
             }
         }
     }
@@ -153,13 +153,13 @@ private fun SankalpCard(project: Sankalp, onClick: () -> Unit) {
                     Spacer(Modifier.weight(1f))
                     Text("${money.format(project.allocatedPaise / 100.0)} / ${money.format(project.targetPaise / 100.0)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            } else Text("यह ज्ञान/सेवा संकल्प धन पर निर्भर नहीं है।", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else Text("This Sankalp does not require funding.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Groups, null, Modifier.size(18.dp), tint = Gold)
                 Spacer(Modifier.size(6.dp))
-                Text("${project.contributorCount} परिवारजन सहभागी", style = MaterialTheme.typography.bodySmall)
+                Text("${project.contributorCount} contributors", style = MaterialTheme.typography.bodySmall)
                 if (project.myAllocatedPaise > 0) {
-                    Spacer(Modifier.weight(1f)); Text("आप सहभागी हैं", color = Leaf, style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.weight(1f)); Text("You contributed", color = Leaf, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -174,16 +174,16 @@ private fun SankalpDetails(project: Sankalp, onDismiss: () -> Unit, onFund: () -
             Text(stageLabel(project.stage), color = Leaf, style = MaterialTheme.typography.labelLarge)
             Text(project.title, style = MaterialTheme.typography.headlineSmall)
             Text(project.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (project.projectLeadName.isNotBlank()) Text("संकल्प प्रमुख: ${project.projectLeadName}", fontWeight = FontWeight.SemiBold)
+            if (project.projectLeadName.isNotBlank()) Text("Led by ${project.projectLeadName}", fontWeight = FontWeight.SemiBold)
             if (project.budgetRequired) {
                 LinearProgressIndicator(progress = { project.fundingPercent / 100f }, Modifier.fillMaxWidth().height(10.dp).clip(CircleShape), color = Gold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column { Text("प्राप्त"); Text(money.format(project.allocatedPaise / 100.0), style = MaterialTheme.typography.titleMedium) }
-                    Column(horizontalAlignment = Alignment.End) { Text("लक्ष्य"); Text(money.format(project.targetPaise / 100.0), style = MaterialTheme.typography.titleMedium) }
+                    Column { Text("Raised"); Text(money.format(project.allocatedPaise / 100.0), style = MaterialTheme.typography.titleMedium) }
+                    Column(horizontalAlignment = Alignment.End) { Text("Target"); Text(money.format(project.targetPaise / 100.0), style = MaterialTheme.typography.titleMedium) }
                 }
-                if (!project.fullyFunded) Button(onClick = onFund, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) { Text("Kosh से सहयोग दें") }
+                if (!project.fullyFunded) Button(onClick = onFund, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) { Text("Contribute from Kosh") }
             }
-            OutlinedButton(onClick = onWorkspace, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) { Text("प्रगति और दस्तावेज़ देखें") }
+            OutlinedButton(onClick = onWorkspace, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) { Text("View progress and documents") }
         }
     }
 }

@@ -75,14 +75,14 @@ fun VirasatScreen(session: NyasSession) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text("Kul Virasat", style = MaterialTheme.typography.headlineSmall); Text("पीढ़ियों की स्मृतियाँ, समय के क्रम में", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Column(Modifier.weight(1f)) { Text("Virasat", style = MaterialTheme.typography.headlineSmall); Text("Family memories in chronological order", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh") }
                 IconButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, "Add history") }
             }
         }
         if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Gold) }
         if (error.isNotBlank()) item { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) { Text(error, Modifier.padding(14.dp)) } }
-        if (!loading && events.isEmpty()) item { Text("पहली पारिवारिक स्मृति जोड़ें।", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 30.dp)) }
+        if (!loading && events.isEmpty()) item { Text("Add the first family memory.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 30.dp)) }
         items(events, key = { it.id }) { event -> TimelineEvent(event) }
     }
     if (adding) AddVirasatDialog(
@@ -115,7 +115,7 @@ private fun TimelineEvent(event: VirasatEvent) {
                 Text(event.title, style = MaterialTheme.typography.titleMedium)
                 if (event.description.isNotBlank()) Text(event.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (event.location.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.LocationOn, null, Modifier.size(16.dp)); Spacer(Modifier.size(4.dp)); Text(event.location, style = MaterialTheme.typography.bodySmall) }
-                if (event.automatic) Text("Parichay से स्वतः जुड़ा", style = MaterialTheme.typography.labelSmall, color = Leaf)
+                if (event.automatic) Text("Added automatically from a profile", style = MaterialTheme.typography.labelSmall, color = Leaf)
             }
         }
     }
@@ -127,17 +127,17 @@ private fun AddVirasatDialog(busy: Boolean, onDismiss: () -> Unit, onAdd: (Strin
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Outlined.AutoStories, null, tint = Gold) },
-        title = { Text("Virasat में स्मृति जोड़ें") },
+        title = { Text("Add to Virasat") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedTextField(title, { title = it }, label = { Text("घटना / स्मृति") }, singleLine = true)
-            OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, label = { Text("वर्ष") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-            OutlinedTextField(location, { location = it }, label = { Text("स्थान (वैकल्पिक)") }, singleLine = true)
-            OutlinedTextField(description, { description = it }, label = { Text("विवरण") }, minLines = 3)
+            OutlinedTextField(title, { title = it }, label = { Text("Event or memory") }, singleLine = true)
+            OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, label = { Text("Year") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
+            OutlinedTextField(location, { location = it }, label = { Text("Location (optional)") }, singleLine = true)
+            OutlinedTextField(description, { description = it }, label = { Text("What happened?") }, minLines = 3)
         } },
-        confirmButton = { Button(onClick = { onAdd(title, year.toIntOrNull() ?: Year.now().value, "family", location, description) }, enabled = !busy && title.trim().length >= 2 && (year.toIntOrNull() ?: 0) in 1600..2200) { if (busy) CircularProgressIndicator(Modifier.size(18.dp)) else Text("जोड़ें") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("अभी नहीं") } },
+        confirmButton = { Button(onClick = { onAdd(title, year.toIntOrNull() ?: Year.now().value, "family", location, description) }, enabled = !busy && title.trim().length >= 2 && (year.toIntOrNull() ?: 0) in 1600..2200) { if (busy) CircularProgressIndicator(Modifier.size(18.dp)) else Text("Add memory") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         shape = RoundedCornerShape(8.dp)
     )
 }
 
-private fun categoryLabel(category: String): String = when (category) { "village" -> "गाँव"; "education" -> "शिक्षा"; "migration" -> "प्रवास"; "property" -> "संपत्ति"; "spiritual" -> "आध्यात्म"; "achievement" -> "उपलब्धि"; "memory" -> "स्मृति"; else -> "परिवार" }
+private fun categoryLabel(category: String): String = when (category) { "village" -> "Village"; "education" -> "Education"; "migration" -> "Migration"; "property" -> "Property"; "spiritual" -> "Spiritual"; "achievement" -> "Achievement"; "memory" -> "Memory"; else -> "Family" }

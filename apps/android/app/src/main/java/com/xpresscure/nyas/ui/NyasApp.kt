@@ -131,17 +131,17 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
-private enum class AppRoute(val label: String, val hindi: String, val icon: ImageVector, val webPath: String?) {
-    Darshan("Darshan", "दर्शन", Icons.Outlined.Home, null),
-    Kul("Kul", "कुल", Icons.Outlined.FamilyRestroom, "/family"),
-    Kosh("Kosh", "कोष", Icons.Outlined.Savings, "/contribute"),
-    Sankalp("Sankalp", "संकल्प", Icons.Outlined.Route, "/projects"),
-    More("More", "और", Icons.Outlined.Menu, null),
-    Sabha("Sankalp Sabha", "संकल्प सभा", Icons.Outlined.HowToVote, "/sankalp-sabha"),
-    Panchang("Calendar", "पंचांग", Icons.Outlined.CalendarMonth, "/calendar"),
-    Parichay("Profile", "परिचय", Icons.Outlined.Person, "/profile"),
-    Tree("Kul Map", "कुल मानचित्र", Icons.Outlined.AccountBalance, "/family-tree"),
-    Virasat("Virasat", "विरासत", Icons.Outlined.AutoStories, null)
+private enum class AppRoute(val label: String, val context: String, val icon: ImageVector, val webPath: String?) {
+    Darshan("Home", "Darshan", Icons.Outlined.Home, null),
+    Kul("Family", "Kul", Icons.Outlined.FamilyRestroom, "/family"),
+    Kosh("Kosh", "Family funds", Icons.Outlined.Savings, "/contribute"),
+    Sankalp("Sankalp", "Shared projects", Icons.Outlined.Route, "/projects"),
+    More("More", "More", Icons.Outlined.Menu, null),
+    Sabha("Sankalp Sabha", "Proposals & voting", Icons.Outlined.HowToVote, "/sankalp-sabha"),
+    Panchang("Calendar", "Family events", Icons.Outlined.CalendarMonth, "/calendar"),
+    Parichay("You", "Parichay", Icons.Outlined.Person, "/profile"),
+    Tree("Kul Map", "Family tree", Icons.Outlined.AccountBalance, "/family-tree"),
+    Virasat("Virasat", "Family history", Icons.Outlined.AutoStories, null)
 }
 
 data class AppUiState(
@@ -169,7 +169,7 @@ class NyasViewModel : ViewModel() {
 
     fun signIn(store: SessionStore, name: String, phone: String, password: String, confirmPassword: String) {
         if (name.trim().length < 2) {
-            state = state.copy(loginError = "अपना पूरा नाम लिखें।")
+            state = state.copy(loginError = "Enter your full name.")
             return
         }
         viewModelScope.launch {
@@ -188,7 +188,7 @@ class NyasViewModel : ViewModel() {
                 }
                 state = state.copy(signingIn = false, loginChallenge = challenge, loginError = friendlyError(error))
             } catch (_: Exception) {
-                state = state.copy(signingIn = false, loginError = "Nyas से संपर्क नहीं हो पाया। इंटरनेट जाँचकर फिर कोशिश करें।")
+                state = state.copy(signingIn = false, loginError = "Could not reach Nyas. Check your connection and try again.")
             }
         }
     }
@@ -200,7 +200,7 @@ class NyasViewModel : ViewModel() {
             try {
                 state = state.copy(dashboard = api.dashboard(session), loadingDashboard = false)
             } catch (_: Exception) {
-                state = state.copy(loadingDashboard = false, dashboardError = "नई जानकारी अभी नहीं मिली।")
+                state = state.copy(loadingDashboard = false, dashboardError = "Latest information is unavailable right now.")
             }
         }
     }
@@ -211,12 +211,12 @@ class NyasViewModel : ViewModel() {
     }
 
     private fun friendlyError(error: ApiException): String = when (error.code) {
-        "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> "इस नाम के एक से अधिक सदस्य मिले। पहचान के लिए फोन नंबर लिखें।"
-        "PASSWORD_SETUP_REQUIRED" -> "पहली बार के लिए एक आसान पासवर्ड बनाएँ।"
-        "PASSWORD_REQUIRED" -> "अपने Nyas खाते का पासवर्ड लिखें।"
-        "INVALID_CREDENTIALS" -> "नाम, फोन या पासवर्ड सही नहीं है।"
-        "LOGIN_TEMPORARILY_LOCKED" -> "कई प्रयास हुए हैं। थोड़ी देर बाद फिर कोशिश करें।"
-        else -> error.message ?: "फिर कोशिश करें।"
+        "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> "More than one member has this name. Enter your phone number to continue."
+        "PASSWORD_SETUP_REQUIRED" -> "Create a simple password for your first sign-in."
+        "PASSWORD_REQUIRED" -> "Enter your Nyas password."
+        "INVALID_CREDENTIALS" -> "The name, phone number, or password is incorrect."
+        "LOGIN_TEMPORARILY_LOCKED" -> "Too many attempts. Please try again in a few minutes."
+        else -> error.message ?: "Please try again."
     }
 }
 
@@ -257,8 +257,8 @@ private fun LaunchScreen() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Image(painterResource(R.drawable.nyas_logo), "Nyas", Modifier.size(116.dp).scale(pulse).clip(CircleShape))
             Spacer(Modifier.height(24.dp))
-            Text("न्यास", color = Color.White, style = MaterialTheme.typography.displaySmall)
-            Text("विश्वास • विरासत • भविष्य", color = Gold, style = MaterialTheme.typography.bodyLarge)
+            Text("NYAS", color = Color.White, style = MaterialTheme.typography.displaySmall)
+            Text("Family  |  Trust  |  Future", color = Gold, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -295,27 +295,27 @@ private fun WelcomeAndLogin(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Image(painterResource(R.drawable.nyas_logo), "Nyas logo", Modifier.size(92.dp).clip(CircleShape))
                     Spacer(Modifier.height(16.dp))
-                    Text("अपने परिवार से जुड़ें", color = Color.White, style = MaterialTheme.typography.headlineLarge)
-                    Text("Connect. Remember. Build together.", color = Color(0xFFDDE8E0), style = MaterialTheme.typography.bodyLarge)
+                    Text("Welcome to Nyas", color = Color.White, style = MaterialTheme.typography.headlineLarge)
+                    Text("Your family, connected.", color = Color(0xFFDDE8E0), style = MaterialTheme.typography.bodyLarge)
                     Spacer(Modifier.height(24.dp))
                 }
             }
             item {
                 Card(shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text(if (needsPassword) "सुरक्षित प्रवेश" else "अपना नाम लिखें", style = MaterialTheme.typography.titleLarge)
+                        Text(if (needsPassword) "Secure sign in" else "Find your family profile", style = MaterialTheme.typography.titleLarge)
                         Text(
-                            if (needsPassword) "आपकी निजी और कोष की जानकारी सुरक्षित रहेगी।" else "यदि नाम एक जैसा हुआ, तभी हम फोन नंबर पूछेंगे।",
+                            if (needsPassword) "Your private profile and Kosh information stay protected." else "Start with your name. We ask for a phone number only when needed.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        OutlinedTextField(name, { name = it }, label = { Text("पूरा नाम") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(name, { name = it }, label = { Text("Full name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         AnimatedVisibility(needsPhone || needsPassword) {
-                            OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10) }, label = { Text("फोन नंबर") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10) }, label = { Text("Phone number") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
                         AnimatedVisibility(needsPassword) {
                             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                OutlinedTextField(password, { password = it }, label = { Text(if (isSetup) "नया पासवर्ड" else "पासवर्ड") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-                                if (isSetup) OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("पासवर्ड दोबारा लिखें") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+                                OutlinedTextField(password, { password = it }, label = { Text(if (isSetup) "Create password" else "Password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+                                if (isSetup) OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
                             }
                         }
                         AnimatedVisibility(state.loginError.isNotBlank()) {
@@ -329,7 +329,7 @@ private fun WelcomeAndLogin(
                         ) {
                             if (state.signingIn) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
                             else {
-                                Text(if (isSetup) "पासवर्ड बनाएँ और प्रवेश करें" else "आगे बढ़ें")
+                                Text(if (isSetup) "Create password" else "Continue")
                                 Spacer(Modifier.width(8.dp))
                                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                             }
@@ -348,7 +348,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
     var legacyRoute by rememberSaveable { mutableStateOf<AppRoute?>(null) }
     var fundingProjectId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbars = remember { SnackbarHostState() }
-    val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Kosh, AppRoute.Sankalp, AppRoute.More)
+    val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Sankalp, AppRoute.Kosh, AppRoute.Parichay)
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val tablet = maxWidth >= 720.dp
@@ -361,9 +361,9 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                     primaryRoutes.forEach { item ->
                         NavigationRailItem(
                             selected = route == item,
-                            onClick = { if (item == AppRoute.More) moreOpen = true else { route = item; legacyRoute = null } },
+                            onClick = { route = item; legacyRoute = null },
                             icon = { Icon(item.icon, item.label) },
-                            label = { Text(item.hindi) }
+                            label = { Text(item.label) }
                         )
                     }
                 }
@@ -380,7 +380,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         },
                         title = {
                             Column {
-                                Text(route.hindi, style = MaterialTheme.typography.titleLarge)
+                                Text(route.label, style = MaterialTheme.typography.titleLarge)
                                 Text(state.session?.familyName.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         },
@@ -396,9 +396,9 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         primaryRoutes.forEach { item ->
                             NavigationBarItem(
                                 selected = route == item,
-                                onClick = { if (item == AppRoute.More) moreOpen = true else { route = item; legacyRoute = null } },
+                                onClick = { route = item; legacyRoute = null },
                                 icon = { Icon(item.icon, item.label) },
-                                label = { Text(item.hindi, maxLines = 1) }
+                                label = { Text(item.label, maxLines = 1) }
                             )
                         }
                     }
@@ -412,8 +412,8 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         destination == AppRoute.Darshan -> DarshanScreen(state, onNavigate = { route = it; legacyRoute = null }, onRefresh = onRefresh)
                         destination == AppRoute.Kul -> KulScreen(
                             session = state.session!!,
-                            onOpenMap = { route = AppRoute.Tree; legacyRoute = AppRoute.Tree },
-                            onOpenRegister = { legacyRoute = AppRoute.Kul }
+                            onOpenMap = { route = AppRoute.Tree; legacyRoute = null },
+                            onOpenVirasat = { route = AppRoute.Virasat; legacyRoute = null }
                         )
                         destination == AppRoute.Kosh -> KoshScreen(
                             session = state.session!!,
@@ -430,6 +430,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                             onManageFamily = { legacyRoute = AppRoute.Parichay },
                             onAdvancedProfile = { legacyRoute = AppRoute.Parichay }
                         )
+                        destination == AppRoute.Tree -> KulMapScreen(session = state.session!!)
                         destination == AppRoute.Virasat -> VirasatScreen(session = state.session!!)
                         else -> LegacyFeatureScreen(destination, state.session!!)
                     }
@@ -465,40 +466,40 @@ private fun DarshanScreen(state: AppUiState, onNavigate: (AppRoute) -> Unit, onR
             ) {
                 Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Forest, Leaf))).padding(20.dp)) {
                     Column {
-                        Text("नमस्ते, ${session.fullName.substringBefore(' ')}", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                        Text("Hello, ${session.fullName.substringBefore(' ')}", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                         Spacer(Modifier.height(6.dp))
-                        Text("आज परिवार के साथ क्या आगे बढ़ाएँ?", color = Color(0xFFDDE8E0), style = MaterialTheme.typography.bodyLarge)
+                        Text("What would you like to do today?", color = Color(0xFFDDE8E0), style = MaterialTheme.typography.bodyLarge)
                         Spacer(Modifier.height(18.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            FilledTonalButton(onClick = { onNavigate(AppRoute.Parichay) }) { Icon(Icons.Outlined.Person, null); Spacer(Modifier.width(6.dp)); Text("परिचय") }
-                            FilledTonalButton(onClick = { onNavigate(AppRoute.Kosh) }) { Icon(Icons.Outlined.AddCircle, null); Spacer(Modifier.width(6.dp)); Text("योगदान") }
+                            FilledTonalButton(onClick = { onNavigate(AppRoute.Parichay) }) { Icon(Icons.Outlined.Person, null); Spacer(Modifier.width(6.dp)); Text("Complete profile") }
+                            FilledTonalButton(onClick = { onNavigate(AppRoute.Kosh) }) { Icon(Icons.Outlined.AddCircle, null); Spacer(Modifier.width(6.dp)); Text("Contribute") }
                         }
                     }
                 }
             }
         }
         item {
-            Text("एक नज़र में", style = MaterialTheme.typography.titleLarge)
+            Text("At a glance", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                MetricCard("सदस्य", state.dashboard.metrics.members.toString(), Icons.Outlined.FamilyRestroom, Modifier.weight(1f))
-                MetricCard("सक्रिय संकल्प", state.dashboard.metrics.activeSankalp.toString(), Icons.Outlined.Route, Modifier.weight(1f))
+                MetricCard("Members", state.dashboard.metrics.members.toString(), Icons.Outlined.FamilyRestroom, Modifier.weight(1f))
+                MetricCard("Active Sankalp", state.dashboard.metrics.activeSankalp.toString(), Icons.Outlined.Route, Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
-            MetricCard("कुल कोष", rupees.format(state.dashboard.metrics.koshPaise / 100.0), Icons.Outlined.Savings, Modifier.fillMaxWidth())
+            MetricCard("Family Kosh", rupees.format(state.dashboard.metrics.koshPaise / 100.0), Icons.Outlined.Savings, Modifier.fillMaxWidth())
         }
         if (state.loadingDashboard) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         if (state.dashboardError.isNotBlank()) item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(state.dashboardError, Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                    TextButton(onClick = onRefresh) { Text("फिर कोशिश") }
+                    TextButton(onClick = onRefresh) { Text("Try again") }
                 }
             }
         }
-        item { Text("संकल्प जिनसे बदलाव आएगा", style = MaterialTheme.typography.titleLarge) }
+        item { Text("Sankalp in focus", style = MaterialTheme.typography.titleLarge) }
         if (!state.loadingDashboard && state.dashboard.featured.isEmpty()) item {
-            EmptyAction("पहला संकल्प परिवार के साथ साझा करें।", "संकल्प देखें") { onNavigate(AppRoute.Sankalp) }
+            EmptyAction("No active Sankalp yet.", "View Sankalp") { onNavigate(AppRoute.Sankalp) }
         }
         items(state.dashboard.featured, key = { it.id }) { sankalp ->
             val progress = if (sankalp.targetPaise > 0) (sankalp.allocatedPaise.toFloat() / sankalp.targetPaise).coerceIn(0f, 1f) else 0f
@@ -521,9 +522,9 @@ private fun DarshanScreen(state: AppUiState, onNavigate: (AppRoute) -> Unit, onR
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), shape = RoundedCornerShape(8.dp)) {
                 Column(Modifier.padding(18.dp)) {
-                    Text("आज का परिवार संकेत", style = MaterialTheme.typography.titleMedium)
+                    Text("A small family action", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
-                    Text("किसी एक बड़े सदस्य को फोन करें और उनकी एक स्मृति Nyas में जोड़ें।")
+                    Text("Call an elder and preserve one family memory in Virasat.")
                 }
             }
         }
@@ -569,12 +570,15 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
             }
         }
         Spacer(Modifier.height(18.dp))
-        listOf(AppRoute.Parichay, AppRoute.Tree, AppRoute.Virasat, AppRoute.Panchang, AppRoute.Sabha).forEach { item ->
+        listOf(AppRoute.Tree, AppRoute.Virasat, AppRoute.Panchang, AppRoute.Sabha).forEach { item ->
             Surface(onClick = { onRoute(item) }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
                 Row(Modifier.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(item.icon, null)
                     Spacer(Modifier.width(16.dp))
-                    Text(item.hindi, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                    Column(Modifier.weight(1f)) {
+                        Text(item.label, style = MaterialTheme.typography.bodyLarge)
+                        Text(item.context, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Icon(Icons.Outlined.ChevronRight, null)
                 }
             }
@@ -583,7 +587,7 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
         TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.AutoMirrored.Outlined.Logout, null)
             Spacer(Modifier.width(8.dp))
-            Text("साइन आउट")
+            Text("Sign out")
         }
     }
 }

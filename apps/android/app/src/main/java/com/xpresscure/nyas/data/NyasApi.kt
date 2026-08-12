@@ -156,6 +156,25 @@ class NyasApi {
         }
     }
 
+    suspend fun familyTree(session: NyasSession): FamilyTreeData = withContext(Dispatchers.IO) {
+        val data = execute("/members/family/${session.familyId}/tree?mode=general", token = session.token).objectAt("data")
+        FamilyTreeData(
+            selfMemberId = data.idString("selfMemberId").ifBlank { session.memberId },
+            members = data.arrayAt("members").mapNotNull {
+                it.takeIf { element -> element.isJsonObject }?.asJsonObject?.let(::parseMember)
+            },
+            links = data.arrayAt("links").mapNotNull { element ->
+                element.takeIf { it.isJsonObject }?.asJsonObject?.let { link ->
+                    FamilyTreeLink(
+                        fromMemberId = link.idString("fromMemberId"),
+                        toMemberId = link.idString("toMemberId"),
+                        relationship = link.string("relationship")
+                    )
+                }
+            }.filter { it.fromMemberId.isNotBlank() && it.toMemberId.isNotBlank() }
+        )
+    }
+
     suspend fun myProfile(session: NyasSession): FamilyMemberProfile = withContext(Dispatchers.IO) {
         parseMember(execute("/members/family/${session.familyId}/me", token = session.token).objectAt("data"))
     }

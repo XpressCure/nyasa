@@ -1,11 +1,11 @@
 # Nyas Android
 
-Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp, and collective decisions. Version 1.1 begins the migration from the original WebView shell to a native Kotlin and Jetpack Compose product.
+Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp, and collective decisions. The app uses English for everyday operation while retaining the few cultural terms that define the product: Nyas, Kul, Sankalp, Kosh, and Virasat.
 
 ## Native foundation
 
 - Kotlin, Jetpack Compose, and Material 3
-- Animated Hindi-first welcome and progressive sign-in
+- Focused welcome and progressive sign-in that asks only for information needed to identify the member
 - Encrypted on-device session storage backed by Android Keystore
 - Native Darshan with real family, Kosh, and Sankalp data
 - Adaptive bottom navigation on phones and navigation rail on larger screens
@@ -13,7 +13,20 @@ Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp
 - Verified `https://nyasa.xpresscure.com` deep links
 - Edge-to-edge and safe-area-aware layouts
 - Stable loading, empty, retry, and error states
-- Existing production journeys remain available through an authenticated compatibility screen while each is migrated to native Compose
+- Native Kul Map with real generation, spouse, and parent-child relationships
+- Existing lower-frequency journeys remain available through an authenticated compatibility screen while they migrate to native Compose
+
+## Product navigation
+
+The primary navigation is deliberately limited to five member jobs:
+
+1. **Home** - understand what matters today and take the next action.
+2. **Family** - find people, open the Kul Map, and explore Virasat.
+3. **Sankalp** - understand shared projects, progress, and funding needs.
+4. **Kosh** - see personal balance clearly, record a contribution, and allocate funds.
+5. **You** - maintain profile, immediate family, and account security.
+
+Calendar, Sankalp Sabha, Virasat, and other occasional tools live under More or inside their natural parent journey. This keeps the phone experience calm without hiding product depth.
 
 ## Native activity map
 
@@ -22,12 +35,12 @@ Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp
 | Darshan | See what matters today and continue an action | Native |
 | Parichay | Maintain identity and immediate family | Native essentials, advanced compatibility form |
 | Kul | Search and browse the member directory | Native |
-| Kul Map | Explore relationships and generations | Separate compatibility activity, native graph planned |
+| Kul Map | Explore relationships and generations | Native interactive graph with pan, zoom, and person details |
 | Virasat | Read and add chronological family memories | Native |
 | Kosh | Record a bank contribution and allocate it | Native guided flow |
 | Sankalp | Follow, fund, and manage family work | Native overview and funding actions |
 | Sankalp Sabha | Propose and vote | Compatibility, native voting planned |
-| Panchang | Celebrations and family events | Compatibility, native calendar planned |
+| Calendar | Celebrations and family events | Compatibility, native calendar planned |
 
 The compatibility layer is temporary but intentional: it keeps every current production feature available while high-frequency journeys become fully native without splitting family data or permissions.
 

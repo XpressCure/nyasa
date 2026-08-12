@@ -122,6 +122,18 @@ data class ImmediateFamily(
     val children: List<FamilyMemberProfile> = emptyList()
 )
 
+data class FamilyTreeLink(
+    val fromMemberId: String,
+    val toMemberId: String,
+    val relationship: String
+)
+
+data class FamilyTreeData(
+    val selfMemberId: String,
+    val members: List<FamilyMemberProfile>,
+    val links: List<FamilyTreeLink>
+)
+
 data class ProfileUpdate(
     val displayName: String,
     val gender: String,

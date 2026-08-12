@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.material.icons.outlined.Refresh
@@ -71,7 +73,7 @@ import java.time.format.DateTimeParseException
 import java.util.Locale
 
 @Composable
-fun KulScreen(session: NyasSession, onOpenMap: () -> Unit, onOpenRegister: () -> Unit) {
+fun KulScreen(session: NyasSession, onOpenMap: () -> Unit, onOpenVirasat: () -> Unit) {
     val api = remember { NyasApi() }
     val scope = rememberCoroutineScope()
     var members by remember { mutableStateOf(emptyList<FamilyMemberProfile>()) }
@@ -110,17 +112,23 @@ fun KulScreen(session: NyasSession, onOpenMap: () -> Unit, onOpenRegister: () ->
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("हमारा Kul", style = MaterialTheme.typography.headlineSmall)
-                    Text("परिवारजन, स्थान, ज्ञान और स्मृतियाँ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Your family", style = MaterialTheme.typography.headlineSmall)
+                    Text("People, relationships and shared memories", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh") }
             }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                KulMetric("परिवारजन", members.count { it.livingStatus != "deceased" }.toString(), Modifier.weight(1f))
-                KulMetric("स्थान", locations.size.toString(), Modifier.weight(1f))
-                KulMetric("स्मृति", members.count { it.livingStatus == "deceased" }.toString(), Modifier.weight(1f))
+                FamilyActivity("Kul Map", "Explore relationships", Icons.Outlined.AccountBalance, onOpenMap, Modifier.weight(1f))
+                FamilyActivity("Virasat", "Family history", Icons.Outlined.AutoStories, onOpenVirasat, Modifier.weight(1f))
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                KulMetric("Members", members.count { it.livingStatus != "deceased" }.toString(), Modifier.weight(1f))
+                KulMetric("Places", locations.size.toString(), Modifier.weight(1f))
+                KulMetric("In memory", members.count { it.livingStatus == "deceased" }.toString(), Modifier.weight(1f))
             }
         }
         item {
@@ -129,14 +137,14 @@ fun KulScreen(session: NyasSession, onOpenMap: () -> Unit, onOpenRegister: () ->
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Outlined.PersonSearch, null) },
-                label = { Text("नाम, शहर या कार्य खोजें") },
+                label = { Text("Search name, city or occupation") },
                 singleLine = true,
                 shape = RoundedCornerShape(8.dp)
             )
         }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf("living" to "जीवित सदस्य", "all" to "सभी", "memory" to "स्मृति", "places" to "स्थान")) { option ->
+                items(listOf("living" to "Members", "all" to "All", "memory" to "In memory", "places" to "With location")) { option ->
                     AssistChip(onClick = { filter = option.first }, label = { Text(option.second, fontWeight = if (filter == option.first) FontWeight.Bold else FontWeight.Normal) })
                 }
             }
@@ -145,12 +153,12 @@ fun KulScreen(session: NyasSession, onOpenMap: () -> Unit, onOpenRegister: () ->
         if (error.isNotBlank()) item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(error, Modifier.weight(1f)); TextButton(onClick = { refresh() }) { Text("फिर कोशिश") }
+                    Text(error, Modifier.weight(1f)); TextButton(onClick = { refresh() }) { Text("Try again") }
                 }
             }
         }
         if (!loading && visible.isEmpty()) item {
-            Text("इस खोज में कोई परिवारजन नहीं मिले।", Modifier.fillMaxWidth().padding(vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("No family members match this search.", Modifier.fillMaxWidth().padding(vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         items(visible, key = { it.id }) { member ->
             Surface(onClick = { selected = member }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
@@ -162,7 +170,7 @@ fun KulScreen(session: NyasSession, onOpenMap: () -> Unit, onOpenRegister: () ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(member.displayName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 if (member.livingStatus == "deceased") {
-                                    Spacer(Modifier.size(8.dp)); Text("स्मृति", color = Gold, style = MaterialTheme.typography.labelSmall)
+                                    Spacer(Modifier.size(8.dp)); Text("IN MEMORY", color = Gold, style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                             Text(memberSubtitle(member), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -173,14 +181,19 @@ fun KulScreen(session: NyasSession, onOpenMap: () -> Unit, onOpenRegister: () ->
                 }
             }
         }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = onOpenMap, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text("Kul Map") }
-                OutlinedButton(onClick = onOpenRegister, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text("पूरा Register") }
-            }
-        }
     }
     selected?.let { MemberDetails(it, session) { selected = null } }
+}
+
+@Composable
+private fun FamilyActivity(label: String, detail: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit, modifier: Modifier) {
+    Card(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, null, tint = Leaf)
+            Text(label, style = MaterialTheme.typography.titleMedium)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable
@@ -209,7 +222,7 @@ private fun KulMetric(label: String, value: String, modifier: Modifier) {
 }
 
 @Composable
-private fun MemberDetails(member: FamilyMemberProfile, session: NyasSession, onDismiss: () -> Unit) {
+internal fun MemberDetails(member: FamilyMemberProfile, session: NyasSession, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
@@ -217,16 +230,16 @@ private fun MemberDetails(member: FamilyMemberProfile, session: NyasSession, onD
                     MemberAvatar(member, session, 72); Spacer(Modifier.size(14.dp))
                     Column {
                         Text(member.displayName, style = MaterialTheme.typography.headlineSmall)
-                        Text(if (member.livingStatus == "deceased") "स्मृति में" else member.relationLabel.ifBlank { roleLabel(member.role) }, color = if (member.livingStatus == "deceased") Gold else Leaf)
+                        Text(if (member.livingStatus == "deceased") "In memory" else member.relationLabel.ifBlank { roleLabel(member.role) }, color = if (member.livingStatus == "deceased") Gold else Leaf)
                     }
                 }
             }
             if (member.bio.isNotBlank()) item { Text(member.bio, style = MaterialTheme.typography.bodyLarge) }
             item {
-                DetailLine(Icons.Outlined.LocationOn, "निवास", listOf(member.placeOfResidence, member.city, member.state, member.country).filter(String::isNotBlank).distinct().joinToString(", ").ifBlank { "जानकारी शेष" })
-                DetailLine(Icons.Outlined.WorkOutline, "कार्य", listOf(member.work.currentRole, member.work.currentPlace, member.profession).filter(String::isNotBlank).distinct().joinToString(" • ").ifBlank { "जानकारी शेष" })
+                DetailLine(Icons.Outlined.LocationOn, "Lives in", listOf(member.placeOfResidence, member.city, member.state, member.country).filter(String::isNotBlank).distinct().joinToString(", ").ifBlank { "Not added" })
+                DetailLine(Icons.Outlined.WorkOutline, "Work", listOf(member.work.currentRole, member.work.currentPlace, member.profession).filter(String::isNotBlank).distinct().joinToString(" • ").ifBlank { "Not added" })
                 val education = listOf(member.postGraduation, member.graduation, member.intermediate).firstOrNull { it.degree.isNotBlank() || it.institution.isNotBlank() }
-                DetailLine(Icons.Outlined.School, "शिक्षा", education?.let { listOf(it.degree, it.institution, it.year?.toString().orEmpty()).filter(String::isNotBlank).joinToString(" • ") } ?: "जानकारी शेष")
+                DetailLine(Icons.Outlined.School, "Education", education?.let { listOf(it.degree, it.institution, it.year?.toString().orEmpty()).filter(String::isNotBlank).joinToString(" • ") } ?: "Not added")
             }
             item {
                 HorizontalDivider(); Spacer(Modifier.height(12.dp))
@@ -244,9 +257,9 @@ private fun DetailLine(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 }
 
 private fun memberSubtitle(member: FamilyMemberProfile): String = member.work.currentRole.ifBlank { member.profession }.ifBlank { member.relationLabel }.ifBlank { roleLabel(member.role) }
-private fun roleLabel(role: String): String = when (role) { "owner" -> "Nyas प्रमुख"; "admin" -> "व्यवस्थापक"; "kosh_pramukh" -> "Kosh प्रमुख"; "project_lead" -> "Sankalp प्रमुख"; else -> "परिवार सदस्य" }
+private fun roleLabel(role: String): String = when (role) { "owner" -> "Nyas owner"; "admin" -> "Administrator"; "kosh_pramukh" -> "Kosh lead"; "project_lead" -> "Sankalp lead"; else -> "Family member" }
 private fun lifeLine(member: FamilyMemberProfile): String {
-    if (member.livingStatus == "deceased") return "स्मरण${member.dateOfDeath.takeIf(String::isNotBlank)?.let { ", ${formatMemberDate(it)}" } ?: member.yearOfDeath?.let { ", $it" }.orEmpty()}"
-    return member.dateOfBirth.takeIf(String::isNotBlank)?.let { "जन्म ${formatMemberDate(it)}" } ?: "जन्म तिथि शेष"
+    if (member.livingStatus == "deceased") return "Remembered${member.dateOfDeath.takeIf(String::isNotBlank)?.let { ", ${formatMemberDate(it)}" } ?: member.yearOfDeath?.let { ", $it" }.orEmpty()}"
+    return member.dateOfBirth.takeIf(String::isNotBlank)?.let { "Born ${formatMemberDate(it)}" } ?: "Date of birth not added"
 }
 internal fun formatMemberDate(value: String): String = try { OffsetDateTime.parse(value).format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale("en", "IN"))) } catch (_: DateTimeParseException) { value.take(10) }

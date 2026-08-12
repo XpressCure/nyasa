@@ -96,16 +96,16 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
             saving = true; error = ""; success = ""
             try {
                 val mime = context.contentResolver.getType(uri).orEmpty()
-                if (mime !in setOf("image/jpeg", "image/png", "image/webp")) throw IllegalArgumentException("JPG, PNG या WebP photo चुनें।")
-                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw IllegalArgumentException("Photo पढ़ा नहीं जा सका।")
-                if (bytes.size > 5 * 1024 * 1024) throw IllegalArgumentException("Photo 5 MB से छोटा रखें।")
+                if (mime !in setOf("image/jpeg", "image/png", "image/webp")) throw IllegalArgumentException("Choose a JPG, PNG or WebP photo.")
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw IllegalArgumentException("The photo could not be read.")
+                if (bytes.size > 5 * 1024 * 1024) throw IllegalArgumentException("Keep the photo under 5 MB.")
                 var name = "parichay-photo.${mime.substringAfter('/')}"
                 context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                     if (cursor.moveToFirst()) name = cursor.getString(0) ?: name
                 }
                 profile = api.uploadProfilePhoto(session, profile!!.id, name, mime, bytes)
-                success = "Photo सुरक्षित हो गया।"
-            } catch (exception: Exception) { error = exception.message ?: "Photo सुरक्षित नहीं हुआ।" }
+                success = "Profile photo updated."
+            } catch (exception: Exception) { error = exception.message ?: "The photo could not be saved." }
             finally { saving = false }
         }
     }
@@ -113,7 +113,7 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text("मेरा Parichay", style = MaterialTheme.typography.headlineSmall); Text("आज जितना जानते हैं, उतना जोड़ें", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Column(Modifier.weight(1f)) { Text("Your profile", style = MaterialTheme.typography.headlineSmall); Text("Keep your family information accurate", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 IconButton(onClick = { load() }) { Icon(Icons.Outlined.Refresh, "Refresh") }
             }
         }
@@ -127,8 +127,8 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
                         MemberAvatar(member, session, 76); Spacer(Modifier.size(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(member.displayName, style = MaterialTheme.typography.titleLarge)
-                            Text(session.phone.ifBlank { "Phone जोड़ना शेष" }, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(member.profession.ifBlank { member.work.currentRole }.ifBlank { "अपना कार्य जोड़ें" }, color = Leaf)
+                            Text(session.phone.ifBlank { "Add phone number" }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(member.profession.ifBlank { member.work.currentRole }.ifBlank { "Add occupation" }, color = Leaf)
                         }
                         IconButton(onClick = { photoPicker.launch("image/*") }, enabled = !saving) { Icon(Icons.Outlined.CameraAlt, "Change photo") }
                     }
@@ -138,15 +138,15 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
                 val completion = profileCompletion(member)
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), shape = RoundedCornerShape(8.dp)) {
                     Column(Modifier.padding(16.dp)) {
-                        Row { Text("Parichay ${completion}% पूरा", fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Text(if (completion >= 80) "बहुत अच्छा" else "थोड़ा और जोड़ें", color = Leaf) }
+                        Row { Text("Profile $completion% complete", fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Text(if (completion >= 80) "Looking good" else "Add a little more", color = Leaf) }
                         Spacer(Modifier.height(10.dp)); LinearProgressIndicator(progress = { completion / 100f }, modifier = Modifier.fillMaxWidth().height(8.dp), color = Gold)
                     }
                 }
             }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("व्यक्तिगत जानकारी", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { editing = !editing }) { Icon(Icons.Outlined.Edit, null); Spacer(Modifier.size(6.dp)); Text(if (editing) "बंद करें" else "बदलें") }
+                    Text("Personal details", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { editing = !editing }) { Icon(Icons.Outlined.Edit, null); Spacer(Modifier.size(6.dp)); Text(if (editing) "Cancel" else "Edit") }
                 }
             }
             item {
@@ -155,7 +155,7 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
                         saving = true; error = ""; success = ""
                         try {
                             profile = api.updateMyProfile(session, form.toUpdate())
-                            success = "Parichay सुरक्षित हो गया।"
+                            success = "Your profile has been saved."
                             editing = false
                         } catch (exception: ApiException) { error = exception.message.orEmpty() }
                         finally { saving = false }
@@ -164,15 +164,15 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
             }
             item {
                 HorizontalDivider(); Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.FamilyRestroom, null, tint = Gold); Spacer(Modifier.size(10.dp)); Text("निकट परिवार", style = MaterialTheme.typography.titleLarge) }
+                Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.FamilyRestroom, null, tint = Gold); Spacer(Modifier.size(10.dp)); Text("Immediate family", style = MaterialTheme.typography.titleLarge) }
             }
             item { ImmediateFamilyStrip(family, session) }
             item {
-                Button(onClick = onManageFamily, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) { Text("माता-पिता, जीवनसाथी और बच्चों को जोड़ें") }
+                Button(onClick = onManageFamily, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) { Text("Manage immediate family") }
             }
             item {
                 OutlinedButton(onClick = onAdvancedProfile, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                    Icon(Icons.Outlined.Lock, null); Spacer(Modifier.size(8.dp)); Text("शिक्षा, स्वास्थ्य और विस्तृत Parichay")
+                    Icon(Icons.Outlined.Lock, null); Spacer(Modifier.size(8.dp)); Text("Education, health and more details")
                 }
             }
         }
@@ -193,26 +193,26 @@ private data class ProfileForm(
 private fun ProfileEditor(form: ProfileForm, onChange: (ProfileForm) -> Unit, saving: Boolean, onSave: () -> Unit) {
     Card(shape = RoundedCornerShape(8.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ProfileField("पूरा नाम", form.displayName) { onChange(form.copy(displayName = it)) }
-            Text("लिंग", style = MaterialTheme.typography.labelLarge)
+            ProfileField("Full name", form.displayName) { onChange(form.copy(displayName = it)) }
+            Text("Gender", style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("male" to "पुरुष", "female" to "महिला", "prefer_not_to_say" to "अन्य").forEach { option -> AssistChip(onClick = { onChange(form.copy(gender = option.first)) }, label = { Text(option.second, fontWeight = if (form.gender == option.first) FontWeight.Bold else FontWeight.Normal) }) }
+                listOf("male" to "Male", "female" to "Female", "prefer_not_to_say" to "Other").forEach { option -> AssistChip(onClick = { onChange(form.copy(gender = option.first)) }, label = { Text(option.second, fontWeight = if (form.gender == option.first) FontWeight.Bold else FontWeight.Normal) }) }
             }
-            ProfileField("जन्म तिथि (YYYY-MM-DD)", form.dateOfBirth) { onChange(form.copy(dateOfBirth = it.take(10))) }
-            ProfileField("निवास / पता", form.placeOfResidence) { onChange(form.copy(placeOfResidence = it)) }
+            ProfileField("Date of birth (YYYY-MM-DD)", form.dateOfBirth) { onChange(form.copy(dateOfBirth = it.take(10))) }
+            ProfileField("Address", form.placeOfResidence) { onChange(form.copy(placeOfResidence = it)) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ProfileField("शहर", form.city, Modifier.weight(1f)) { onChange(form.copy(city = it)) }
-                ProfileField("राज्य", form.state, Modifier.weight(1f)) { onChange(form.copy(state = it)) }
+                ProfileField("City", form.city, Modifier.weight(1f)) { onChange(form.copy(city = it)) }
+                ProfileField("State", form.state, Modifier.weight(1f)) { onChange(form.copy(state = it)) }
             }
-            ProfileField("कार्य / पेशा", form.profession) { onChange(form.copy(profession = it)) }
-            ProfileField("संस्था / कार्यस्थल", form.currentPlace) { onChange(form.copy(currentPlace = it)) }
+            ProfileField("Occupation", form.profession) { onChange(form.copy(profession = it)) }
+            ProfileField("Organisation / workplace", form.currentPlace) { onChange(form.copy(currentPlace = it)) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ProfileField("भूमिका", form.currentRole, Modifier.weight(1f)) { onChange(form.copy(currentRole = it)) }
-                ProfileField("अनुभव वर्ष", form.experienceYears, Modifier.weight(1f), KeyboardType.Number) { onChange(form.copy(experienceYears = it.filter(Char::isDigit).take(2))) }
+                ProfileField("Role", form.currentRole, Modifier.weight(1f)) { onChange(form.copy(currentRole = it)) }
+                ProfileField("Experience", form.experienceYears, Modifier.weight(1f), KeyboardType.Number) { onChange(form.copy(experienceYears = it.filter(Char::isDigit).take(2))) }
             }
-            ProfileField("अपने बारे में", form.bio, singleLine = false) { onChange(form.copy(bio = it)) }
+            ProfileField("About you", form.bio, singleLine = false) { onChange(form.copy(bio = it)) }
             Button(onClick = onSave, enabled = !saving && form.displayName.trim().length >= 2, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) {
-                if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else { Icon(Icons.Outlined.CheckCircle, null); Spacer(Modifier.size(8.dp)); Text("Parichay सुरक्षित करें") }
+                if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else { Icon(Icons.Outlined.CheckCircle, null); Spacer(Modifier.size(8.dp)); Text("Save profile") }
             }
         }
     }
@@ -226,10 +226,10 @@ private fun ProfileField(label: String, value: String, modifier: Modifier = Modi
 @Composable
 private fun ProfileSummary(member: FamilyMemberProfile) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SummaryLine("जन्म", member.dateOfBirth.takeIf(String::isNotBlank)?.let(::formatMemberDate) ?: "जोड़ना शेष")
-        SummaryLine("निवास", listOf(member.placeOfResidence, member.city, member.state).filter(String::isNotBlank).distinct().joinToString(", ").ifBlank { "जोड़ना शेष" })
-        SummaryLine("कार्य", listOf(member.work.currentRole, member.work.currentPlace, member.profession).filter(String::isNotBlank).distinct().joinToString(" • ").ifBlank { "जोड़ना शेष" })
-        if (member.bio.isNotBlank()) SummaryLine("मेरे बारे में", member.bio)
+        SummaryLine("Born", member.dateOfBirth.takeIf(String::isNotBlank)?.let(::formatMemberDate) ?: "Not added")
+        SummaryLine("Lives in", listOf(member.placeOfResidence, member.city, member.state).filter(String::isNotBlank).distinct().joinToString(", ").ifBlank { "Not added" })
+        SummaryLine("Work", listOf(member.work.currentRole, member.work.currentPlace, member.profession).filter(String::isNotBlank).distinct().joinToString(" • ").ifBlank { "Not added" })
+        if (member.bio.isNotBlank()) SummaryLine("About", member.bio)
     }
 }
 
@@ -238,8 +238,8 @@ private fun SummaryLine(label: String, value: String) { Row(Modifier.fillMaxWidt
 
 @Composable
 private fun ImmediateFamilyStrip(family: ImmediateFamily, session: NyasSession) {
-    val people = listOfNotNull(family.father?.let { "पिता" to it }, family.mother?.let { "माता" to it }, family.spouse?.let { "जीवनसाथी" to it }) + family.children.map { "संतान" to it }
-    if (people.isEmpty()) { Text("अभी निकट परिवार नहीं जुड़ा है।", color = MaterialTheme.colorScheme.onSurfaceVariant); return }
+    val people = listOfNotNull(family.father?.let { "Father" to it }, family.mother?.let { "Mother" to it }, family.spouse?.let { "Spouse" to it }) + family.children.map { "Child" to it }
+    if (people.isEmpty()) { Text("No immediate family linked yet.", color = MaterialTheme.colorScheme.onSurfaceVariant); return }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { people.forEach { (relation, member) -> Row(verticalAlignment = Alignment.CenterVertically) { MemberAvatar(member, session, 44); Spacer(Modifier.size(10.dp)); Column { Text(member.displayName, fontWeight = FontWeight.SemiBold); Text(relation, color = Leaf, style = MaterialTheme.typography.bodySmall) } } } }
 }
 

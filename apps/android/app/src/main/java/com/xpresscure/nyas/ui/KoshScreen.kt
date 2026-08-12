@@ -130,17 +130,17 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null, onOpenW
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Savings, null, tint = Gold, modifier = Modifier.size(28.dp))
                             Spacer(Modifier.size(10.dp))
-                            Text("मेरा उपलब्ध Kosh", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                            Text("Available in your Kosh", color = Color.White, style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.weight(1f))
                             IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh", tint = Color.White) }
                         }
                         Text(money.format(summary.walletBalancePaise / 100.0), color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                        Text("संकल्पों में लगाने के लिए उपलब्ध", color = Color(0xFFDDE8E0))
+                        Text("Ready to allocate to a Sankalp", color = Color(0xFFDDE8E0))
                         Spacer(Modifier.height(18.dp))
                         Button(onClick = { bankSheet = true }, shape = RoundedCornerShape(8.dp)) {
                             Icon(Icons.Outlined.AccountBalance, null)
                             Spacer(Modifier.size(8.dp))
-                            Text("Bank से Kosh में जोड़ें")
+                            Text("Add money")
                         }
                     }
                 }
@@ -151,22 +151,22 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null, onOpenW
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(error, Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                    TextButton(onClick = { refresh() }) { Text("फिर कोशिश") }
+                    TextButton(onClick = { refresh() }) { Text("Try again") }
                 }
             }
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("किस संकल्प को सहयोग दें?", style = MaterialTheme.typography.titleLarge)
-                    Text("राशि आपके Kosh से ही जाएगी", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Choose a Sankalp", style = MaterialTheme.typography.titleLarge)
+                    Text("Allocate from your available Kosh", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onOpenWorkspace) { Text("सभी देखें") }
+                TextButton(onClick = onOpenWorkspace) { Text("View all") }
             }
         }
         if (!loading && projects.none { !it.fullyFunded && it.budgetRequired }) item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Text("अभी कोई संकल्प धन-सहयोग की प्रतीक्षा में नहीं है।", Modifier.padding(18.dp))
+                Text("No Sankalp needs funding right now.", Modifier.padding(18.dp))
             }
         }
         item {
@@ -187,15 +187,15 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null, onOpenW
                                 color = Gold
                             )
                             Row {
-                                Text("${project.fundingPercent}% पूरा", fontWeight = FontWeight.SemiBold)
+                                Text("${project.fundingPercent}% funded", fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.weight(1f))
-                                Text("${project.contributorCount} सहयोगी", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${project.contributorCount} contributors", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             if (project.myAllocatedPaise > 0) {
-                                Text("मेरा सहयोग ${money.format(project.myAllocatedPaise / 100.0)}", color = Leaf, style = MaterialTheme.typography.labelLarge)
+                                Text("You contributed ${money.format(project.myAllocatedPaise / 100.0)}", color = Leaf, style = MaterialTheme.typography.labelLarge)
                             }
                             Button(onClick = { allocationProject = project }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                                Text("इस संकल्प को सहयोग दें")
+                                Text("Contribute")
                                 Spacer(Modifier.size(8.dp))
                                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                             }
@@ -208,8 +208,8 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null, onOpenW
             HorizontalDivider()
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                KoshStat("कुल Kosh", money.format(summary.treasuryBalancePaise / 100.0))
-                KoshStat("इस वर्ष", money.format(summary.contributionThisYearPaise / 100.0))
+                KoshStat("Family Kosh", money.format(summary.treasuryBalancePaise / 100.0))
+                KoshStat("Added this year", money.format(summary.contributionThisYearPaise / 100.0))
             }
         }
     }
@@ -270,8 +270,8 @@ private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean,
     val parsed = amount.toLongOrNull() ?: 0
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("Bank से Kosh में जोड़ें", style = MaterialTheme.typography.headlineSmall)
-            Text("पहले Nyas खाते में राशि भेजें, फिर वही राशि यहाँ दर्ज करें।", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Add money to Kosh", style = MaterialTheme.typography.headlineSmall)
+            Text("Send the money to the family account, then record the same amount here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (config.qrImageUrl.isNotBlank()) {
                 AsyncImage(config.qrImageUrl, "Payment QR", Modifier.size(180.dp).align(Alignment.CenterHorizontally))
             }
@@ -290,13 +290,13 @@ private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean,
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
-            ) { Text("UPI app खोलें") }
+            ) { Text("Open UPI app") }
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it.filter(Char::isDigit).take(9) },
-                label = { Text("भेजी गई राशि") },
+                label = { Text("Amount sent") },
                 prefix = { Text("₹ ") },
-                supportingText = { Text("न्यूनतम ₹${config.minimumAmountRupees}") },
+                supportingText = { Text("Minimum ₹${config.minimumAmountRupees}") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -306,11 +306,11 @@ private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean,
                 enabled = !busy && parsed >= config.minimumAmountRupees,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(8.dp)
-            ) { Text("राशि जाँचें और दर्ज करें") }
-            Text("Kosh Pramukh इसे bank statement से मिलाएँगे।", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ) { Text("Review and record") }
+            Text("The Kosh team will reconcile this with the bank statement.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    if (review) AmountConfirmation(parsed, "मैंने यह राशि Nyas के bank account में भेज दी है।", busy, { review = false }) { onConfirm(parsed) }
+    if (review) AmountConfirmation(parsed, "I have sent this amount to the Nyas bank account.", busy, { review = false }) { onConfirm(parsed) }
 }
 
 @Composable
@@ -321,25 +321,25 @@ private fun AllocationSheet(project: Sankalp, walletPaise: Long, busy: Boolean, 
     val money = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("संकल्प को सहयोग", color = Leaf, style = MaterialTheme.typography.labelLarge)
+            Text("CONTRIBUTE TO SANKALP", color = Leaf, style = MaterialTheme.typography.labelLarge)
             Text(project.title, style = MaterialTheme.typography.headlineSmall)
-            Text("Kosh में उपलब्ध ${money.format(walletPaise / 100.0)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Available ${money.format(walletPaise / 100.0)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it.filter(Char::isDigit).take(9) },
-                label = { Text("कितनी राशि लगाएँ?") },
+                label = { Text("Contribution amount") },
                 prefix = { Text("₹ ") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-            Text("Nyas नियमों के अनुसार अधिक राशि होने पर केवल आवश्यक/अनुमत राशि ही लगेगी।", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Nyas contribution limits and the remaining project need will be applied automatically.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = { review = true }, enabled = !busy && parsed > 0 && parsed * 100 <= walletPaise, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) {
-                Text("सहयोग की पुष्टि करें")
+                Text("Review contribution")
             }
         }
     }
-    if (review) AmountConfirmation(parsed, "यह राशि आपके Kosh से ${project.title} में लगेगी।", busy, { review = false }) { onConfirm(parsed) }
+    if (review) AmountConfirmation(parsed, "This amount will move from your Kosh to ${project.title}.", busy, { review = false }) { onConfirm(parsed) }
 }
 
 @Composable
@@ -348,7 +348,7 @@ private fun AmountConfirmation(amount: Long, detail: String, busy: Boolean, onDi
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Outlined.Payments, null, tint = Gold, modifier = Modifier.size(36.dp)) },
-        title = { Text("क्या राशि सही है?") },
+        title = { Text("Confirm this amount") },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(money.format(amount), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
@@ -357,8 +357,8 @@ private fun AmountConfirmation(amount: Long, detail: String, busy: Boolean, onDi
                 Text(detail)
             }
         },
-        confirmButton = { Button(onClick = onConfirm, enabled = !busy) { if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("हाँ, सही है") } },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("वापस जाकर बदलें") } },
+        confirmButton = { Button(onClick = onConfirm, enabled = !busy) { if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Confirm") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Change amount") } },
         shape = RoundedCornerShape(8.dp)
     )
 }
@@ -372,17 +372,17 @@ private fun SuccessDialog(message: String, amountPaise: Long, onDismiss: () -> U
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Outlined.CheckCircle, null, tint = Leaf, modifier = Modifier.size(64.dp).scale(scale)) },
-        title = { Text("धन्यवाद!", style = MaterialTheme.typography.headlineMedium) },
+        title = { Text("Thank you", style = MaterialTheme.typography.headlineMedium) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 if (amountPaise > 0) Text(money.format(amountPaise / 100.0), style = MaterialTheme.typography.headlineSmall, color = Forest)
                 Spacer(Modifier.height(8.dp))
                 Text(message)
                 Spacer(Modifier.height(10.dp))
-                Text("विश्वास • पारदर्शिता • संकल्प", color = Gold, fontWeight = FontWeight.SemiBold)
+                Text("Trust • Transparency • Together", color = Gold, fontWeight = FontWeight.SemiBold)
             }
         },
-        confirmButton = { Button(onClick = onDismiss) { Text("आगे बढ़ें") } },
+        confirmButton = { Button(onClick = onDismiss) { Text("Done") } },
         shape = RoundedCornerShape(8.dp)
     )
 }
@@ -393,25 +393,25 @@ private fun KoshStat(label: String, value: String) {
 }
 
 internal fun stageLabel(stage: String): String = when (stage) {
-    "concept" -> "विचार"
-    "research" -> "शोध"
-    "estimate_pending" -> "अनुमान की प्रतीक्षा"
-    "estimate_received" -> "अनुमान प्राप्त"
-    "fundraising" -> "सहयोग जारी"
-    "ready_for_implementation" -> "कार्यान्वयन के लिए तैयार"
-    "implementation" -> "कार्य प्रगति पर"
-    "completed" -> "पूर्ण"
-    "paused" -> "विराम"
+    "concept" -> "Concept"
+    "research" -> "Research"
+    "estimate_pending" -> "Estimate pending"
+    "estimate_received" -> "Estimate received"
+    "fundraising" -> "Funding"
+    "ready_for_implementation" -> "Ready to begin"
+    "implementation" -> "In progress"
+    "completed" -> "Completed"
+    "paused" -> "Paused"
     else -> stage.replace('_', ' ').replaceFirstChar(Char::uppercase)
 }
 
 private fun amountInWords(amount: Long): String {
-    if (amount == 0L) return "शून्य रुपये"
+    if (amount == 0L) return "Zero rupees"
     val parts = mutableListOf<String>()
     var remaining = amount
-    val crore = remaining / 10_000_000; if (crore > 0) { parts += "$crore करोड़"; remaining %= 10_000_000 }
-    val lakh = remaining / 100_000; if (lakh > 0) { parts += "$lakh लाख"; remaining %= 100_000 }
-    val thousand = remaining / 1_000; if (thousand > 0) { parts += "$thousand हज़ार"; remaining %= 1_000 }
+    val crore = remaining / 10_000_000; if (crore > 0) { parts += "$crore crore"; remaining %= 10_000_000 }
+    val lakh = remaining / 100_000; if (lakh > 0) { parts += "$lakh lakh"; remaining %= 100_000 }
+    val thousand = remaining / 1_000; if (thousand > 0) { parts += "$thousand thousand"; remaining %= 1_000 }
     if (remaining > 0) parts += remaining.toString()
-    return parts.joinToString(" ") + " रुपये"
+    return parts.joinToString(" ") + " rupees"
 }
