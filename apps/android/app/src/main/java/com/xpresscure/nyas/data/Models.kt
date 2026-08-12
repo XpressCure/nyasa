@@ -32,6 +32,69 @@ data class DashboardData(
     val featured: List<SankalpSummary> = emptyList()
 )
 
+data class FamilySnapshot(
+    val memberCount: Int = 0,
+    val livingMembers: Int = 0,
+    val locationCount: Int = 0
+)
+
+data class FamilyCelebration(
+    val memberId: String,
+    val memberName: String,
+    val type: String,
+    val date: String,
+    val daysUntil: Int
+)
+
+data class FamilyCalendarItem(
+    val id: String,
+    val title: String,
+    val eventType: String,
+    val startsAt: String,
+    val location: String = ""
+)
+
+data class WeeklyFeature(
+    val id: String,
+    val title: String,
+    val featureType: String,
+    val url: String = "",
+    val summary: String = ""
+)
+
+data class SankalpProposalVotes(
+    val up: Int = 0,
+    val down: Int = 0,
+    val total: Int = 0,
+    val score: Int = 0,
+    val myVote: String = ""
+)
+
+data class SankalpProposal(
+    val id: String,
+    val title: String,
+    val description: String,
+    val category: String,
+    val expectedImpact: String = "",
+    val tentativeBudgetPaise: Long = 0,
+    val status: String = "voting",
+    val votingEndsAt: String = "",
+    val proposedByName: String = "",
+    val votes: SankalpProposalVotes = SankalpProposalVotes()
+)
+
+data class ProposalList(
+    val canVote: Boolean = false,
+    val proposals: List<SankalpProposal> = emptyList()
+)
+
+data class FamilyHubOverview(
+    val snapshot: FamilySnapshot = FamilySnapshot(),
+    val celebrations: List<FamilyCelebration> = emptyList(),
+    val calendarEvents: List<FamilyCalendarItem> = emptyList(),
+    val weeklyFeature: WeeklyFeature? = null
+)
+
 data class KoshSummary(
     val treasuryBalancePaise: Long = 0,
     val walletBalancePaise: Long = 0,
@@ -63,7 +126,49 @@ data class Sankalp(
     val contributorCount: Int,
     val fundingPercent: Int,
     val fullyFunded: Boolean,
-    val projectLeadName: String = ""
+    val projectLeadMemberId: String = "",
+    val auditorMemberId: String = "",
+    val implementationLeadMemberId: String = "",
+    val projectLeadName: String = "",
+    val auditorName: String = "",
+    val implementationLeadName: String = "",
+    val rules: String = "",
+    val completionPercent: Int = 0,
+    val startDate: String = "",
+    val targetCompletionDate: String = ""
+)
+
+data class SankalpMilestone(
+    val id: String,
+    val title: String,
+    val description: String = "",
+    val status: String = "pending",
+    val dueDate: String = "",
+    val budgetPaise: Long = 0,
+    val actualSpendPaise: Long = 0
+)
+
+data class SankalpUpdate(
+    val id: String,
+    val title: String = "",
+    val body: String,
+    val updateType: String = "note",
+    val progressPercent: Int? = null,
+    val authorName: String = "",
+    val createdAt: String = ""
+)
+
+data class SankalpWorkspace(
+    val project: Sankalp,
+    val milestones: List<SankalpMilestone> = emptyList(),
+    val updates: List<SankalpUpdate> = emptyList(),
+    val documentCount: Int = 0
+)
+
+data class SankalpManagementUpdate(
+    val lifecycleStage: String? = null,
+    val estimatedBudgetRupees: Long? = null,
+    val completionPercent: Int? = null
 )
 
 data class ActionResult(
@@ -83,6 +188,13 @@ data class WorkProfile(
     val currentRole: String = "",
     val previousPlaces: String = "",
     val experienceYears: Int? = null
+)
+
+data class HealthProfile(
+    val bloodGroup: String = "",
+    val knownConditions: List<String> = emptyList(),
+    val allergies: List<String> = emptyList(),
+    val geneticNotes: String = ""
 )
 
 data class FamilyMemberProfile(
@@ -112,7 +224,8 @@ data class FamilyMemberProfile(
     val intermediate: EducationEntry = EducationEntry(),
     val graduation: EducationEntry = EducationEntry(),
     val postGraduation: EducationEntry = EducationEntry(),
-    val work: WorkProfile = WorkProfile()
+    val work: WorkProfile = WorkProfile(),
+    val health: HealthProfile = HealthProfile()
 )
 
 data class ImmediateFamily(
@@ -149,7 +262,15 @@ data class ProfileUpdate(
     val bio: String,
     val currentPlace: String,
     val currentRole: String,
-    val experienceYears: Int?
+    val previousPlaces: String,
+    val experienceYears: Int?,
+    val intermediate: EducationEntry,
+    val graduation: EducationEntry,
+    val postGraduation: EducationEntry,
+    val bloodGroup: String,
+    val knownConditions: List<String>,
+    val allergies: List<String>,
+    val geneticNotes: String
 )
 
 data class VirasatEvent(

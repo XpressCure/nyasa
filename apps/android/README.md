@@ -14,7 +14,8 @@ Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp
 - Edge-to-edge and safe-area-aware layouts
 - Stable loading, empty, retry, and error states
 - Native Kul Map with real generation, spouse, and parent-child relationships
-- Existing lower-frequency journeys remain available through an authenticated compatibility screen while they migrate to native Compose
+- Native Calendar, Sankalp Sabha, Virasat, profile, Kul Map, Kosh, and Sankalp workspace journeys
+- First-time members are guided into Parichay before entering the wider family workspace
 
 ## Product navigation
 
@@ -33,16 +34,16 @@ Calendar, Sankalp Sabha, Virasat, and other occasional tools live under More or 
 | Activity | Primary member action | Native migration |
 | --- | --- | --- |
 | Darshan | See what matters today and continue an action | Native |
-| Parichay | Maintain identity and immediate family | Native essentials, advanced compatibility form |
+| Parichay | Maintain identity, family links, education, work, and health | Native |
 | Kul | Search and browse the member directory | Native |
 | Kul Map | Explore relationships and generations | Native interactive graph with pan, zoom, and person details |
 | Virasat | Read and add chronological family memories | Native |
 | Kosh | Record a bank contribution and allocate it | Native guided flow |
-| Sankalp | Follow, fund, and manage family work | Native overview and funding actions |
-| Sankalp Sabha | Propose and vote | Compatibility, native voting planned |
-| Calendar | Celebrations and family events | Compatibility, native calendar planned |
+| Sankalp | Follow projects, milestones, reports, documents, and funding | Native |
+| Sankalp Sabha | Propose and vote | Native |
+| Calendar | Celebrations and family events | Native |
 
-The compatibility layer is temporary but intentional: it keeps every current production feature available while high-frequency journeys become fully native without splitting family data or permissions.
+All member-facing journeys now use the same API and permission model as the web portal without embedding web pages inside the app.
 
 ## Build a debug APK on Windows
 

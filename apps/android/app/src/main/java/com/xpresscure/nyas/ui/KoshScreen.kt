@@ -81,7 +81,7 @@ import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
-fun KoshScreen(session: NyasSession, preferredProjectId: String? = null, onOpenWorkspace: () -> Unit) {
+fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
     val api = remember { NyasApi() }
     val scope = rememberCoroutineScope()
     val money = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
@@ -161,7 +161,6 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null, onOpenW
                     Text("Choose a Sankalp", style = MaterialTheme.typography.titleLarge)
                     Text("Allocate from your available Kosh", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onOpenWorkspace) { Text("View all") }
             }
         }
         if (!loading && projects.none { !it.fullyFunded && it.budgetRequired }) item {

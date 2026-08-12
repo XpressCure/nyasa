@@ -15,13 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FamilyRestroom
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.xpresscure.nyas.data.ApiException
+import com.xpresscure.nyas.data.EducationEntry
 import com.xpresscure.nyas.data.FamilyMemberProfile
 import com.xpresscure.nyas.data.ImmediateFamily
 import com.xpresscure.nyas.data.NyasApi
@@ -63,7 +66,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 @Composable
-fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedProfile: () -> Unit) {
+fun ParichayScreen(session: NyasSession) {
     val api = remember { NyasApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -74,6 +77,7 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
     var error by remember { mutableStateOf("") }
     var success by remember { mutableStateOf("") }
     var editing by remember { mutableStateOf(false) }
+    var managingFamily by remember { mutableStateOf(false) }
     var form by remember { mutableStateOf(ProfileForm()) }
 
     fun load() {
@@ -168,29 +172,63 @@ fun ParichayScreen(session: NyasSession, onManageFamily: () -> Unit, onAdvancedP
             }
             item { ImmediateFamilyStrip(family, session) }
             item {
-                Button(onClick = onManageFamily, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) { Text("Manage immediate family") }
-            }
-            item {
-                OutlinedButton(onClick = onAdvancedProfile, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                    Icon(Icons.Outlined.Lock, null); Spacer(Modifier.size(8.dp)); Text("Education, health and more details")
-                }
+                Button(onClick = { managingFamily = true }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) { Text("Manage immediate family") }
             }
         }
     }
+
+    if (managingFamily) FamilyLinkSheet(
+        session = session,
+        current = family,
+        onDismiss = { managingFamily = false },
+        onSaved = {
+            family = it
+            managingFamily = false
+            success = "Family relationship saved."
+        }
+    )
 }
 
 private data class ProfileForm(
     val displayName: String = "", val gender: String = "prefer_not_to_say", val dateOfBirth: String = "", val livingStatus: String = "living",
     val maritalStatus: String = "unknown", val anniversaryDate: String = "", val placeOfResidence: String = "", val city: String = "",
     val state: String = "", val country: String = "India", val profession: String = "", val bio: String = "", val currentPlace: String = "",
-    val currentRole: String = "", val experienceYears: String = ""
+    val currentRole: String = "", val previousPlaces: String = "", val experienceYears: String = "",
+    val intermediateInstitution: String = "", val intermediateDegree: String = "", val intermediateYear: String = "",
+    val graduationInstitution: String = "", val graduationDegree: String = "", val graduationYear: String = "",
+    val postGraduationInstitution: String = "", val postGraduationDegree: String = "", val postGraduationYear: String = "",
+    val bloodGroup: String = "", val knownConditions: String = "", val allergies: String = "", val geneticNotes: String = ""
 ) {
-    fun toUpdate() = ProfileUpdate(displayName, gender, dateOfBirth, livingStatus, maritalStatus, anniversaryDate, placeOfResidence, city, state, country, profession, bio, currentPlace, currentRole, experienceYears.toIntOrNull())
-    companion object { fun from(member: FamilyMemberProfile) = ProfileForm(member.displayName, member.gender, member.dateOfBirth.take(10), member.livingStatus, member.maritalStatus, member.anniversaryDate.take(10), member.placeOfResidence, member.city, member.state, member.country.ifBlank { "India" }, member.profession, member.bio, member.work.currentPlace, member.work.currentRole, member.work.experienceYears?.toString().orEmpty()) }
+    fun toUpdate() = ProfileUpdate(
+        displayName, gender, dateOfBirth, livingStatus, maritalStatus, anniversaryDate,
+        placeOfResidence, city, state, country, profession, bio, currentPlace, currentRole,
+        previousPlaces, experienceYears.toIntOrNull(),
+        EducationEntry(intermediateInstitution, intermediateDegree, intermediateYear.toIntOrNull()),
+        EducationEntry(graduationInstitution, graduationDegree, graduationYear.toIntOrNull()),
+        EducationEntry(postGraduationInstitution, postGraduationDegree, postGraduationYear.toIntOrNull()),
+        bloodGroup, commaList(knownConditions), commaList(allergies), geneticNotes
+    )
+
+    companion object {
+        fun from(member: FamilyMemberProfile) = ProfileForm(
+            member.displayName, member.gender, member.dateOfBirth.take(10), member.livingStatus,
+            member.maritalStatus, member.anniversaryDate.take(10), member.placeOfResidence, member.city,
+            member.state, member.country.ifBlank { "India" }, member.profession, member.bio,
+            member.work.currentPlace, member.work.currentRole, member.work.previousPlaces,
+            member.work.experienceYears?.toString().orEmpty(), member.intermediate.institution,
+            member.intermediate.degree, member.intermediate.year?.toString().orEmpty(),
+            member.graduation.institution, member.graduation.degree, member.graduation.year?.toString().orEmpty(),
+            member.postGraduation.institution, member.postGraduation.degree,
+            member.postGraduation.year?.toString().orEmpty(), member.health.bloodGroup,
+            member.health.knownConditions.joinToString(", "), member.health.allergies.joinToString(", "),
+            member.health.geneticNotes
+        )
+    }
 }
 
 @Composable
 private fun ProfileEditor(form: ProfileForm, onChange: (ProfileForm) -> Unit, saving: Boolean, onSave: () -> Unit) {
+    var moreDetails by remember { mutableStateOf(false) }
     Card(shape = RoundedCornerShape(8.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ProfileField("Full name", form.displayName) { onChange(form.copy(displayName = it)) }
@@ -199,6 +237,18 @@ private fun ProfileEditor(form: ProfileForm, onChange: (ProfileForm) -> Unit, sa
                 listOf("male" to "Male", "female" to "Female", "prefer_not_to_say" to "Other").forEach { option -> AssistChip(onClick = { onChange(form.copy(gender = option.first)) }, label = { Text(option.second, fontWeight = if (form.gender == option.first) FontWeight.Bold else FontWeight.Normal) }) }
             }
             ProfileField("Date of birth (YYYY-MM-DD)", form.dateOfBirth) { onChange(form.copy(dateOfBirth = it.take(10))) }
+            Text("Marital status", style = MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("single" to "Single", "married" to "Married", "widowed" to "Widowed", "unknown" to "Not set")) { option ->
+                    AssistChip(
+                        onClick = { onChange(form.copy(maritalStatus = option.first)) },
+                        label = { Text(option.second, fontWeight = if (form.maritalStatus == option.first) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                }
+            }
+            if (form.maritalStatus == "married") {
+                ProfileField("Anniversary (YYYY-MM-DD)", form.anniversaryDate) { onChange(form.copy(anniversaryDate = it.take(10))) }
+            }
             ProfileField("Address", form.placeOfResidence) { onChange(form.copy(placeOfResidence = it)) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ProfileField("City", form.city, Modifier.weight(1f)) { onChange(form.copy(city = it)) }
@@ -211,12 +261,58 @@ private fun ProfileEditor(form: ProfileForm, onChange: (ProfileForm) -> Unit, sa
                 ProfileField("Experience", form.experienceYears, Modifier.weight(1f), KeyboardType.Number) { onChange(form.copy(experienceYears = it.filter(Char::isDigit).take(2))) }
             }
             ProfileField("About you", form.bio, singleLine = false) { onChange(form.copy(bio = it)) }
+            OutlinedButton(onClick = { moreDetails = !moreDetails }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
+                Text(if (moreDetails) "Hide optional details" else "Add education and health details")
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Outlined.ExpandMore, null)
+            }
+            AnimatedVisibility(moreDetails) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Education", style = MaterialTheme.typography.titleMedium)
+                    EducationFields("Class 12 / Intermediate", form.intermediateInstitution, form.intermediateDegree, form.intermediateYear,
+                        { onChange(form.copy(intermediateInstitution = it)) }, { onChange(form.copy(intermediateDegree = it)) }, { onChange(form.copy(intermediateYear = it)) })
+                    EducationFields("Graduation", form.graduationInstitution, form.graduationDegree, form.graduationYear,
+                        { onChange(form.copy(graduationInstitution = it)) }, { onChange(form.copy(graduationDegree = it)) }, { onChange(form.copy(graduationYear = it)) })
+                    EducationFields("Post-graduation", form.postGraduationInstitution, form.postGraduationDegree, form.postGraduationYear,
+                        { onChange(form.copy(postGraduationInstitution = it)) }, { onChange(form.copy(postGraduationDegree = it)) }, { onChange(form.copy(postGraduationYear = it)) })
+                    HorizontalDivider()
+                    Text("Work history", style = MaterialTheme.typography.titleMedium)
+                    ProfileField("Earlier workplaces", form.previousPlaces, singleLine = false) { onChange(form.copy(previousPlaces = it)) }
+                    HorizontalDivider()
+                    Text("Health information", style = MaterialTheme.typography.titleMedium)
+                    Text("Visible only where family permissions allow it.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    ProfileField("Blood group", form.bloodGroup) { onChange(form.copy(bloodGroup = it.take(5))) }
+                    ProfileField("Known conditions (comma separated)", form.knownConditions, singleLine = false) { onChange(form.copy(knownConditions = it)) }
+                    ProfileField("Allergies (comma separated)", form.allergies, singleLine = false) { onChange(form.copy(allergies = it)) }
+                    ProfileField("Genetic or family health notes", form.geneticNotes, singleLine = false) { onChange(form.copy(geneticNotes = it)) }
+                }
+            }
             Button(onClick = onSave, enabled = !saving && form.displayName.trim().length >= 2, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) {
                 if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else { Icon(Icons.Outlined.CheckCircle, null); Spacer(Modifier.size(8.dp)); Text("Save profile") }
             }
         }
     }
 }
+
+@Composable
+private fun EducationFields(
+    title: String,
+    institution: String,
+    degree: String,
+    year: String,
+    onInstitution: (String) -> Unit,
+    onDegree: (String) -> Unit,
+    onYear: (String) -> Unit
+) {
+    Text(title, style = MaterialTheme.typography.labelLarge, color = Leaf)
+    ProfileField("Institution", institution, onChange = onInstitution)
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ProfileField("Course / degree", degree, Modifier.weight(1.6f), onChange = onDegree)
+        ProfileField("Year", year, Modifier.weight(.8f), KeyboardType.Number) { onYear(it.filter(Char::isDigit).take(4)) }
+    }
+}
+
+private fun commaList(value: String): List<String> = value.split(',').map(String::trim).filter(String::isNotBlank).distinct()
 
 @Composable
 private fun ProfileField(label: String, value: String, modifier: Modifier = Modifier.fillMaxWidth(), keyboardType: KeyboardType = KeyboardType.Text, singleLine: Boolean = true, onChange: (String) -> Unit) {

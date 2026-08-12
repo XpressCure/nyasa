@@ -26,12 +26,13 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ import com.xpresscure.nyas.data.ApiException
 import com.xpresscure.nyas.data.NyasApi
 import com.xpresscure.nyas.data.NyasSession
 import com.xpresscure.nyas.data.Sankalp
+import com.xpresscure.nyas.data.SankalpWorkspace
 import com.xpresscure.nyas.ui.theme.Gold
 import com.xpresscure.nyas.ui.theme.Leaf
 import kotlinx.coroutines.launch
@@ -57,7 +59,7 @@ import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
-fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit, onOpenWorkspace: () -> Unit) {
+fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit) {
     val api = remember { NyasApi() }
     val scope = rememberCoroutineScope()
     var projects by remember { mutableStateOf(emptyList<Sankalp>()) }
@@ -116,19 +118,14 @@ fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit, onOpenWorkspac
             }
         }
         items(visible, key = { it.id }) { project -> SankalpCard(project) { selected = project } }
-        item {
-            OutlinedButton(onClick = onOpenWorkspace, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                Text("Open full Sankalp workspace")
-            }
-        }
     }
 
     selected?.let { project ->
         SankalpDetails(
+            session = session,
             project = project,
             onDismiss = { selected = null },
-            onFund = { selected = null; onFund(project.id) },
-            onWorkspace = { selected = null; onOpenWorkspace() }
+            onFund = { selected = null; onFund(project.id) }
         )
     }
 }
@@ -167,10 +164,30 @@ private fun SankalpCard(project: Sankalp, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SankalpDetails(project: Sankalp, onDismiss: () -> Unit, onFund: () -> Unit, onWorkspace: () -> Unit) {
+private fun SankalpDetails(session: NyasSession, project: Sankalp, onDismiss: () -> Unit, onFund: () -> Unit) {
+    val api = remember { NyasApi() }
+    val scope = rememberCoroutineScope()
     val money = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
+    var workspace by remember(project.id) { mutableStateOf<SankalpWorkspace?>(null) }
+    var loading by remember(project.id) { mutableStateOf(true) }
+    var error by remember(project.id) { mutableStateOf("") }
+    var milestoneFeedback by remember(project.id) { mutableStateOf("") }
+    suspend fun loadWorkspace() {
+        loading = true
+        error = ""
+        try { workspace = api.sankalpWorkspace(session, project.id) }
+        catch (exception: ApiException) { error = exception.message.orEmpty() }
+        finally { loading = false }
+    }
+    LaunchedEffect(project.id) { loadWorkspace() }
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(
+            Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+          item {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stageLabel(project.stage), color = Leaf, style = MaterialTheme.typography.labelLarge)
             Text(project.title, style = MaterialTheme.typography.headlineSmall)
             Text(project.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -183,7 +200,74 @@ private fun SankalpDetails(project: Sankalp, onDismiss: () -> Unit, onFund: () -
                 }
                 if (!project.fullyFunded) Button(onClick = onFund, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) { Text("Contribute from Kosh") }
             }
-            OutlinedButton(onClick = onWorkspace, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) { Text("View progress and documents") }
+            }
+          }
+          if (loading) item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() } }
+          if (error.isNotBlank()) item { Text(error, color = MaterialTheme.colorScheme.error) }
+          workspace?.let { details ->
+              val canManage = session.role in setOf("owner", "admin", "manager") || session.memberId in setOf(
+                  details.project.projectLeadMemberId,
+                  details.project.auditorMemberId,
+                  details.project.implementationLeadMemberId
+              )
+              item {
+                  HorizontalDivider()
+                  Spacer(Modifier.height(4.dp))
+                  Text("Sankalp team", style = MaterialTheme.typography.titleMedium)
+                  val people = listOf(
+                      "Project lead" to details.project.projectLeadName,
+                      "Progress auditor" to details.project.auditorName,
+                      "Implementation lead" to details.project.implementationLeadName
+                  ).filter { it.second.isNotBlank() }
+                  if (people.isEmpty()) Text("Team details are being finalised.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                  else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { people.forEach { (role, name) -> Row { Text(role, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(name, fontWeight = FontWeight.SemiBold) } } }
+              }
+              if (canManage) item { SankalpManagePanel(session, details, onChanged = { loadWorkspace() }) }
+              if (details.project.rules.isNotBlank()) item {
+                  Text("Rules and scope", style = MaterialTheme.typography.titleMedium)
+                  Text(details.project.rules, color = MaterialTheme.colorScheme.onSurfaceVariant)
+              }
+              item {
+                  Text("Milestones", style = MaterialTheme.typography.titleMedium)
+                  if (details.milestones.isEmpty()) Text("Milestones will appear here as the Sankalp progresses.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                  else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                      details.milestones.forEach { milestone ->
+                          Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(8.dp)) {
+                              Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                  Row(verticalAlignment = Alignment.CenterVertically) {
+                                      Text(milestone.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                                      if (canManage && milestone.status != "completed") TextButton(onClick = {
+                                          scope.launch {
+                                              try {
+                                                  milestoneFeedback = api.updateSankalpMilestone(session, details.project.id, milestone.id, "completed").message
+                                                  loadWorkspace()
+                                              } catch (exception: ApiException) { error = exception.message.orEmpty() }
+                                          }
+                                      }) { Text("Mark done") }
+                                      else Text(milestone.status.replace('_', ' ').replaceFirstChar(Char::uppercase), color = Leaf)
+                                  }
+                                  if (milestone.description.isNotBlank()) Text(milestone.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                              }
+                          }
+                      }
+                  }
+                  if (milestoneFeedback.isNotBlank()) Text(milestoneFeedback, color = Leaf, fontWeight = FontWeight.SemiBold)
+              }
+              item {
+                  Text("Latest progress", style = MaterialTheme.typography.titleMedium)
+                  if (details.updates.isEmpty()) Text("No progress report has been added yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                  else Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                      details.updates.take(5).forEach { update ->
+                          Column {
+                              Text(update.title.ifBlank { update.updateType.replaceFirstChar(Char::uppercase) }, fontWeight = FontWeight.SemiBold)
+                              Text(update.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                              if (update.authorName.isNotBlank()) Text(update.authorName, color = Leaf, style = MaterialTheme.typography.bodySmall)
+                          }
+                      }
+                  }
+              }
+              if (details.documentCount > 0) item { Text("${details.documentCount} project documents are securely attached.", color = Leaf, fontWeight = FontWeight.SemiBold) }
+          }
         }
     }
 }

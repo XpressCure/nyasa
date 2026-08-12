@@ -2,12 +2,7 @@
 
 package com.xpresscure.nyas.ui
 
-import android.annotation.SuppressLint
-import android.graphics.Bitmap
 import android.net.Uri
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -42,15 +37,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -68,18 +60,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -112,26 +101,24 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
-import com.xpresscure.nyas.BuildConfig
 import com.xpresscure.nyas.R
 import com.xpresscure.nyas.data.ApiException
 import com.xpresscure.nyas.data.DashboardData
+import com.xpresscure.nyas.data.FamilyHubOverview
+import com.xpresscure.nyas.data.FamilyMemberProfile
 import com.xpresscure.nyas.data.LoginChallenge
 import com.xpresscure.nyas.data.NyasApi
 import com.xpresscure.nyas.data.NyasSession
 import com.xpresscure.nyas.data.SessionStore
 import com.xpresscure.nyas.ui.theme.Forest
 import com.xpresscure.nyas.ui.theme.Gold
-import com.xpresscure.nyas.ui.theme.Leaf
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
-import java.util.Locale
+import kotlinx.coroutines.async
 
-private enum class AppRoute(val label: String, val context: String, val icon: ImageVector, val webPath: String?) {
+internal enum class AppRoute(val label: String, val context: String, val icon: ImageVector, val webPath: String?) {
     Darshan("Home", "Darshan", Icons.Outlined.Home, null),
     Kul("Family", "Kul", Icons.Outlined.FamilyRestroom, "/family"),
     Kosh("Kosh", "Family funds", Icons.Outlined.Savings, "/contribute"),
@@ -151,6 +138,8 @@ data class AppUiState(
     val loginChallenge: LoginChallenge = LoginChallenge.None,
     val loginError: String = "",
     val dashboard: DashboardData = DashboardData(),
+    val familyHub: FamilyHubOverview = FamilyHubOverview(),
+    val myProfile: FamilyMemberProfile? = null,
     val loadingDashboard: Boolean = false,
     val dashboardError: String = ""
 )
@@ -197,11 +186,19 @@ class NyasViewModel : ViewModel() {
         val session = state.session ?: return
         viewModelScope.launch {
             state = state.copy(loadingDashboard = true, dashboardError = "")
-            try {
-                state = state.copy(dashboard = api.dashboard(session), loadingDashboard = false)
-            } catch (_: Exception) {
-                state = state.copy(loadingDashboard = false, dashboardError = "Latest information is unavailable right now.")
-            }
+            val dashboardRequest = async { runCatching { api.dashboard(session) } }
+            val hubRequest = async { runCatching { api.familyHubOverview(session) } }
+            val profileRequest = async { runCatching { api.myProfile(session) } }
+            val dashboardResult = dashboardRequest.await()
+            val hubResult = hubRequest.await()
+            val profileResult = profileRequest.await()
+            state = state.copy(
+                dashboard = dashboardResult.getOrDefault(state.dashboard),
+                familyHub = hubResult.getOrDefault(state.familyHub),
+                myProfile = profileResult.getOrNull() ?: state.myProfile,
+                loadingDashboard = false,
+                dashboardError = if (dashboardResult.isFailure && hubResult.isFailure) "Latest information is unavailable right now." else ""
+            )
         }
     }
 
@@ -345,10 +342,16 @@ private fun WelcomeAndLogin(
 private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, onLogout: () -> Unit) {
     var route by rememberSaveable { mutableStateOf(routeFromDeepLink(deepLink)) }
     var moreOpen by rememberSaveable { mutableStateOf(false) }
-    var legacyRoute by rememberSaveable { mutableStateOf<AppRoute?>(null) }
     var fundingProjectId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbars = remember { SnackbarHostState() }
     val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Sankalp, AppRoute.Kosh, AppRoute.Parichay)
+
+    LaunchedEffect(state.myProfile?.id) {
+        val profile = state.myProfile ?: return@LaunchedEffect
+        val hasPersonalDetails = profile.dateOfBirth.isNotBlank() ||
+            profile.placeOfResidence.isNotBlank() || profile.city.isNotBlank() || profile.photoUrl.isNotBlank()
+        if (!hasPersonalDetails && route == AppRoute.Darshan) route = AppRoute.Parichay
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val tablet = maxWidth >= 720.dp
@@ -361,7 +364,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                     primaryRoutes.forEach { item ->
                         NavigationRailItem(
                             selected = route == item,
-                            onClick = { route = item; legacyRoute = null },
+                            onClick = { route = item },
                             icon = { Icon(item.icon, item.label) },
                             label = { Text(item.label) }
                         )
@@ -373,11 +376,6 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                 snackbarHost = { SnackbarHost(snackbars) },
                 topBar = {
                     TopAppBar(
-                        navigationIcon = {
-                            if (legacyRoute == route) IconButton(onClick = { legacyRoute = null }) {
-                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
-                            }
-                        },
                         title = {
                             Column {
                                 Text(route.label, style = MaterialTheme.typography.titleLarge)
@@ -396,7 +394,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         primaryRoutes.forEach { item ->
                             NavigationBarItem(
                                 selected = route == item,
-                                onClick = { route = item; legacyRoute = null },
+                                onClick = { route = item },
                                 icon = { Icon(item.icon, item.label) },
                                 label = { Text(item.label, maxLines = 1) }
                             )
@@ -408,31 +406,44 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                     (fadeIn(tween(260)) + slideInVertically(tween(300)) { it / 18 }) togetherWith fadeOut(tween(160))
                 }, label = "route") { destination ->
                     when {
-                        legacyRoute == destination -> LegacyFeatureScreen(destination, state.session!!)
-                        destination == AppRoute.Darshan -> DarshanScreen(state, onNavigate = { route = it; legacyRoute = null }, onRefresh = onRefresh)
+                        destination == AppRoute.Darshan -> HomeScreen(
+                            session = state.session!!,
+                            dashboard = state.dashboard,
+                            familyHub = state.familyHub,
+                            profile = state.myProfile,
+                            loading = state.loadingDashboard,
+                            error = state.dashboardError,
+                            onNavigate = { route = it },
+                            onRefresh = onRefresh
+                        )
                         destination == AppRoute.Kul -> KulScreen(
                             session = state.session!!,
-                            onOpenMap = { route = AppRoute.Tree; legacyRoute = null },
-                            onOpenVirasat = { route = AppRoute.Virasat; legacyRoute = null }
+                            onOpenMap = { route = AppRoute.Tree },
+                            onOpenVirasat = { route = AppRoute.Virasat }
                         )
                         destination == AppRoute.Kosh -> KoshScreen(
                             session = state.session!!,
-                            preferredProjectId = fundingProjectId,
-                            onOpenWorkspace = { legacyRoute = AppRoute.Kosh }
+                            preferredProjectId = fundingProjectId
                         )
                         destination == AppRoute.Sankalp -> SankalpScreen(
                             session = state.session!!,
-                            onFund = { projectId -> fundingProjectId = projectId; route = AppRoute.Kosh; legacyRoute = null },
-                            onOpenWorkspace = { legacyRoute = AppRoute.Sankalp }
+                            onFund = { projectId -> fundingProjectId = projectId; route = AppRoute.Kosh }
                         )
-                        destination == AppRoute.Parichay -> ParichayScreen(
-                            session = state.session!!,
-                            onManageFamily = { legacyRoute = AppRoute.Parichay },
-                            onAdvancedProfile = { legacyRoute = AppRoute.Parichay }
-                        )
+                        destination == AppRoute.Parichay -> ParichayScreen(session = state.session!!)
                         destination == AppRoute.Tree -> KulMapScreen(session = state.session!!)
                         destination == AppRoute.Virasat -> VirasatScreen(session = state.session!!)
-                        else -> LegacyFeatureScreen(destination, state.session!!)
+                        destination == AppRoute.Panchang -> CalendarScreen(session = state.session!!)
+                        destination == AppRoute.Sabha -> SabhaScreen(session = state.session!!)
+                        else -> HomeScreen(
+                            session = state.session!!,
+                            dashboard = state.dashboard,
+                            familyHub = state.familyHub,
+                            profile = state.myProfile,
+                            loading = state.loadingDashboard,
+                            error = state.dashboardError,
+                            onNavigate = { route = it },
+                            onRefresh = onRefresh
+                        )
                     }
                 }
             }
@@ -443,115 +454,9 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
         ModalBottomSheet(onDismissRequest = { moreOpen = false }, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
             MoreSheet(
                 session = state.session!!,
-                onRoute = { route = it; legacyRoute = null; moreOpen = false },
+                onRoute = { route = it; moreOpen = false },
                 onLogout = { moreOpen = false; onLogout() }
             )
-        }
-    }
-}
-
-@Composable
-private fun DarshanScreen(state: AppUiState, onNavigate: (AppRoute) -> Unit, onRefresh: () -> Unit) {
-    val session = state.session ?: return
-    val rupees = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Forest),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Forest, Leaf))).padding(20.dp)) {
-                    Column {
-                        Text("Hello, ${session.fullName.substringBefore(' ')}", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                        Spacer(Modifier.height(6.dp))
-                        Text("What would you like to do today?", color = Color(0xFFDDE8E0), style = MaterialTheme.typography.bodyLarge)
-                        Spacer(Modifier.height(18.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            FilledTonalButton(onClick = { onNavigate(AppRoute.Parichay) }) { Icon(Icons.Outlined.Person, null); Spacer(Modifier.width(6.dp)); Text("Complete profile") }
-                            FilledTonalButton(onClick = { onNavigate(AppRoute.Kosh) }) { Icon(Icons.Outlined.AddCircle, null); Spacer(Modifier.width(6.dp)); Text("Contribute") }
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            Text("At a glance", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                MetricCard("Members", state.dashboard.metrics.members.toString(), Icons.Outlined.FamilyRestroom, Modifier.weight(1f))
-                MetricCard("Active Sankalp", state.dashboard.metrics.activeSankalp.toString(), Icons.Outlined.Route, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(10.dp))
-            MetricCard("Family Kosh", rupees.format(state.dashboard.metrics.koshPaise / 100.0), Icons.Outlined.Savings, Modifier.fillMaxWidth())
-        }
-        if (state.loadingDashboard) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-        if (state.dashboardError.isNotBlank()) item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(state.dashboardError, Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                    TextButton(onClick = onRefresh) { Text("Try again") }
-                }
-            }
-        }
-        item { Text("Sankalp in focus", style = MaterialTheme.typography.titleLarge) }
-        if (!state.loadingDashboard && state.dashboard.featured.isEmpty()) item {
-            EmptyAction("No active Sankalp yet.", "View Sankalp") { onNavigate(AppRoute.Sankalp) }
-        }
-        items(state.dashboard.featured, key = { it.id }) { sankalp ->
-            val progress = if (sankalp.targetPaise > 0) (sankalp.allocatedPaise.toFloat() / sankalp.targetPaise).coerceIn(0f, 1f) else 0f
-            Card(onClick = { onNavigate(AppRoute.Sankalp) }, shape = RoundedCornerShape(8.dp), elevation = CardDefaults.cardElevation(1.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(sankalp.title, style = MaterialTheme.typography.titleMedium)
-                            Text(sankalp.stage.replace('_', ' ').replaceFirstChar(Char::uppercase), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Icon(Icons.Outlined.ChevronRight, null)
-                    }
-                    Spacer(Modifier.height(14.dp))
-                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape), color = Gold)
-                    Spacer(Modifier.height(8.dp))
-                    Text("${(progress * 100).toInt()}% funded", style = MaterialTheme.typography.labelLarge, color = Leaf)
-                }
-            }
-        }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), shape = RoundedCornerShape(8.dp)) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("A small family action", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(6.dp))
-                    Text("Call an elder and preserve one family memory in Virasat.")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MetricCard(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
-    Card(modifier, shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-        Column(Modifier.padding(16.dp)) {
-            Icon(icon, null, tint = Gold)
-            Spacer(Modifier.height(14.dp))
-            Text(value, style = MaterialTheme.typography.headlineMedium, maxLines = 1)
-            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun EmptyAction(message: String, action: String, onClick: () -> Unit) {
-    Card(shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Outlined.Visibility, null, Modifier.size(36.dp), tint = Gold)
-            Spacer(Modifier.height(10.dp))
-            Text(message)
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick) { Text(action) }
         }
     }
 }
@@ -592,52 +497,7 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
-@Composable
-private fun LegacyFeatureScreen(route: AppRoute, session: NyasSession) {
-    var loading by remember(route) { mutableStateOf(true) }
-    var webView: WebView? by remember { mutableStateOf(null) }
-    BackHandler(enabled = webView?.canGoBack() == true) { webView?.goBack() }
-    Box(Modifier.fillMaxSize()) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.allowFileAccess = true
-                    settings.mediaPlaybackRequiresUserGesture = true
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) { loading = true }
-                        override fun onPageFinished(view: WebView, url: String?) {
-                            val userJson = "{\\\"id\\\":\\\"${escapeJs(session.userId)}\\\",\\\"fullName\\\":\\\"${escapeJs(session.fullName)}\\\",\\\"phone\\\":\\\"${escapeJs(session.phone)}\\\"}"
-                            view.evaluateJavascript(
-                                "localStorage.setItem('nyasa_token','${escapeJs(session.token)}');" +
-                                    "localStorage.setItem('nyasa_family_id','${escapeJs(session.familyId)}');" +
-                                    "localStorage.setItem('nyasa_user','$userJson');",
-                                null
-                            )
-                            loading = false
-                        }
-                    }
-                    loadUrl(BuildConfig.WEB_BASE_URL.trimEnd('/') + (route.webPath ?: "/dashboard"))
-                    webView = this
-                }
-            },
-            update = { view ->
-                val target = BuildConfig.WEB_BASE_URL.trimEnd('/') + (route.webPath ?: "/dashboard")
-                if (view.url?.substringBefore('?') != target) view.loadUrl(target)
-            }
-        )
-        AnimatedVisibility(loading, enter = fadeIn(), exit = fadeOut()) {
-            LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter), color = Gold)
-        }
-    }
-}
-
 private fun routeFromDeepLink(uri: Uri?): AppRoute {
     val path = uri?.path.orEmpty()
     return AppRoute.entries.firstOrNull { it.webPath == path } ?: AppRoute.Darshan
 }
-
-private fun escapeJs(value: String): String = value.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ")
