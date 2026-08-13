@@ -113,6 +113,7 @@ import com.xpresscure.nyas.data.FamilyMemberProfile
 import com.xpresscure.nyas.data.LoginChallenge
 import com.xpresscure.nyas.data.NyasApi
 import com.xpresscure.nyas.data.NyasSession
+import com.xpresscure.nyas.data.Sankalp
 import com.xpresscure.nyas.data.SessionStore
 import com.xpresscure.nyas.ui.theme.Forest
 import com.xpresscure.nyas.ui.theme.Gold
@@ -141,6 +142,7 @@ data class AppUiState(
     val loginError: String = "",
     val dashboard: DashboardData = DashboardData(),
     val familyHub: FamilyHubOverview = FamilyHubOverview(),
+    val fundingSankalp: List<Sankalp> = emptyList(),
     val myProfile: FamilyMemberProfile? = null,
     val loadingDashboard: Boolean = false,
     val dashboardError: String = ""
@@ -191,13 +193,22 @@ class NyasViewModel : ViewModel() {
             val dashboardRequest = async { runCatching { api.dashboard(session) } }
             val hubRequest = async { runCatching { api.familyHubOverview(session) } }
             val profileRequest = async { runCatching { api.myProfile(session) } }
+            val sankalpRequest = async { runCatching { api.sankalp(session) } }
             val dashboardResult = dashboardRequest.await()
             val hubResult = hubRequest.await()
             val profileResult = profileRequest.await()
+            val sankalpResult = sankalpRequest.await()
+            val fundingSankalp = sankalpResult.getOrDefault(state.fundingSankalp)
+                .filter {
+                    it.budgetRequired && !it.fullyFunded && it.targetPaise > it.allocatedPaise &&
+                        it.status !in setOf("draft", "archived", "completed")
+                }
+                .sortedWith(compareByDescending<Sankalp> { it.fundingPercent }.thenBy { it.title })
             state = state.copy(
                 dashboard = dashboardResult.getOrDefault(state.dashboard),
                 familyHub = hubResult.getOrDefault(state.familyHub),
                 myProfile = profileResult.getOrNull() ?: state.myProfile,
+                fundingSankalp = fundingSankalp,
                 loadingDashboard = false,
                 dashboardError = if (dashboardResult.isFailure && hubResult.isFailure) "Latest information is unavailable right now." else ""
             )
@@ -388,8 +399,17 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                     TopAppBar(
                         title = {
                             Column {
-                                Text(route.label, style = MaterialTheme.typography.titleLarge)
-                                Text(state.session?.familyName.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    if (route == AppRoute.Darshan) "Hello, ${state.session?.fullName.orEmpty().substringBefore(' ')}" else route.label,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                                Text(
+                                    if (route == AppRoute.Darshan) "Here is what matters today" else state.session?.familyName.orEmpty(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         },
                         actions = {
@@ -417,14 +437,14 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                 }, label = "route") { destination ->
                     when {
                         destination == AppRoute.Darshan -> HomeScreen(
-                            session = state.session!!,
                             dashboard = state.dashboard,
                             familyHub = state.familyHub,
+                            fundingSankalp = state.fundingSankalp,
                             profile = state.myProfile,
                             loading = state.loadingDashboard,
                             error = state.dashboardError,
                             onNavigate = { route = it },
-                            onRefresh = onRefresh
+                            onContribute = { projectId -> fundingProjectId = projectId; route = AppRoute.Kosh }
                         )
                         destination == AppRoute.Kul -> KulScreen(
                             session = state.session!!,
@@ -446,14 +466,14 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         destination == AppRoute.Sabha -> SabhaScreen(session = state.session!!)
                         destination == AppRoute.Settings -> SettingsScreen(state.session!!, onTokenChanged, onLogout)
                         else -> HomeScreen(
-                            session = state.session!!,
                             dashboard = state.dashboard,
                             familyHub = state.familyHub,
+                            fundingSankalp = state.fundingSankalp,
                             profile = state.myProfile,
                             loading = state.loadingDashboard,
                             error = state.dashboardError,
                             onNavigate = { route = it },
-                            onRefresh = onRefresh
+                            onContribute = { projectId -> fundingProjectId = projectId; route = AppRoute.Kosh }
                         )
                     }
                 }

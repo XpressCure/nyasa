@@ -72,16 +72,17 @@ class NyasApi {
                 members = metrics.int("memberCount"),
                 activeSankalp = metrics.int("activeProjects"),
                 completedSankalp = metrics.int("completedProjects"),
-                koshPaise = metrics.long("treasuryBalance"),
-                contributedThisYearPaise = metrics.long("contributionThisYear")
+                koshPaise = metrics.long("treasuryBalance") * 100,
+                contributedThisYearPaise = metrics.long("contributionThisYear") * 100
             ),
             featured = projects?.mapNotNull { item ->
                 item.takeIf { it.isJsonObject }?.asJsonObject?.let {
                     SankalpSummary(
                         id = it.string("_id", it.string("id")),
                         title = it.string("title", "Sankalp"),
-                        stage = it.string("stage", "planning"),
-                        targetPaise = it.long("targetBudgetPaise", it.long("estimatedBudgetPaise")),
+                        stage = it.string("lifecycleStage", it.string("stage", "planning")),
+                        targetPaise = it.long("targetBudgetPaise").takeIf { value -> value > 0 }
+                            ?: it.long("targetBudgetRupees", it.long("estimatedBudgetRupees")) * 100,
                         allocatedPaise = it.long("allocatedAmountPaise")
                     )
                 }

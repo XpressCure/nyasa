@@ -91,6 +91,7 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
+    var bankError by remember { mutableStateOf("") }
     var bankSheet by remember { mutableStateOf(false) }
     var allocationProject by remember { mutableStateOf<Sankalp?>(null) }
     var success by remember { mutableStateOf<Pair<String, Long>?>(null) }
@@ -137,7 +138,7 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
                         Text(money.format(summary.walletBalancePaise / 100.0), color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                         Text("Ready to allocate to a Sankalp", color = Color(0xFFDDE8E0))
                         Spacer(Modifier.height(18.dp))
-                        Button(onClick = { bankSheet = true }, shape = RoundedCornerShape(8.dp)) {
+                        Button(onClick = { bankError = ""; bankSheet = true }, shape = RoundedCornerShape(8.dp)) {
                             Icon(Icons.Outlined.AccountBalance, null)
                             Spacer(Modifier.size(8.dp))
                             Text("Add money")
@@ -217,17 +218,19 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
         BankContributionSheet(
             config = config,
             busy = busy,
+            error = bankError,
             onDismiss = { if (!busy) bankSheet = false },
             onConfirm = { amount ->
                 scope.launch {
                     busy = true
                     try {
+                        bankError = ""
                         val result = api.declareBankContribution(session, amount)
                         bankSheet = false
                         success = result.message to result.amountPaise
                         refresh()
                     } catch (exception: ApiException) {
-                        error = exception.message.orEmpty()
+                        bankError = exception.message.orEmpty()
                     } finally { busy = false }
                 }
             }
@@ -262,54 +265,69 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
 }
 
 @Composable
-private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
+private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean, error: String, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
     val context = LocalContext.current
     var amount by remember { mutableStateOf(config.minimumAmountRupees.toString()) }
     var review by remember { mutableStateOf(false) }
     val parsed = amount.toLongOrNull() ?: 0
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("Add money to Kosh", style = MaterialTheme.typography.headlineSmall)
-            Text("Send the money to the family account, then record the same amount here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (config.qrImageUrl.isNotBlank()) {
-                AsyncImage(config.qrImageUrl, "Payment QR", Modifier.size(180.dp).align(Alignment.CenterHorizontally))
-            }
-            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
-                Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                    Text(config.accountName, fontWeight = FontWeight.Bold)
-                    if (config.accountNumber.isNotBlank()) Text("Account: ${config.accountNumber}")
-                    if (config.ifsc.isNotBlank()) Text("IFSC: ${config.ifsc}")
-                    if (config.upiId.isNotBlank()) Text("UPI: ${config.upiId}")
+            if (review) {
+                Text("Confirm contribution", style = MaterialTheme.typography.headlineSmall)
+                Text("Amount sent", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("₹${NumberFormat.getNumberInstance(Locale("en", "IN")).format(parsed)}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = Forest)
+                Text(amountInWords(parsed), color = Leaf, style = MaterialTheme.typography.titleMedium)
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
+                    Text("I confirm that I sent this amount to the Nyas bank account. It will be visible to the Kosh team for reconciliation.", Modifier.padding(14.dp))
                 }
+                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                Button(onClick = { onConfirm(parsed) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) {
+                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Confirm and add to Kosh")
+                }
+                TextButton(onClick = { review = false }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Change amount") }
+            } else {
+                Text("Add money to Kosh", style = MaterialTheme.typography.headlineSmall)
+                Text("1. Send money to the family account.  2. Record the same amount here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (config.qrImageUrl.isNotBlank()) {
+                    AsyncImage(config.qrImageUrl, "Payment QR", Modifier.size(180.dp).align(Alignment.CenterHorizontally))
+                }
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                        Text(config.accountName, fontWeight = FontWeight.Bold)
+                        if (config.accountNumber.isNotBlank()) Text("Account: ${config.accountNumber}")
+                        if (config.ifsc.isNotBlank()) Text("IFSC: ${config.ifsc}")
+                        if (config.upiId.isNotBlank()) Text("UPI: ${config.upiId}")
+                    }
+                }
+                if (config.upiId.isNotBlank()) OutlinedButton(
+                    onClick = {
+                        val uri = Uri.parse("upi://pay?pa=${Uri.encode(config.upiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) { Text("Open UPI app") }
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it.filter(Char::isDigit).take(9) },
+                    label = { Text("Amount sent") },
+                    prefix = { Text("₹ ") },
+                    supportingText = { Text("Minimum ₹${config.minimumAmountRupees}") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Button(
+                    onClick = { review = true },
+                    enabled = !busy && config.enabled && parsed >= config.minimumAmountRupees,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) { Text("Review amount") }
+                if (!config.enabled) Text("Bank contributions are not enabled for this family yet.", color = MaterialTheme.colorScheme.error)
+                Text("The Kosh team will reconcile this with the bank statement.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (config.upiId.isNotBlank()) OutlinedButton(
-                onClick = {
-                    val uri = Uri.parse("upi://pay?pa=${Uri.encode(config.upiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
-                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Open UPI app") }
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it.filter(Char::isDigit).take(9) },
-                label = { Text("Amount sent") },
-                prefix = { Text("₹ ") },
-                supportingText = { Text("Minimum ₹${config.minimumAmountRupees}") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Button(
-                onClick = { review = true },
-                enabled = !busy && parsed >= config.minimumAmountRupees,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Review and record") }
-            Text("The Kosh team will reconcile this with the bank statement.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    if (review) AmountConfirmation(parsed, "I have sent this amount to the Nyas bank account.", busy, { review = false }) { onConfirm(parsed) }
 }
 
 @Composable

@@ -32,15 +32,12 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayCircle
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -63,8 +60,7 @@ import com.xpresscure.nyas.data.FamilyCalendarItem
 import com.xpresscure.nyas.data.FamilyCelebration
 import com.xpresscure.nyas.data.FamilyHubOverview
 import com.xpresscure.nyas.data.FamilyMemberProfile
-import com.xpresscure.nyas.data.NyasSession
-import com.xpresscure.nyas.data.SankalpSummary
+import com.xpresscure.nyas.data.Sankalp
 import com.xpresscure.nyas.data.WeeklyFeature
 import com.xpresscure.nyas.ui.theme.Forest
 import com.xpresscure.nyas.ui.theme.Gold
@@ -86,16 +82,16 @@ private data class RecommendedAction(
 
 @Composable
 internal fun HomeScreen(
-    session: NyasSession,
     dashboard: DashboardData,
     familyHub: FamilyHubOverview,
+    fundingSankalp: List<Sankalp>,
     profile: FamilyMemberProfile?,
     loading: Boolean,
     error: String,
     onNavigate: (AppRoute) -> Unit,
-    onRefresh: () -> Unit
+    onContribute: (String?) -> Unit
 ) {
-    val action = remember(profile, dashboard, familyHub) { recommendedAction(profile, dashboard, familyHub) }
+    val action = remember(profile, familyHub, fundingSankalp) { recommendedAction(profile, familyHub, fundingSankalp) }
     val rupees = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
     val moments: List<Any> = remember(familyHub) {
         (familyHub.celebrations.take(4) + familyHub.calendarEvents.take(4)).sortedBy {
@@ -113,15 +109,13 @@ internal fun HomeScreen(
     ) {
         item {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Hello, ${session.fullName.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
-                        Text("Here is what matters today", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "Refresh home") }
-                }
-                Spacer(Modifier.height(16.dp))
                 NextActionCard(action) { onNavigate(action.route) }
+                Spacer(Modifier.height(12.dp))
+                ContributionCard(
+                    project = fundingSankalp.firstOrNull(),
+                    onContribute = { onContribute(fundingSankalp.firstOrNull()?.id) },
+                    onBrowse = { onNavigate(AppRoute.Sankalp) }
+                )
                 if (loading) {
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(Modifier.fillMaxWidth(), color = Gold)
@@ -152,7 +146,7 @@ internal fun HomeScreen(
         }
 
         item { SectionTitle("Sankalp in focus", "View all") { onNavigate(AppRoute.Sankalp) } }
-        if (!loading && dashboard.featured.isEmpty()) {
+        if (!loading && fundingSankalp.isEmpty()) {
             item {
                 Surface(
                     onClick = { onNavigate(AppRoute.Sankalp) },
@@ -174,8 +168,12 @@ internal fun HomeScreen(
         } else {
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(dashboard.featured, key = { it.id }) { project ->
-                        SankalpFocusCard(project) { onNavigate(AppRoute.Sankalp) }
+                    items(fundingSankalp, key = { it.id }) { project ->
+                        SankalpFocusCard(
+                            project = project,
+                            onOpen = { onNavigate(AppRoute.Sankalp) },
+                            onContribute = { onContribute(project.id) }
+                        )
                     }
                 }
             }
@@ -217,6 +215,39 @@ private fun NextActionCard(action: RecommendedAction, onClick: () -> Unit) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ContributionCard(project: Sankalp?, onContribute: () -> Unit, onBrowse: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(Modifier.size(40.dp), shape = CircleShape, color = Gold.copy(alpha = 0.18f)) {
+                    Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Savings, null, tint = Leaf) }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Contribute", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        project?.let { "Support ${it.title}" } ?: "Add money to your Kosh",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Button(onClick = onContribute, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(8.dp)) {
+                Text(if (project == null) "Open Kosh" else "Contribute now")
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
+            }
+            if (project != null) TextButton(onClick = onBrowse, modifier = Modifier.align(Alignment.End)) { Text("See all Sankalp") }
         }
     }
 }
@@ -290,9 +321,9 @@ private fun WeeklyFeatureCard(feature: WeeklyFeature) {
 }
 
 @Composable
-private fun SankalpFocusCard(project: SankalpSummary, onClick: () -> Unit) {
-    val progress = if (project.targetPaise > 0) (project.allocatedPaise.toFloat() / project.targetPaise).coerceIn(0f, 1f) else 0f
-    Card(onClick = onClick, modifier = Modifier.width(280.dp), shape = RoundedCornerShape(8.dp)) {
+private fun SankalpFocusCard(project: Sankalp, onOpen: () -> Unit, onContribute: () -> Unit) {
+    val progress = (project.fundingPercent / 100f).coerceIn(0f, 1f)
+    Card(onClick = onOpen, modifier = Modifier.width(292.dp), shape = RoundedCornerShape(8.dp)) {
         Column(Modifier.padding(16.dp)) {
             Text(project.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(stageLabel(project.stage), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -300,6 +331,10 @@ private fun SankalpFocusCard(project: SankalpSummary, onClick: () -> Unit) {
             LinearProgressIndicator(progress = { progress }, Modifier.fillMaxWidth().height(8.dp).clip(CircleShape), color = Gold)
             Spacer(Modifier.height(8.dp))
             Text(if (project.targetPaise > 0) "${(progress * 100).toInt()}% funded" else "No funding required", color = Leaf, style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onContribute, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
+                Text("Contribute")
+            }
         }
     }
 }
@@ -314,7 +349,7 @@ private fun FamilyPulse(
     onVirasat: () -> Unit
 ) {
     Column(Modifier.padding(horizontal = 16.dp)) {
-        Text("Family pulse", style = MaterialTheme.typography.titleLarge)
+        Text("Your family at a glance", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(10.dp))
         Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(16.dp)) {
@@ -324,12 +359,25 @@ private fun FamilyPulse(
                     PulseStat(Icons.Outlined.Savings, kosh, "Kosh")
                 }
                 Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = onFamily, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.FamilyRestroom, null); Spacer(Modifier.width(6.dp)); Text("Family") }
-                    FilledTonalButton(onClick = onMap, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.Route, null); Spacer(Modifier.width(6.dp)); Text("Map") }
-                    FilledTonalButton(onClick = onVirasat, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.AutoStories, null); Spacer(Modifier.width(6.dp)); Text("Virasat") }
-                }
+                FamilyAction(Icons.Outlined.FamilyRestroom, "Browse family", "Find relatives and family profiles", onFamily)
+                FamilyAction(Icons.Outlined.Route, "Open Kul Map", "See how generations and branches connect", onMap)
+                FamilyAction(Icons.Outlined.AutoStories, "Preserve a memory", "Add to the family history and Virasat", onVirasat)
             }
+        }
+    }
+}
+
+@Composable
+private fun FamilyAction(icon: ImageVector, title: String, description: String, onClick: () -> Unit) {
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), color = Color.Transparent, shape = RoundedCornerShape(8.dp)) {
+        Row(Modifier.padding(vertical = 12.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = Leaf)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -344,7 +392,7 @@ private fun PulseStat(icon: ImageVector, value: String, label: String) {
     }
 }
 
-private fun recommendedAction(profile: FamilyMemberProfile?, dashboard: DashboardData, hub: FamilyHubOverview): RecommendedAction {
+private fun recommendedAction(profile: FamilyMemberProfile?, hub: FamilyHubOverview, fundingSankalp: List<Sankalp>): RecommendedAction {
     val today = hub.celebrations.firstOrNull { it.daysUntil == 0 }
     if (today != null) return RecommendedAction(
         "Family moment",
@@ -362,7 +410,7 @@ private fun recommendedAction(profile: FamilyMemberProfile?, dashboard: Dashboar
         AppRoute.Parichay,
         Icons.Outlined.People
     )
-    val funding = dashboard.featured.firstOrNull { it.targetPaise > it.allocatedPaise }
+    val funding = fundingSankalp.firstOrNull()
     if (funding != null) return RecommendedAction(
         "Sankalp needs support",
         funding.title,
