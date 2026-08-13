@@ -4199,6 +4199,27 @@ button:disabled {
   color: #17211c;
 }
 
+.account-deletion-form {
+  display: grid;
+  gap: 16px;
+  max-width: 680px;
+}
+
+.account-deletion-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.account-deletion-form textarea,
+.account-deletion-form input {
+  width: 100%;
+}
+
+.account-deletion-form button {
+  width: fit-content;
+}
+
 @media (max-width: 760px) {
   .home-legal-footer,
   .legal-contact-band {

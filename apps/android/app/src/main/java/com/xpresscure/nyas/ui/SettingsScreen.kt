@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -75,6 +76,7 @@ fun SettingsScreen(
     var sankalpAlerts by remember { mutableStateOf(preferences.getBoolean("sankalp_alerts", true)) }
     var passwordDialog by remember { mutableStateOf(false) }
     var recoveryDialog by remember { mutableStateOf(false) }
+    var deletionDialog by remember { mutableStateOf(false) }
 
     fun open(path: String) = CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, Uri.parse(BuildConfig.WEB_BASE_URL + path))
 
@@ -126,6 +128,8 @@ fun SettingsScreen(
             SettingsAction(Icons.Outlined.PrivacyTip, "Privacy policy", "How family data is protected") { open("/privacy") }
             HorizontalDivider()
             SettingsAction(Icons.Outlined.Gavel, "Terms and conditions", "Membership and Kosh rules") { open("/terms") }
+            HorizontalDivider()
+            SettingsAction(Icons.Outlined.DeleteForever, "Delete account", "Request removal of your login and private data") { deletionDialog = true }
         }
         item {
             TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth().height(52.dp)) {
@@ -140,6 +144,48 @@ fun SettingsScreen(
         onTokenChanged(it); passwordDialog = false
     })
     if (recoveryDialog) PasswordRecoveryDialog(session, onDismiss = { recoveryDialog = false })
+    if (deletionDialog) AccountDeletionDialog(session, onDismiss = { deletionDialog = false })
+}
+
+@Composable
+private fun AccountDeletionDialog(session: NyasSession, onDismiss: () -> Unit) {
+    val api = remember { NyasApi() }
+    val scope = rememberCoroutineScope()
+    var confirmation by remember { mutableStateOf("") }
+    var reason by remember { mutableStateOf("") }
+    var working by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = { if (!working) onDismiss() },
+        title = { Text(if (result.isBlank()) "Delete account" else "Request received") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (result.isNotBlank()) {
+                    Text(result)
+                    Text("Your request will be reviewed and completed within 30 days. Shared family-history and required financial audit records may be retained.")
+                } else {
+                    Text("This requests removal of your login, contact details, private profile data, optional health data and account-controlled photos.")
+                    OutlinedTextField(reason, { reason = it }, label = { Text("Reason (optional)") }, maxLines = 3, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(confirmation, { confirmation = it }, label = { Text("Type DELETE to confirm") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            if (result.isNotBlank()) Button(onClick = onDismiss) { Text("Done") }
+            else Button(enabled = !working && confirmation == "DELETE", onClick = {
+                scope.launch {
+                    working = true; error = ""
+                    try { result = api.requestAccountDeletion(session, reason).message }
+                    catch (exception: ApiException) { error = exception.message.orEmpty() }
+                    finally { working = false }
+                }
+            }) { Text(if (working) "Sending..." else "Request deletion") }
+        },
+        dismissButton = { if (result.isBlank()) TextButton(enabled = !working, onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable

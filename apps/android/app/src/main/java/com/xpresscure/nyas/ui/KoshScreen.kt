@@ -2,12 +2,8 @@
 
 package com.xpresscure.nyas.ui
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -74,9 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import androidx.core.content.ContextCompat
 import com.xpresscure.nyas.data.ApiException
-import com.xpresscure.nyas.data.BankSmsReader
 import com.xpresscure.nyas.data.BankContributionConfig
 import com.xpresscure.nyas.data.KoshSummary
 import com.xpresscure.nyas.data.KoshLedgerEntry
@@ -392,19 +386,6 @@ private fun BankContributionSheet(
     val usableUpiId = config.upiId.takeIf {
         it.contains('@') && !it.contains("YOUR_", ignoreCase = true) && !it.contains("PLACEHOLDER", ignoreCase = true)
     }.orEmpty()
-    fun detectSms() {
-        val match = runCatching { BankSmsReader.latestOutgoingPayment(context) }.getOrNull()
-        if (match == null) {
-            smsNotice = "No recent outgoing bank payment SMS was found. You can still enter the amount manually."
-        } else {
-            amount = match.amountRupees.toString()
-            utr = match.utr
-            smsNotice = "Found a recent payment message from ${match.sender}. Please verify the amount before continuing."
-        }
-    }
-    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) detectSms() else smsNotice = "SMS access was not granted. Manual entry remains available."
-    }
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
         Column(
             Modifier
@@ -464,16 +445,8 @@ private fun BankContributionSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                OutlinedButton(
-                    onClick = {
-                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) detectSms()
-                        else smsPermission.launch(Manifest.permission.READ_SMS)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) { Text("Find recent bank SMS") }
                 Text(
-                    "Optional: Nyas checks recent payment messages only after you allow it. The message stays on this phone and is used only to prefill this form.",
+                    "Enter the amount and bank reference shown by your UPI or banking app. Nyas does not read your personal messages.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

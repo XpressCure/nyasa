@@ -110,6 +110,12 @@ class NyasApi {
         execute("/auth/password/change", "POST", body, session.token).objectAt("data").string("token")
     }
 
+    suspend fun requestAccountDeletion(session: NyasSession, reason: String): ActionResult = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply { if (reason.isNotBlank()) addProperty("reason", reason.trim()) }
+        val root = execute("/auth/account-deletion-request", "POST", body, session.token)
+        ActionResult(root.string("message", "Account deletion request received."))
+    }
+
     suspend fun dashboard(session: NyasSession): DashboardData = withContext(Dispatchers.IO) {
         if (session.familyId.isBlank()) return@withContext DashboardData()
         val data = execute("/families/${session.familyId}/dashboard", token = session.token).objectAt("data")

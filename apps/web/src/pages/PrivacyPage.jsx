@@ -10,7 +10,7 @@ export function PrivacyPage() {
         <img src={nyasaLogo} alt="Nyas logo" />
         <span>Nyas • Private Kul workspace</span>
         <h1>Privacy Policy</h1>
-        <p>Effective and last updated: 12 August 2026</p>
+        <p>Effective and last updated: 14 August 2026</p>
       </header>
 
       <div className="policy-body">
@@ -33,9 +33,12 @@ export function PrivacyPage() {
             Sankalp allocations, reconciliation corrections, and audit history. Nyas does not store UPI PINs or banking passwords.
           </p>
           <p>
-            In the Android app, a member may optionally grant SMS access and tap "Find recent bank SMS" to prefill a contribution amount and
-            transaction reference. This check runs on the member's phone only after that action. The SMS body is not uploaded to Nyas, and the
-            member must review and confirm the amount before recording a declaration. SMS detection is an entry aid, not proof of bank receipt.
+            The Android app does not read or upload SMS messages. Members enter the amount and bank reference displayed by their UPI or banking app.
+          </p>
+          <p>
+            With explicit permission, the Android app may read step count, walking distance, and exercise-session information from Health Connect
+            to show personal fitness progress and family challenges. This is optional, can be disconnected in Android settings, and is not used for
+            diagnosis, treatment, advertising, or sale.
           </p>
         </section>
         <section>
@@ -66,6 +69,12 @@ export function PrivacyPage() {
             Records are retained while required for the family archive, membership operation, transaction reconciliation, legal compliance, and
             dispute resolution. Members may update their Parichay directly or request correction, deactivation, or review through the owner or
             administrators visible after sign-in. Financial audit records may be retained even when a profile is deactivated.
+          </p>
+          <p>
+            A member may initiate account deletion in Android under Settings or at <Link to="/delete-account">nyasa.xpresscure.com/delete-account</Link>.
+            After verification, login credentials, contact details, private profile fields, optional health information, and account-controlled
+            photographs are removed within 30 days. Minimal family-history and financial audit records may be retained where necessary for the shared
+            Kul archive, accounting, fraud prevention, dispute handling, or legal obligations.
           </p>
         </section>
         <section>

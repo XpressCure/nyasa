@@ -10,6 +10,7 @@ import { Family } from "../../models/Family.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
 import { User } from "../../models/User.js";
 import { PasswordRecoveryGrant } from "../../models/PasswordRecoveryGrant.js";
+import { AccountDeletionRequest } from "../../models/AccountDeletionRequest.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
@@ -44,6 +45,9 @@ const passwordRecoverySchema = z.object({
   recoveryCode: z.string().min(8).max(20),
   password: z.string(),
   confirmPassword: z.string()
+});
+const accountDeletionRequestSchema = z.object({
+  reason: z.string().trim().max(500).optional()
 });
 
 function normalizeRecoveryCode(value = "") {
@@ -725,6 +729,43 @@ authRoutes.post(
         user: { id: user._id, fullName: user.fullName, email: user.email, phone: user.phone, hasPassword: true }
       },
       message: "Password changed successfully."
+    });
+  })
+);
+
+authRoutes.post(
+  "/account-deletion-request",
+  requireAuth,
+  requirePasswordAuth,
+  asyncHandler(async (req, res) => {
+    const body = accountDeletionRequestSchema.parse(req.body || {});
+    const member = await FamilyMember.findOne({ userId: req.user._id, status: "active" });
+    if (!member) throw httpError(404, "Your active Nyas membership could not be found.", "MEMBERSHIP_NOT_FOUND");
+
+    const processBy = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const request = await AccountDeletionRequest.findOneAndUpdate(
+      { userId: req.user._id, status: { $in: ["requested", "processing"] } },
+      {
+        $set: { reason: body.reason || "", requestedAt: new Date(), processBy },
+        $setOnInsert: { familyId: member.familyId, memberId: member._id, userId: req.user._id, status: "requested" }
+      },
+      { upsert: true, new: true }
+    );
+
+    await writeAuditLog({
+      familyId: member.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: member._id,
+      action: "auth.account_deletion_requested",
+      entityType: "User",
+      entityId: String(req.user._id),
+      summary: `${member.displayName} requested account deletion`,
+      req
+    });
+
+    res.status(201).json({
+      data: { requestId: request._id, status: request.status, processBy: request.processBy },
+      message: "Account deletion request received. Nyas will complete the review within 30 days."
     });
   })
 );

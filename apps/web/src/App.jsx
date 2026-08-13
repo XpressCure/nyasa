@@ -3,6 +3,7 @@ import { AppLayout } from "./components/AppLayout.jsx";
 import { RequireAuth } from "./components/RequireAuth.jsx";
 import { CalendarPage } from "./pages/CalendarPage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { DeleteAccountPage } from "./pages/DeleteAccountPage.jsx";
 import { DownloadAppPage } from "./pages/DownloadAppPage.jsx";
 import { FamilyPage } from "./pages/FamilyPage.jsx";
 import { FamilyTreePage } from "./pages/FamilyTreePage.jsx";
@@ -25,6 +26,7 @@ export function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/download-app" element={<DownloadAppPage />} />
+      <Route path="/delete-account" element={<DeleteAccountPage />} />
       <Route path="/legal" element={<LegalPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
