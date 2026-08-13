@@ -107,13 +107,22 @@ export function LoginPage() {
       const safeNextPath = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : defaultPath;
       navigate(safeNextPath);
     } catch (apiError) {
-      if (apiError.code === "LOGIN_PHONE_REQUIRED") {
+      if (apiError.code === "NEW_ACCOUNT_REQUIRED") {
+        setNeedsPhone(true);
+        setPasswordMode("create");
+        setError("No Kul profile was found with this name. Create your Nyas account to join.");
+      } else if (["LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS"].includes(apiError.code)) {
         setNeedsPhone(true);
         setPasswordMode(null);
-        setError("Please add your phone number so Nyas can identify the correct profile.");
-      } else if (apiError.code === "PASSWORD_SETUP_REQUIRED") {
+        setError(apiError.code === "NAME_MATCH_AMBIGUOUS"
+          ? "More than one similar Kul profile was found. Enter your registered phone number."
+          : "Enter the phone number registered with your account.");
+      } else if (["PROFILE_CLAIM_REQUIRED", "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED"].includes(apiError.code)) {
+        setNeedsPhone(true);
         setPasswordMode("create");
-        setError("");
+        setError(apiError.code === "PROFILE_CLAIM_REQUIRED"
+          ? "Your family has already added you. Add your mobile number and create your private login."
+          : "This profile has no login yet. Add your mobile number and create a password.");
       } else if (["PASSWORD_REQUIRED", "INVALID_CREDENTIALS", "LOGIN_TEMPORARILY_LOCKED"].includes(apiError.code)) {
         setPasswordMode("existing");
         setError(apiError.code === "PASSWORD_REQUIRED" ? "" : apiError.message);

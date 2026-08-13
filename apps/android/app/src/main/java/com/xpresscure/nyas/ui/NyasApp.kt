@@ -183,7 +183,7 @@ class NyasViewModel : ViewModel() {
                     "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> LoginChallenge.Phone
                     "PASSWORD_REQUIRED", "INVALID_CREDENTIALS", "LOGIN_TEMPORARILY_LOCKED" -> LoginChallenge.Password
                     "PROFILE_CLAIM_REQUIRED" -> LoginChallenge.ProfileClaim
-                    "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED" -> LoginChallenge.AccountSetup
+                    "NEW_ACCOUNT_REQUIRED", "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED" -> LoginChallenge.AccountSetup
                     else -> state.loginChallenge
                 }
                 state = state.copy(signingIn = false, loginChallenge = challenge, loginError = friendlyError(error))
@@ -239,7 +239,9 @@ class NyasViewModel : ViewModel() {
     }
 
     private fun friendlyError(error: ApiException): String = when (error.code) {
-        "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> "More than one member has this name. Enter the mobile number registered with your account."
+        "LOGIN_PHONE_REQUIRED" -> "Enter the mobile number registered with your account."
+        "NAME_MATCH_AMBIGUOUS" -> "More than one Kul profile has a similar name. Enter your registered mobile number to identify yours."
+        "NEW_ACCOUNT_REQUIRED" -> "We did not find this name in the Kul Map. Create a new Nyas account to join."
         "PROFILE_CLAIM_REQUIRED" -> "Your family has already added you. Claim this profile to create your private login."
         "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED" -> "This profile has no login yet. Add your mobile number and create a password."
         "PASSWORD_REQUIRED" -> "Enter your Nyas password."

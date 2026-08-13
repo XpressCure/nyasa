@@ -311,7 +311,7 @@ authRoutes.post(
         throw httpError(
           409,
           "More than one family profile matches this name. Please enter phone number also.",
-          "LOGIN_PHONE_REQUIRED"
+          "NAME_MATCH_AMBIGUOUS"
         );
       }
 
@@ -334,9 +334,9 @@ authRoutes.post(
         }
       } else {
         throw httpError(
-          400,
-          "Phone number is needed the first time a new family profile is created.",
-          "LOGIN_PHONE_REQUIRED"
+          409,
+          "No existing Kul profile matches this name. Add your mobile number and create a password to join Nyas.",
+          "NEW_ACCOUNT_REQUIRED"
         );
       }
     } else {
