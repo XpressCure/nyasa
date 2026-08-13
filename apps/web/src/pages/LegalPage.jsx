@@ -22,8 +22,8 @@ export function LegalPage() {
           <strong>Nyas (Nyasa Trust / Kul OS)</strong>
         </div>
         <div>
-          <span>Legal name and operator</span>
-          <strong>Kumar Saurabh</strong>
+          <span>Platform administration</span>
+          <strong>Nyas Kul administration</strong>
         </div>
         <div>
           <span>Membership group</span>
@@ -90,8 +90,8 @@ export function LegalPage() {
 
       <section className="legal-contact-band">
         <div>
-          <span>Platform operator</span>
-          <strong>Kumar Saurabh</strong>
+          <span>Platform support</span>
+          <strong>Authorised Nyas administrators</strong>
         </div>
         <p>
           Member support, bank matching, and correction requests are handled through the authenticated Nyas portal by the owner and Kosh Pramukh.

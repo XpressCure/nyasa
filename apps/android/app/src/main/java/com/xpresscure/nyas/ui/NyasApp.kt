@@ -2,7 +2,10 @@
 
 package com.xpresscure.nyas.ui
 
+import android.app.Activity
 import android.net.Uri
+import android.os.SystemClock
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -87,6 +90,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -419,8 +423,27 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
     var route by rememberSaveable { mutableStateOf(routeFromDeepLink(deepLink)) }
     var moreOpen by rememberSaveable { mutableStateOf(false) }
     var fundingProjectId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastBackPressAt by rememberSaveable { mutableStateOf(0L) }
     val snackbars = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Swasthya, AppRoute.Sankalp, AppRoute.Kosh)
+
+    BackHandler(enabled = !moreOpen) {
+        if (route != AppRoute.Darshan) {
+            route = AppRoute.Darshan
+            lastBackPressAt = 0L
+        } else {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastBackPressAt <= 2_000L) {
+                (context as? Activity)?.finish()
+            } else {
+                lastBackPressAt = now
+                snackbars.currentSnackbarData?.dismiss()
+                scope.launch { snackbars.showSnackbar("Press back again to exit") }
+            }
+        }
+    }
 
     LaunchedEffect(state.myProfile?.id) {
         val profile = state.myProfile ?: return@LaunchedEffect
@@ -453,18 +476,24 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                 topBar = {
                     TopAppBar(
                         title = {
-                            Column {
-                                Text(
-                                    if (route == AppRoute.Darshan) "Hello, ${state.session?.fullName.orEmpty().substringBefore(' ')}" else route.label,
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                                Text(
-                                    if (route == AppRoute.Darshan) "Here is what matters today" else state.session?.familyName.orEmpty(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (route == AppRoute.Darshan && state.myProfile != null && state.session != null) {
+                                    MemberAvatar(state.myProfile, state.session, 40)
+                                    Spacer(Modifier.width(10.dp))
+                                }
+                                Column {
+                                    Text(
+                                        if (route == AppRoute.Darshan) "Hello, ${state.session?.fullName.orEmpty().substringBefore(' ')}" else route.label,
+                                        style = MaterialTheme.typography.titleLarge
+                                    )
+                                    Text(
+                                        if (route == AppRoute.Darshan) "Rooted in trust. Growing together." else state.session?.familyName.orEmpty(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         },
                         actions = {

@@ -12,6 +12,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 import java.time.Instant
+import java.util.Locale
 import java.util.UUID
 import android.util.Base64
 
@@ -360,6 +361,34 @@ class NyasApi {
         execute("/projects/family/${session.familyId}", token = session.token).arrayAt("data").mapNotNull { element ->
             element.takeIf { it.isJsonObject }?.asJsonObject?.let(::parseSankalp)
         }
+    }
+
+    suspend fun createSankalp(
+        session: NyasSession,
+        title: String,
+        description: String,
+        rules: String,
+        budgetRequired: Boolean,
+        tentativeBudgetRupees: Long,
+        publish: Boolean
+    ): Sankalp = withContext(Dispatchers.IO) {
+        val slug = title.trim().lowercase(Locale.ENGLISH)
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
+            .ifBlank { "sankalp-${System.currentTimeMillis()}" }
+        val body = JsonObject().apply {
+            addProperty("title", title.trim())
+            addProperty("slug", "$slug-${System.currentTimeMillis().toString().takeLast(5)}")
+            addProperty("description", description.trim())
+            addProperty("rules", rules.trim())
+            addProperty("category", "other")
+            addProperty("projectType", "implementation")
+            addProperty("budgetRequired", budgetRequired)
+            addProperty("tentativeBudgetRupees", if (budgetRequired) tentativeBudgetRupees else 0)
+            addProperty("status", if (publish) "proposed" else "draft")
+            addProperty("lifecycleStage", if (publish) "estimate_pending" else "concept")
+        }
+        parseSankalp(execute("/projects/family/${session.familyId}", "POST", body, session.token).objectAt("data"))
     }
 
     suspend fun sankalpWorkspace(session: NyasSession, projectId: String): SankalpWorkspace = withContext(Dispatchers.IO) {

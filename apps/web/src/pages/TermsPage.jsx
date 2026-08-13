@@ -8,7 +8,7 @@ export function TermsPage() {
       <header>
         <Link to="/legal"><ArrowLeft size={18} /> Legal information</Link>
         <img src={nyasaLogo} alt="Nyas logo" />
-        <span>Nyas • Operated by Kumar Saurabh</span>
+        <span>Nyas • Private Kul workspace</span>
         <h1>Terms & Conditions</h1>
         <p>Effective and last updated: 12 August 2026</p>
       </header>
@@ -17,8 +17,8 @@ export function TermsPage() {
         <section>
           <h2>1. Platform and acceptance</h2>
           <p>
-            Nyas is a private family membership platform operated by Kumar Saurabh for the Alahdadpur Kul. By creating or using an account, a member
-            agrees to these terms, the Privacy Policy, and the rules displayed for each Sankalp and Kosh action.
+            Nyas is a private family membership platform for the Alahdadpur Kul. By creating or using an account, a member agrees to these terms,
+            the Privacy Policy, and the rules displayed for each Sankalp and Kosh action.
           </p>
         </section>
         <section>

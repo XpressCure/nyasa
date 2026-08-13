@@ -8,7 +8,7 @@ export function PrivacyPage() {
       <header>
         <Link to="/legal"><ArrowLeft size={18} /> Legal information</Link>
         <img src={nyasaLogo} alt="Nyas logo" />
-        <span>Nyas • Operated by Kumar Saurabh</span>
+        <span>Nyas • Private Kul workspace</span>
         <h1>Privacy Policy</h1>
         <p>Effective and last updated: 12 August 2026</p>
       </header>
@@ -17,8 +17,8 @@ export function PrivacyPage() {
         <section>
           <h2>1. Scope</h2>
           <p>
-            This Privacy Policy applies to nyasa.xpresscure.com and the private Nyas membership workspace operated by Kumar Saurabh for the
-            Alahdadpur Kul. It explains what information Nyas collects, why it is used, and how members can request corrections.
+            This Privacy Policy applies to nyasa.xpresscure.com and the private Nyas membership workspace for the Alahdadpur Kul. It explains what
+            information Nyas collects, why it is used, and how members can request corrections.
           </p>
         </section>
         <section>
@@ -78,8 +78,8 @@ export function PrivacyPage() {
         <section>
           <h2>8. Contact and changes</h2>
           <p>
-            Privacy and account requests are handled by the platform operator, Kumar Saurabh, through the authenticated Nyas portal and the formal
-            contact details supplied for the private family workspace. Material policy changes will be published on this page.
+            Privacy and account requests are handled by authorised Nyas administrators through the authenticated portal and the formal contact
+            details supplied for the private family workspace. Material policy changes will be published on this page.
           </p>
         </section>
       </div>

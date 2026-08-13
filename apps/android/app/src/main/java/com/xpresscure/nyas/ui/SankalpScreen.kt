@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Refresh
@@ -67,12 +68,16 @@ fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit) {
     var error by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf("all") }
     var selected by remember { mutableStateOf<Sankalp?>(null) }
+    var createOpen by remember { mutableStateOf(false) }
+    val canCreate = session.role in setOf("owner", "admin")
 
     fun refresh() {
         scope.launch {
             loading = true
             error = ""
-            try { projects = api.sankalp(session).filter { it.status != "draft" && it.status != "archived" } }
+            try {
+                projects = api.sankalp(session).filter { it.status != "archived" && (canCreate || it.status != "draft") }
+            }
             catch (exception: ApiException) { error = exception.message.orEmpty() }
             finally { loading = false }
         }
@@ -94,6 +99,7 @@ fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit) {
                     Text("Family Sankalp", style = MaterialTheme.typography.headlineSmall)
                     Text("Shared projects, visible from idea to completion", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (canCreate) IconButton(onClick = { createOpen = true }) { Icon(Icons.Outlined.Add, "New Sankalp") }
                 IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh") }
             }
         }
@@ -128,6 +134,11 @@ fun SankalpScreen(session: NyasSession, onFund: (String) -> Unit) {
             onFund = { selected = null; onFund(project.id) }
         )
     }
+    if (createOpen) SankalpCreateSheet(
+        session = session,
+        onDismiss = { createOpen = false },
+        onCreated = { createOpen = false; refresh() }
+    )
 }
 
 @Composable
