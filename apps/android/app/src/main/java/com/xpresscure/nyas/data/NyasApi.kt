@@ -658,7 +658,9 @@ class NyasApi {
                 if (token.isNotBlank()) header("Authorization", "Bearer $token")
                 when (method) {
                     "POST" -> post((body ?: JsonObject()).toString().toRequestBody(jsonType))
+                    "PUT" -> put((body ?: JsonObject()).toString().toRequestBody(jsonType))
                     "PATCH" -> patch((body ?: JsonObject()).toString().toRequestBody(jsonType))
+                    "DELETE" -> delete((body ?: JsonObject()).toString().toRequestBody(jsonType))
                 }
             }
             .build()

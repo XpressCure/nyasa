@@ -182,7 +182,8 @@ class NyasViewModel : ViewModel() {
                 val challenge = when (error.code) {
                     "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> LoginChallenge.Phone
                     "PASSWORD_REQUIRED", "INVALID_CREDENTIALS", "LOGIN_TEMPORARILY_LOCKED" -> LoginChallenge.Password
-                    "PASSWORD_SETUP_REQUIRED" -> LoginChallenge.PasswordSetup
+                    "PROFILE_CLAIM_REQUIRED" -> LoginChallenge.ProfileClaim
+                    "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED" -> LoginChallenge.AccountSetup
                     else -> state.loginChallenge
                 }
                 state = state.copy(signingIn = false, loginChallenge = challenge, loginError = friendlyError(error))
@@ -226,6 +227,10 @@ class NyasViewModel : ViewModel() {
         state = AppUiState(checkingSession = false)
     }
 
+    fun resetLogin() {
+        state = state.copy(loginChallenge = LoginChallenge.None, loginError = "")
+    }
+
     fun updateSessionToken(store: SessionStore, token: String) {
         val session = state.session ?: return
         val updated = session.copy(token = token)
@@ -234,8 +239,9 @@ class NyasViewModel : ViewModel() {
     }
 
     private fun friendlyError(error: ApiException): String = when (error.code) {
-        "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> "More than one member has this name. Enter your phone number to continue."
-        "PASSWORD_SETUP_REQUIRED" -> "Create a simple password for your first sign-in."
+        "LOGIN_PHONE_REQUIRED", "NAME_MATCH_AMBIGUOUS" -> "More than one member has this name. Enter the mobile number registered with your account."
+        "PROFILE_CLAIM_REQUIRED" -> "Your family has already added you. Claim this profile to create your private login."
+        "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED" -> "This profile has no login yet. Add your mobile number and create a password."
         "PASSWORD_REQUIRED" -> "Enter your Nyas password."
         "INVALID_CREDENTIALS" -> "The name, phone number, or password is incorrect."
         "LOGIN_TEMPORARILY_LOCKED" -> "Too many attempts. Please try again in a few minutes."
@@ -257,7 +263,11 @@ fun NyasApp(deepLink: Uri?) {
     ) { (checking, signedIn) ->
         when {
             checking -> LaunchScreen()
-            !signedIn -> WelcomeAndLogin(model.state, onLogin = { n, p, w, c -> model.signIn(store, n, p, w, c) })
+            !signedIn -> WelcomeAndLogin(
+                model.state,
+                onLogin = { n, p, w, c -> model.signIn(store, n, p, w, c) },
+                onReset = model::resetLogin
+            )
             else -> AppShell(
                 state = model.state,
                 deepLink = deepLink,
@@ -295,15 +305,17 @@ private fun LaunchScreen() {
 @Composable
 private fun WelcomeAndLogin(
     state: AppUiState,
-    onLogin: (String, String, String, String) -> Unit
+    onLogin: (String, String, String, String) -> Unit,
+    onReset: () -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var phone by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
-    val needsPhone = state.loginChallenge == LoginChallenge.Phone
-    val needsPassword = state.loginChallenge == LoginChallenge.Password || state.loginChallenge == LoginChallenge.PasswordSetup
-    val isSetup = state.loginChallenge == LoginChallenge.PasswordSetup
+    val isClaim = state.loginChallenge == LoginChallenge.ProfileClaim
+    val isSetup = isClaim || state.loginChallenge == LoginChallenge.AccountSetup
+    val needsPhone = state.loginChallenge == LoginChallenge.Phone || isSetup
+    val needsPassword = state.loginChallenge == LoginChallenge.Password || isSetup
 
     Box(
         Modifier.fillMaxSize().background(
@@ -336,19 +348,32 @@ private fun WelcomeAndLogin(
                     elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                 ) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text(if (needsPassword) "Secure sign in" else "Find your family profile", style = MaterialTheme.typography.titleLarge)
                         Text(
-                            if (needsPassword) "Your private profile and Kosh information stay protected." else "Start with your name. We ask for a phone number only when needed.",
+                            when {
+                                isClaim -> "Claim your Kul profile"
+                                isSetup -> "Create your login"
+                                needsPassword -> "Welcome back"
+                                else -> "Find your family profile"
+                            },
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Text(
+                            when {
+                                isClaim -> "A family member already added your name. Set your mobile number and password once; no old password is required."
+                                isSetup -> "This account has never had a password. Create one now for future sign-ins."
+                                needsPassword -> "Enter the password you created when you first claimed this profile."
+                                else -> "Start with your name. We will find whether your profile already exists."
+                            },
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        OutlinedTextField(name, { name = it }, label = { Text("Full name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(name, { name = it }, label = { Text("Full name") }, singleLine = true, enabled = state.loginChallenge == LoginChallenge.None, modifier = Modifier.fillMaxWidth())
                         AnimatedVisibility(needsPhone) {
                             OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10) }, label = { Text("Phone number") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
                         AnimatedVisibility(needsPassword) {
                             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                OutlinedTextField(password, { password = it }, label = { Text(if (isSetup) "Create password" else "Password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-                                if (isSetup) OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+                                OutlinedTextField(password, { password = it }, label = { Text(if (isSetup) "Create a new password" else "Your password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+                                if (isSetup) OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("Enter it again") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
                             }
                         }
                         AnimatedVisibility(state.loginError.isNotBlank()) {
@@ -362,10 +387,21 @@ private fun WelcomeAndLogin(
                         ) {
                             if (state.signingIn) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
                             else {
-                                Text(if (isSetup) "Create password" else "Continue")
+                                Text(if (isClaim) "Claim profile & continue" else if (isSetup) "Create login & continue" else "Continue")
                                 Spacer(Modifier.width(8.dp))
                                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                             }
+                        }
+                        if (state.loginChallenge != LoginChallenge.None) {
+                            TextButton(
+                                onClick = {
+                                    phone = ""
+                                    password = ""
+                                    confirmPassword = ""
+                                    onReset()
+                                },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) { Text("Use a different name") }
                         }
                     }
                 }

@@ -317,15 +317,21 @@ authRoutes.post(
 
       if (profileMatches.length === 1) {
         const profile = profileMatches[0];
+        if (!profile.userId) {
+          throw httpError(
+            409,
+            "We found your profile in the Kul Map. Add your mobile number and create your own password to claim it.",
+            "PROFILE_CLAIM_REQUIRED"
+          );
+        }
+
         const profileBody = { ...body, fullName: profile.displayName };
         effectiveLoginBody = profileBody;
-        user = profile.userId ? await User.findById(profile.userId) : await findOrCreateLoginUser(profileBody);
+        user = await User.findById(profile.userId);
 
         if (!user) {
           throw httpError(404, "This profile is linked to a user that could not be found.", "LINKED_USER_NOT_FOUND");
         }
-
-        profileToClaim = profile.userId ? null : profile;
       } else {
         throw httpError(
           400,
@@ -335,9 +341,21 @@ authRoutes.post(
       }
     } else {
       const singleUnclaimedMatch = unclaimedMatches.length === 1 ? unclaimedMatches[0] : null;
-      const loginBody = singleUnclaimedMatch ? { ...body, fullName: singleUnclaimedMatch.displayName } : body;
+      const singleClaimedMatch = claimedMatches.length === 1 ? claimedMatches[0] : null;
+      const matchedProfile = singleClaimedMatch || singleUnclaimedMatch;
+      const loginBody = matchedProfile ? { ...body, fullName: matchedProfile.displayName } : body;
       effectiveLoginBody = loginBody;
-      user = await findOrCreateLoginUser(loginBody);
+      user = singleClaimedMatch?.userId
+        ? await User.findById(singleClaimedMatch.userId).select("+passwordHash")
+        : await findOrCreateLoginUser(loginBody);
+
+      if (!user) {
+        throw httpError(404, "This profile is linked to a user that could not be found.", "LINKED_USER_NOT_FOUND");
+      }
+
+      if (singleClaimedMatch && body.phone && user.phone && user.phone !== body.phone) {
+        throw httpError(401, "The mobile number does not match this account.", "INVALID_CREDENTIALS");
+      }
       if (!preparedFamily.family) {
         preparedFamily = await prepareLaunchFamily(user);
       }
@@ -360,9 +378,9 @@ authRoutes.post(
     let hasPassword = Boolean(userWithPassword?.passwordHash);
     if (!hasPassword && !body.phone && !body.email) {
       throw httpError(
-        400,
-        "Enter the phone number linked to this account to set up secure access.",
-        "LOGIN_PHONE_REQUIRED"
+        409,
+        "This profile has never created login details. Add a mobile number and create a password now.",
+        "ACCOUNT_SETUP_REQUIRED"
       );
     }
     if (hasPassword && !body.password) {

@@ -351,5 +351,6 @@ sealed interface LoginChallenge {
     data object None : LoginChallenge
     data object Phone : LoginChallenge
     data object Password : LoginChallenge
-    data object PasswordSetup : LoginChallenge
+    data object ProfileClaim : LoginChallenge
+    data object AccountSetup : LoginChallenge
 }
