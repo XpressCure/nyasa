@@ -426,7 +426,7 @@ private fun WelcomeAndLogin(
                             when {
                                 isClaim -> "A family member already added your name. Set your mobile number and password once; no old password is required."
                                 isSetup -> "This account has never had a password. Create one now for future sign-ins."
-                                isRecovery -> "Enter the one-time code shared privately by the Nyas owner, then choose a new password."
+                                isRecovery -> "Enter the one-time code shared privately by the Nyas owner. The code identifies your account; now choose a new password."
                                 needsPassword -> "Enter the password you created when you first claimed this profile."
                                 else -> "Start with your name. We will find whether your profile already exists."
                             },
@@ -526,7 +526,7 @@ private fun WelcomeAndLogin(
                                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                             }
                         }
-                        if (state.loginChallenge == LoginChallenge.Password) {
+                        if (!isRecovery) {
                             TextButton(
                                 onClick = {
                                     password = ""
@@ -535,7 +535,12 @@ private fun WelcomeAndLogin(
                                     onForgotPassword()
                                 },
                                 modifier = Modifier.align(Alignment.CenterHorizontally)
-                            ) { Text("Forgot password? Ask the owner for a recovery code") }
+                            ) {
+                                Text(
+                                    if (state.loginChallenge == LoginChallenge.Password) "Forgot password? Use recovery code"
+                                    else "Already have a recovery code?"
+                                )
+                            }
                         }
                         if (state.loginChallenge != LoginChallenge.None) {
                             TextButton(

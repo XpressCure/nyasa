@@ -171,7 +171,7 @@ private fun PasswordRecoveryDialog(session: NyasSession, onDismiss: () -> Unit) 
         text = {
             if (grant != null) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Share this only with ${grant!!.memberName}. It works once and expires in 15 minutes.")
+                    Text("Share this only with ${grant!!.memberName}. It works once and expires in 30 minutes.")
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                         SelectionContainer {
                             Text(
@@ -182,7 +182,7 @@ private fun PasswordRecoveryDialog(session: NyasSession, onDismiss: () -> Unit) 
                             )
                         }
                     }
-                    Text("They should tap Forgot password on the sign-in screen, enter this code, and choose a new password.")
+                    Text("They should tap Use recovery code on the sign-in screen, enter this code, and choose a new password.")
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

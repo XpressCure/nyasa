@@ -40,7 +40,7 @@ const passwordChangeSchema = z.object({
 
 const passwordRecoveryGrantSchema = z.object({ memberId: z.string().min(1) });
 const passwordRecoverySchema = z.object({
-  fullName: z.string().min(2),
+  fullName: z.string().optional(),
   recoveryCode: z.string().min(8).max(20),
   password: z.string(),
   confirmPassword: z.string()
@@ -587,7 +587,7 @@ authRoutes.post(
 
     await PasswordRecoveryGrant.deleteMany({ userId: user._id, usedAt: null });
     const recoveryCode = createRecoveryCode();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
     await PasswordRecoveryGrant.create({
       familyId: req.familyId,
       memberId: member._id,
@@ -610,7 +610,7 @@ authRoutes.post(
 
     res.status(201).json({
       data: { recoveryCode, expiresAt, memberId: member._id, memberName: member.displayName },
-      message: "One-time recovery code created. Share it privately; it expires in 15 minutes."
+      message: "One-time recovery code created. Share it privately; it expires in 30 minutes."
     });
   })
 );
@@ -633,10 +633,6 @@ authRoutes.post(
       Family.findById(grant.familyId)
     ]);
     if (!member || !user || !family) throw httpError(404, "This recovery account is no longer active.", "RECOVERY_ACCOUNT_INACTIVE");
-    if (nameSimilarity(body.fullName, member.displayName) < 0.72) {
-      throw httpError(401, "Enter the member name shown when the recovery code was created.", "RECOVERY_NAME_MISMATCH");
-    }
-
     user.passwordHash = await hashPassword(body.password);
     user.passwordSetAt = new Date();
     user.authVersion = (user.authVersion || 0) + 1;
