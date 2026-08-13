@@ -16,6 +16,8 @@ Nyas Android is the mobile-first home for family identity, memory, Kosh, Sankalp
 - Native Kul Map with real generation, spouse, and parent-child relationships plus high-resolution image sharing
 - Native Calendar, Sankalp Sabha, Virasat, profile, Kul Map, Kosh, and Sankalp workspace journeys
 - Assigned Sankalp managers can advance stages, add or complete milestones, and publish progress reports
+- Optional, consent-based on-device bank SMS detection can prefill a contribution for member review
+- Native Kosh Milan gives authorised owners, administrators, and Kosh Pramukh the bank reconciliation workflow
 - First-time members are guided into Parichay before entering the wider family workspace
 
 ## Product navigation
@@ -40,6 +42,7 @@ Calendar, Sankalp Sabha, Virasat, and other occasional tools live under More or 
 | Kul Map | Explore relationships and generations | Native interactive graph with pan, zoom, and person details |
 | Virasat | Read and add chronological family memories | Native |
 | Kosh | Record a bank contribution and allocate it | Native guided flow |
+| Kosh Milan | Match declarations, balances, and wallet corrections | Native, role restricted |
 | Sankalp | Follow projects, milestones, reports, documents, and funding | Native |
 | Sankalp Sabha | Propose and vote | Native |
 | Calendar | Celebrations and family events | Native |

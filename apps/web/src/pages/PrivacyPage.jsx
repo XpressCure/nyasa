@@ -32,6 +32,11 @@ export function PrivacyPage() {
             For Kosh activity, Nyas records the amount and bank reference declared by a member, optional source-account suffix, wallet entries,
             Sankalp allocations, reconciliation corrections, and audit history. Nyas does not store UPI PINs or banking passwords.
           </p>
+          <p>
+            In the Android app, a member may optionally grant SMS access and tap "Find recent bank SMS" to prefill a contribution amount and
+            transaction reference. This check runs on the member's phone only after that action. The SMS body is not uploaded to Nyas, and the
+            member must review and confirm the amount before recording a declaration. SMS detection is an entry aid, not proof of bank receipt.
+          </p>
         </section>
         <section>
           <h2>3. How information is used</h2>

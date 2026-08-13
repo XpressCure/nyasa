@@ -2,8 +2,12 @@
 
 package com.xpresscure.nyas.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -16,6 +20,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,7 +29,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AccountBalance
@@ -66,7 +74,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import androidx.core.content.ContextCompat
 import com.xpresscure.nyas.data.ApiException
+import com.xpresscure.nyas.data.BankSmsReader
 import com.xpresscure.nyas.data.BankContributionConfig
 import com.xpresscure.nyas.data.KoshSummary
 import com.xpresscure.nyas.data.NyasApi
@@ -220,12 +230,12 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
             busy = busy,
             error = bankError,
             onDismiss = { if (!busy) bankSheet = false },
-            onConfirm = { amount ->
+            onConfirm = { amount, utr ->
                 scope.launch {
                     busy = true
                     try {
                         bankError = ""
-                        val result = api.declareBankContribution(session, amount)
+                        val result = api.declareBankContribution(session, amount, utr)
                         bankSheet = false
                         success = result.message to result.amountPaise
                         refresh()
@@ -265,13 +275,46 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
 }
 
 @Composable
-private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean, error: String, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
+private fun BankContributionSheet(
+    config: BankContributionConfig,
+    busy: Boolean,
+    error: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Long, String) -> Unit
+) {
     val context = LocalContext.current
     var amount by remember { mutableStateOf(config.minimumAmountRupees.toString()) }
+    var utr by remember { mutableStateOf("") }
     var review by remember { mutableStateOf(false) }
+    var smsNotice by remember { mutableStateOf("") }
+    var qrFailed by remember(config.qrImageUrl) { mutableStateOf(false) }
     val parsed = amount.toLongOrNull() ?: 0
+    val usableUpiId = config.upiId.takeIf {
+        it.contains('@') && !it.contains("YOUR_", ignoreCase = true) && !it.contains("PLACEHOLDER", ignoreCase = true)
+    }.orEmpty()
+    fun detectSms() {
+        val match = runCatching { BankSmsReader.latestOutgoingPayment(context) }.getOrNull()
+        if (match == null) {
+            smsNotice = "No recent outgoing bank payment SMS was found. You can still enter the amount manually."
+        } else {
+            amount = match.amountRupees.toString()
+            utr = match.utr
+            smsNotice = "Found a recent payment message from ${match.sender}. Please verify the amount before continuing."
+        }
+    }
+    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) detectSms() else smsNotice = "SMS access was not granted. Manual entry remains available."
+    }
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             if (review) {
                 Text("Confirm contribution", style = MaterialTheme.typography.headlineSmall)
                 Text("Amount sent", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -281,32 +324,64 @@ private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean,
                     Text("I confirm that I sent this amount to the Nyas bank account. It will be visible to the Kosh team for reconciliation.", Modifier.padding(14.dp))
                 }
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-                Button(onClick = { onConfirm(parsed) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) {
+                if (utr.isNotBlank()) Text("Reference: $utr", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = { onConfirm(parsed, utr) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) {
                     if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Confirm and add to Kosh")
                 }
                 TextButton(onClick = { review = false }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Change amount") }
             } else {
                 Text("Add money to Kosh", style = MaterialTheme.typography.headlineSmall)
                 Text("1. Send money to the family account.  2. Record the same amount here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (config.qrImageUrl.isNotBlank()) {
-                    AsyncImage(config.qrImageUrl, "Payment QR", Modifier.size(180.dp).align(Alignment.CenterHorizontally))
+                if (config.qrImageUrl.isNotBlank() && !qrFailed) {
+                    AsyncImage(
+                        model = config.qrImageUrl,
+                        contentDescription = "Payment QR",
+                        modifier = Modifier.size(160.dp).align(Alignment.CenterHorizontally),
+                        onError = { qrFailed = true }
+                    )
                 }
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp)) {
                         Text(config.accountName, fontWeight = FontWeight.Bold)
                         if (config.accountNumber.isNotBlank()) Text("Account: ${config.accountNumber}")
                         if (config.ifsc.isNotBlank()) Text("IFSC: ${config.ifsc}")
-                        if (config.upiId.isNotBlank()) Text("UPI: ${config.upiId}")
+                        if (usableUpiId.isNotBlank()) Text("UPI: $usableUpiId")
                     }
                 }
-                if (config.upiId.isNotBlank()) OutlinedButton(
+                if (usableUpiId.isNotBlank()) OutlinedButton(
                     onClick = {
-                        val uri = Uri.parse("upi://pay?pa=${Uri.encode(config.upiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
+                        val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                            .onFailure { smsNotice = "No UPI app could open this payment request. Scan the QR or use the bank details below." }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 ) { Text("Open UPI app") }
+                if (usableUpiId.isBlank()) {
+                    Text(
+                        "Pay using the bank details above. A direct UPI button will appear after the Kosh team configures its verified UPI ID.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) detectSms()
+                        else smsPermission.launch(Manifest.permission.READ_SMS)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) { Text("Find recent bank SMS") }
+                Text(
+                    "Optional: Nyas checks recent payment messages only after you allow it. The message stays on this phone and is used only to prefill this form.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (smsNotice.isNotBlank()) {
+                    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
+                        Text(smsNotice, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it.filter(Char::isDigit).take(9) },
@@ -314,6 +389,13 @@ private fun BankContributionSheet(config: BankContributionConfig, busy: Boolean,
                     prefix = { Text("₹ ") },
                     supportingText = { Text("Minimum ₹${config.minimumAmountRupees}") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = utr,
+                    onValueChange = { utr = it.filter(Char::isLetterOrDigit).take(40).uppercase() },
+                    label = { Text("UTR / transaction reference (optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )

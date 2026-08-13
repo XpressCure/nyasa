@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AutoStories
@@ -124,6 +125,7 @@ internal enum class AppRoute(val label: String, val context: String, val icon: I
     Darshan("Home", "Darshan", Icons.Outlined.Home, null),
     Kul("Family", "Kul", Icons.Outlined.FamilyRestroom, "/family"),
     Kosh("Kosh", "Family funds", Icons.Outlined.Savings, "/contribute"),
+    KoshMilan("Kosh Milan", "Bank reconciliation", Icons.AutoMirrored.Outlined.FactCheck, "/kosh-reconciliation"),
     Sankalp("Sankalp", "Shared projects", Icons.Outlined.Route, "/projects"),
     More("More", "More", Icons.Outlined.Menu, null),
     Sabha("Sankalp Sabha", "Proposals & voting", Icons.Outlined.HowToVote, "/sankalp-sabha"),
@@ -455,6 +457,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                             session = state.session!!,
                             preferredProjectId = fundingProjectId
                         )
+                        destination == AppRoute.KoshMilan -> KoshMilanScreen(session = state.session!!)
                         destination == AppRoute.Sankalp -> SankalpScreen(
                             session = state.session!!,
                             onFund = { projectId -> fundingProjectId = projectId; route = AppRoute.Kosh }
@@ -506,7 +509,15 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
             }
         }
         Spacer(Modifier.height(18.dp))
-        listOf(AppRoute.Tree, AppRoute.Virasat, AppRoute.Panchang, AppRoute.Sabha, AppRoute.Settings).forEach { item ->
+        val secondaryRoutes = buildList {
+            add(AppRoute.Tree)
+            add(AppRoute.Virasat)
+            add(AppRoute.Panchang)
+            add(AppRoute.Sabha)
+            if (session.role in setOf("owner", "admin", "kosh_pramukh")) add(AppRoute.KoshMilan)
+            add(AppRoute.Settings)
+        }
+        secondaryRoutes.forEach { item ->
             Surface(onClick = { onRoute(item) }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
                 Row(Modifier.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(item.icon, null)

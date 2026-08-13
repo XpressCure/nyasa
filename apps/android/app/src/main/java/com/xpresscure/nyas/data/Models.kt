@@ -112,6 +112,32 @@ data class BankContributionConfig(
     val paymentLink: String = ""
 )
 
+data class KoshDeclaration(
+    val id: String,
+    val memberName: String,
+    val declaredAmountRupees: Long,
+    val confirmedAmountRupees: Long? = null,
+    val paymentReference: String,
+    val utr: String = "",
+    val paidAt: String = "",
+    val sourceAccountLast4: String = "",
+    val reconciliationStatus: String = "unreconciled",
+    val reconciliationNote: String = ""
+)
+
+data class KoshBalanceSnapshot(
+    val actualBankBalanceRupees: Long = 0,
+    val expectedBankBalanceRupees: Long = 0,
+    val differenceRupees: Long = 0,
+    val asOfDate: String = ""
+)
+
+data class KoshReconciliation(
+    val currentExpectedBankBalanceRupees: Long = 0,
+    val latest: KoshBalanceSnapshot? = null,
+    val declarations: List<KoshDeclaration> = emptyList()
+)
+
 data class Sankalp(
     val id: String,
     val title: String,

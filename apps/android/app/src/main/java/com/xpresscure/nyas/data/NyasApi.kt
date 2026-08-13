@@ -320,11 +320,17 @@ class NyasApi {
         ActionResult("Progress update shared with the family.")
     }
 
-    suspend fun declareBankContribution(session: NyasSession, amountRupees: Long, note: String = ""): ActionResult =
+    suspend fun declareBankContribution(
+        session: NyasSession,
+        amountRupees: Long,
+        utr: String = "",
+        note: String = ""
+    ): ActionResult =
         withContext(Dispatchers.IO) {
             val body = JsonObject().apply {
                 addProperty("amountRupees", amountRupees)
                 addProperty("paidAt", Instant.now().toString())
+                if (utr.isNotBlank()) addProperty("utr", utr.trim())
                 addProperty("note", note)
                 addProperty("attested", true)
                 addProperty("declarationToken", UUID.randomUUID().toString())
@@ -332,6 +338,73 @@ class NyasApi {
             val root = execute("/bank-contributions/family/${session.familyId}/declarations", "POST", body, session.token)
             ActionResult(root.string("message", "Your contribution has been recorded."), amountRupees * 100)
         }
+
+    suspend fun koshReconciliation(session: NyasSession): KoshReconciliation = withContext(Dispatchers.IO) {
+        val data = execute("/bank-contributions/family/${session.familyId}/reconciliation", token = session.token).objectAt("data")
+        val latest = data.objectOrNull("latest")?.let {
+            KoshBalanceSnapshot(
+                actualBankBalanceRupees = it.long("actualBankBalanceRupees"),
+                expectedBankBalanceRupees = it.long("expectedBankBalanceRupees"),
+                differenceRupees = it.long("differenceRupees"),
+                asOfDate = it.string("asOfDate")
+            )
+        }
+        KoshReconciliation(
+            currentExpectedBankBalanceRupees = data.long("currentExpectedBankBalanceRupees"),
+            latest = latest,
+            declarations = data.arrayAt("recentDeclarations").mapNotNull { element ->
+                element.takeIf { it.isJsonObject }?.asJsonObject?.let {
+                    KoshDeclaration(
+                        id = it.idString("id"),
+                        memberName = it.objectOrNull("member")?.string("displayName", "Sadasya").orEmpty(),
+                        declaredAmountRupees = it.long("declaredAmountRupees"),
+                        confirmedAmountRupees = it.get("confirmedAmountRupees")?.takeUnless { value -> value.isJsonNull }?.asLong,
+                        paymentReference = it.string("paymentReference"),
+                        utr = it.string("utr"),
+                        paidAt = it.string("paidAt"),
+                        sourceAccountLast4 = it.string("sourceAccountLast4"),
+                        reconciliationStatus = it.string("reconciliationStatus", "unreconciled"),
+                        reconciliationNote = it.string("reconciliationNote")
+                    )
+                }
+            }
+        )
+    }
+
+    suspend fun recordKoshSnapshot(
+        session: NyasSession,
+        actualBankBalanceRupees: Long,
+        note: String
+    ): ActionResult = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("actualBankBalanceRupees", actualBankBalanceRupees)
+            addProperty("asOfDate", Instant.now().toString())
+            addProperty("note", note.trim())
+        }
+        val root = execute("/bank-contributions/family/${session.familyId}/reconciliation", "POST", body, session.token)
+        ActionResult(root.string("message", "Bank balance snapshot recorded."))
+    }
+
+    suspend fun reconcileKoshDeclaration(
+        session: NyasSession,
+        declarationId: String,
+        confirmedAmountRupees: Long,
+        confirmedUtr: String,
+        note: String
+    ): ActionResult = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("confirmedAmountRupees", confirmedAmountRupees)
+            addProperty("confirmedUtr", confirmedUtr.trim())
+            addProperty("note", note.trim())
+        }
+        val root = execute(
+            "/bank-contributions/family/${session.familyId}/declarations/$declarationId/reconciliation",
+            "POST",
+            body,
+            session.token
+        )
+        ActionResult(root.string("message", "Contribution matched with the bank statement."))
+    }
 
     suspend fun allocate(session: NyasSession, projectId: String, amountRupees: Long): ActionResult =
         withContext(Dispatchers.IO) {
