@@ -155,11 +155,14 @@ internal fun SmaranScreen(session: NyasSession) {
                         if (loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
                         Canvas(
                             Modifier.fillMaxSize().then(
-                                if (selectedDate == today && !loading) Modifier.pointerInput(canvasSize, myStrokes) {
+                                if (selectedDate == today && !loading) Modifier.pointerInput(canvasSize, selectedDate) {
                                     detectDragGestures(
                                         onDragStart = { offset ->
                                             if (canvasSize.width > 0 && canvasSize.height > 0) {
-                                                myStrokes = myStrokes + SmaranStroke(listOf(offset.normalized(canvasSize)))
+                                                myStrokes = myStrokes + SmaranStroke(
+                                                    points = listOf(offset.normalized(canvasSize)),
+                                                    width = 7f
+                                                )
                                             }
                                         },
                                         onDrag = { change, _ ->
