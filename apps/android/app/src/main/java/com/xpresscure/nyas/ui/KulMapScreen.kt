@@ -112,11 +112,11 @@ fun KulMapScreen(session: NyasSession) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Kul Map", style = MaterialTheme.typography.headlineSmall)
+                Text("कुल मानचित्र", style = MaterialTheme.typography.headlineSmall)
                 Text("Your family, connected across generations", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (!loading && tree?.members?.isNotEmpty() == true) IconButton(onClick = { shareKulMap(context, tree!!, session.familyName) }) {
-                Icon(Icons.Outlined.Share, "Share Kul Map")
+                Icon(Icons.Outlined.Share, "कुल मानचित्र साझा करें")
             }
             IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh tree") }
         }

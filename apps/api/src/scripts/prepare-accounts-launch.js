@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { env } from "../config/env.js";
 import { AuditLog } from "../models/AuditLog.js";
 import { BankContributionClaim } from "../models/BankContributionClaim.js";
@@ -16,28 +18,6 @@ import { Wallet } from "../models/Wallet.js";
 
 const familySlug = process.env.NYASA_FAMILY_SLUG || "nyasa-trust-alahdadpur";
 const confirmation = "RESET_NYASA_ACCOUNTS";
-const koshPramukhAliases = [
-  ["Brij Bhan Singh", "Brijbhansingh", "Brij Bhan"],
-  ["Hari Prakash Singh", "Hariprakash Singh", "Hari Prakash"]
-];
-
-function normalizeName(value = "") {
-  return value.toLowerCase().replace(/\b(shri|sri|mr|dr|smt|late|lt)\b/g, "")
-    .replace(/[^\p{Letter}\p{Number}]+/gu, " ").replace(/\s+/g, " ").trim();
-}
-
-async function inspectKoshPramukhs(familyId) {
-  const members = await FamilyMember.find({ familyId, status: "active" }).select("displayName role");
-  return koshPramukhAliases.map((aliases) => {
-    const normalizedAliases = aliases.map(normalizeName);
-    const matches = members.filter((member) => {
-      const name = normalizeName(member.displayName);
-      return normalizedAliases.some((alias) => name === alias || name.includes(alias) || alias.includes(name));
-    });
-    if (matches.length === 1) return { id: matches[0]._id, name: matches[0].displayName, currentRole: matches[0].role, status: "matched" };
-    return { name: aliases.join(" / "), status: matches.length ? "ambiguous" : "missing", matches: matches.map((item) => item.displayName) };
-  });
-}
 
 async function previewCleanup(familyId) {
   const expenseIds = await Expense.find({ familyId }).distinct("_id");
@@ -68,7 +48,35 @@ async function previewCleanup(familyId) {
   return { counts: { ledger, paymentOrders, hostedPayments, declarations, bankSms, snapshots, expenses, documents, wallets, activeMembers, auditLogs }, financialDocuments, financialAudits };
 }
 
-async function applyCleanup({ family, ownerMember, preview, pramukhs }) {
+async function createBackup({ family, preview }) {
+  const familyId = family._id;
+  const backup = {
+    createdAt: new Date().toISOString(),
+    family: { id: String(familyId), name: family.name, slug: family.slug },
+    counts: preview.counts,
+    collections: {
+      ledgerTransactions: await LedgerTransaction.find({ familyId }).lean(),
+      paymentOrders: await PaymentOrder.find({ familyId }).lean(),
+      hostedContributions: await HostedContribution.find({ familyId }).lean(),
+      bankContributionClaims: await BankContributionClaim.find({ familyId }).lean(),
+      bankSmsReceipts: await BankSmsReceipt.find({ familyId }).lean(),
+      reconciliationSnapshots: await KoshReconciliationSnapshot.find({ familyId }).lean(),
+      expenses: await Expense.find({ familyId }).lean(),
+      financialDocuments: await Document.find(preview.financialDocuments).lean(),
+      wallets: await Wallet.find({ familyId }).lean(),
+      treasuryAccounts: await TreasuryAccount.find({ familyId }).lean(),
+      auditLogs: await AuditLog.find(preview.financialAudits).lean()
+    }
+  };
+  const directory = path.resolve(process.env.ACCOUNT_RESET_BACKUP_DIR || "backups");
+  await mkdir(directory, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = path.join(directory, `finance-reset-${family.slug}-${stamp}.json`);
+  await writeFile(backupPath, JSON.stringify(backup, null, 2), { flag: "wx" });
+  return backupPath;
+}
+
+async function applyCleanup({ family, ownerMember, preview }) {
   const familyId = family._id;
   await Promise.all([
     LedgerTransaction.deleteMany({ familyId }), PaymentOrder.deleteMany({ familyId }),
@@ -78,10 +86,6 @@ async function applyCleanup({ family, ownerMember, preview, pramukhs }) {
     Wallet.deleteMany({ familyId }), AuditLog.deleteMany(preview.financialAudits),
     TreasuryAccount.updateMany({ familyId, type: { $ne: "main" } }, { $set: { status: "archived" } })
   ]);
-
-  for (const match of pramukhs.filter((item) => item.status === "matched")) {
-    await FamilyMember.updateOne({ _id: match.id }, { $set: { role: "kosh_pramukh" } });
-  }
 
   const treasury = await TreasuryAccount.findOneAndUpdate(
     { familyId, type: "main" },
@@ -97,7 +101,7 @@ async function applyCleanup({ family, ownerMember, preview, pramukhs }) {
     familyId, actorUserId: ownerMember.userId, actorMemberId: ownerMember._id,
     action: "accounts.launch_reset_prepared", entityType: "Family", entityId: String(familyId),
     summary: "Cleared test Kosh records and prepared Nyas for live self-declared bank contributions.",
-    after: { cleared: preview.counts, koshPramukhs: pramukhs.map(({ name, status }) => ({ name, status })) }
+    after: { cleared: preview.counts }
   });
   return { treasury: { id: treasury._id, name: treasury.name }, walletsCreated: members.length, auditId: audit._id };
 }
@@ -109,17 +113,18 @@ async function main() {
   const ownerMember = await FamilyMember.findOne({ familyId: family._id, role: "owner", status: "active" });
   if (!ownerMember) throw new Error("Active owner member not found.");
 
-  const [preview, pramukhs] = await Promise.all([previewCleanup(family._id), inspectKoshPramukhs(family._id)]);
+  const preview = await previewCleanup(family._id);
   if (process.env.CONFIRM_ACCOUNT_RESET !== confirmation) {
     console.log("DRY RUN ONLY - no records changed.");
-    console.log(JSON.stringify({ family: family.name, familySlug, koshPramukhs: pramukhs, cleanup: preview.counts }, null, 2));
+    console.log(JSON.stringify({ family: family.name, familySlug, cleanup: preview.counts }, null, 2));
     console.log(`After a completed backup, run with CONFIRM_ACCOUNT_RESET=${confirmation}.`);
     return;
   }
 
-  const result = await applyCleanup({ family, ownerMember, preview, pramukhs });
+  const backupPath = await createBackup({ family, preview });
+  const result = await applyCleanup({ family, ownerMember, preview });
   console.log("LIVE ACCOUNT CLEANUP COMPLETE.");
-  console.log(JSON.stringify({ family: family.name, cleared: preview.counts, koshPramukhs: pramukhs, ...result }, null, 2));
+  console.log(JSON.stringify({ family: family.name, backupPath, cleared: preview.counts, ...result }, null, 2));
 }
 
 main().catch((error) => { console.error("Failed to prepare accounts launch", error); process.exitCode = 1; })

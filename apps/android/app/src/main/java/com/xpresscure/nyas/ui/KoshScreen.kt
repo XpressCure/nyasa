@@ -104,6 +104,7 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var bankError by remember { mutableStateOf("") }
+    var allocationError by remember { mutableStateOf("") }
     var bankSheet by remember { mutableStateOf(false) }
     var allocationProject by remember { mutableStateOf<Sankalp?>(null) }
     var success by remember { mutableStateOf<Pair<String, Long>?>(null) }
@@ -159,7 +160,7 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
                         Button(onClick = { bankError = ""; bankSheet = true }, shape = RoundedCornerShape(8.dp)) {
                             Icon(Icons.Outlined.AccountBalance, null)
                             Spacer(Modifier.size(8.dp))
-                            Text("Add money")
+                            Text("धन जोड़ें")
                         }
                     }
                 }
@@ -212,8 +213,8 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
                             if (project.myAllocatedPaise > 0) {
                                 Text("You contributed ${money.format(project.myAllocatedPaise / 100.0)}", color = Leaf, style = MaterialTheme.typography.labelLarge)
                             }
-                            Button(onClick = { allocationProject = project }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                                Text("Contribute")
+                            Button(onClick = { allocationError = ""; allocationProject = project }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
+                                Text("योगदान")
                                 Spacer(Modifier.size(8.dp))
                                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                             }
@@ -260,17 +261,19 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
             project = project,
             walletPaise = summary.walletBalancePaise,
             busy = busy,
+            error = allocationError,
             onDismiss = { if (!busy) allocationProject = null },
             onConfirm = { amount ->
                 scope.launch {
                     busy = true
                     try {
+                        allocationError = ""
                         val result = api.allocate(session, project.id, amount)
                         allocationProject = null
                         success = result.message to result.amountPaise
                         refresh()
                     } catch (exception: ApiException) {
-                        error = exception.message.orEmpty()
+                        allocationError = exception.message.orEmpty().ifBlank { "We could not complete this Yogdaan. Please check the amount and try again." }
                     } finally { busy = false }
                 }
             }
@@ -338,7 +341,7 @@ private fun BankContributionSheet(
                 }
                 TextButton(onClick = { review = false }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Change amount") }
             } else {
-                Text("Add money to Kosh", style = MaterialTheme.typography.headlineSmall)
+                Text("कोष में धन जोड़ें", style = MaterialTheme.typography.headlineSmall)
                 Text("1. Send money to the family account.  2. Record the same amount here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (config.qrImageUrl.isNotBlank() && !qrFailed) {
                     AsyncImage(
@@ -421,7 +424,7 @@ private fun BankContributionSheet(
 }
 
 @Composable
-private fun AllocationSheet(project: Sankalp, walletPaise: Long, busy: Boolean, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
+private fun AllocationSheet(project: Sankalp, walletPaise: Long, busy: Boolean, error: String, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
     var amount by remember { mutableStateOf("") }
     var review by remember { mutableStateOf(false) }
     val parsed = amount.toLongOrNull() ?: 0
@@ -434,23 +437,28 @@ private fun AllocationSheet(project: Sankalp, walletPaise: Long, busy: Boolean, 
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it.filter(Char::isDigit).take(9) },
-                label = { Text("Contribution amount") },
+                label = { Text("योगदान राशि") },
                 prefix = { Text("₹ ") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             Text("Nyas contribution limits and the remaining project need will be applied automatically.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (error.isNotBlank()) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
+                    Text(error, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.fillMaxWidth().padding(12.dp))
+                }
+            }
             Button(onClick = { review = true }, enabled = !busy && parsed > 0 && parsed * 100 <= walletPaise, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(8.dp)) {
                 Text("Review contribution")
             }
         }
     }
-    if (review) AmountConfirmation(parsed, "This amount will move from your Kosh to ${project.title}.", busy, { review = false }) { onConfirm(parsed) }
+    if (review) AmountConfirmation(parsed, "This amount will move from your Kosh to ${project.title}.", busy, error, { review = false }) { onConfirm(parsed) }
 }
 
 @Composable
-private fun AmountConfirmation(amount: Long, detail: String, busy: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+private fun AmountConfirmation(amount: Long, detail: String, busy: Boolean, error: String = "", onDismiss: () -> Unit, onConfirm: () -> Unit) {
     val money = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -462,6 +470,12 @@ private fun AmountConfirmation(amount: Long, detail: String, busy: Boolean, onDi
                 Text(amountInWords(amount), color = Leaf, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
                 Text(detail)
+                if (error.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
+                        Text(error, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.fillMaxWidth().padding(12.dp))
+                    }
+                }
             }
         },
         confirmButton = { Button(onClick = onConfirm, enabled = !busy) { if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Confirm") } },

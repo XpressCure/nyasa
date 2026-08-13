@@ -20,8 +20,6 @@ import familyPhoto from "../assets/family-photo.jpeg";
 import nyasaLogo from "../assets/nyasa-logo.png";
 import { apiGet } from "../lib/api.js";
 
-const androidAppUrl = "https://github.com/XpressCure/nyasa/releases/download/android-v1.0.0/nyas-1.0.0.apk";
-
 const launchItems = [
   {
     title: "Invite the extended Kul",
@@ -386,7 +384,7 @@ export function HomePage() {
           <a href="#kosh">Kosh</a>
           <Link to="/legal">Legal</Link>
           <Link to="/login">Sign in</Link>
-          <a href={androidAppUrl}>Android app</a>
+          <Link to="/download-app">Android app</Link>
           <Link className="home-primary-link" to="/dashboard">
             Open portal
           </Link>
@@ -412,10 +410,10 @@ export function HomePage() {
             <span>Village Sankalp</span>
           </div>
           <div className="home-actions">
-            <a className="home-cta" href={androidAppUrl}>
+            <Link className="home-cta" to="/download-app">
               Download Android app
               <Download size={18} />
-            </a>
+            </Link>
             <Link className="home-cta" to="/login">
               Start profile today
               <ArrowRight size={18} />

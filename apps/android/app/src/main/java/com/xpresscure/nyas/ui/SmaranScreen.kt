@@ -174,7 +174,7 @@ internal fun SmaranScreen(session: NyasSession) {
                         }
                         Spacer(Modifier.size(14.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Prabhat Smaran", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("प्रभात स्मरण", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text("Ek Kul, ek smaran, ek shubh shuruaat.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.Outlined.NotificationsActive, "7 AM and 8 PM reminders")

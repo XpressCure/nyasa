@@ -26,6 +26,8 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,6 +35,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -49,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.xpresscure.nyas.BuildConfig
 import com.xpresscure.nyas.data.ApiException
@@ -264,15 +268,22 @@ private fun ChangePasswordDialog(session: NyasSession, onDismiss: () -> Unit, on
     var current by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
+    var passwordsVisible by remember { mutableStateOf(false) }
     var working by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = { if (!working) onDismiss() },
         title = { Text("Change password") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedTextField(current, { current = it }, label = { Text("Current password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(password, { password = it }, label = { Text("New password") }, visualTransformation = PasswordVisualTransformation(), supportingText = { Text("At least 8 characters") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(confirm, { confirm = it }, label = { Text("Confirm new password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+            val transformation = if (passwordsVisible) VisualTransformation.None else PasswordVisualTransformation()
+            val visibilityIcon: @Composable () -> Unit = {
+                IconButton(onClick = { passwordsVisible = !passwordsVisible }) {
+                    Icon(if (passwordsVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, if (passwordsVisible) "Hide passwords" else "Show passwords")
+                }
+            }
+            OutlinedTextField(current, { current = it }, label = { Text("Current password") }, visualTransformation = transformation, trailingIcon = visibilityIcon, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(password, { password = it }, label = { Text("New password") }, visualTransformation = transformation, trailingIcon = visibilityIcon, supportingText = { Text("At least 8 characters") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(confirm, { confirm = it }, label = { Text("Confirm new password") }, visualTransformation = transformation, trailingIcon = visibilityIcon, modifier = Modifier.fillMaxWidth())
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         } },
         confirmButton = { Button(enabled = !working && current.isNotBlank() && password.length >= 8 && password == confirm, onClick = {

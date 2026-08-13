@@ -66,6 +66,7 @@ import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -111,6 +112,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -141,14 +143,14 @@ internal enum class AppRoute(val label: String, val context: String, val icon: I
     Kul("Family", "Kul", Icons.Outlined.FamilyRestroom, "/family"),
     Swasthya("Swasthya", "Fitness & Kul challenges", Icons.AutoMirrored.Outlined.DirectionsWalk, null),
     Kosh("Kosh", "Family funds", Icons.Outlined.Savings, "/contribute"),
-    KoshMilan("Kosh Milan", "Bank reconciliation", Icons.AutoMirrored.Outlined.FactCheck, "/kosh-reconciliation"),
+    KoshMilan("कोष मिलान", "Bank reconciliation", Icons.AutoMirrored.Outlined.FactCheck, "/kosh-reconciliation"),
     Sankalp("Sankalp", "Shared projects", Icons.Outlined.Route, "/projects"),
     More("More", "More", Icons.Outlined.Menu, null),
     Sabha("Sankalp Sabha", "Proposals & voting", Icons.Outlined.HowToVote, "/sankalp-sabha"),
     Panchang("Calendar", "Family events", Icons.Outlined.CalendarMonth, "/calendar"),
-    Smaran("Smaran", "Shared daily writing", Icons.Outlined.Edit, null),
+    Smaran("प्रभात स्मरण", "Shared daily writing", Icons.Outlined.Edit, null),
     Parichay("You", "Parichay", Icons.Outlined.Person, "/profile"),
-    Tree("Kul Map", "Family tree", Icons.Outlined.AccountBalance, "/family-tree"),
+    Tree("कुल मानचित्र", "Family tree", Icons.Outlined.AccountBalance, "/family-tree"),
     Virasat("Virasat", "Family history", Icons.Outlined.AutoStories, null),
     Settings("Settings", "Account & security", Icons.Outlined.Settings, null)
 }
@@ -364,6 +366,7 @@ private fun WelcomeAndLogin(
     var phone by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var recoveryCode by rememberSaveable { mutableStateOf("") }
     val isClaim = state.loginChallenge == LoginChallenge.ProfileClaim
     val isSetup = isClaim || state.loginChallenge == LoginChallenge.AccountSetup
@@ -466,7 +469,15 @@ private fun WelcomeAndLogin(
                                     password,
                                     { password = it },
                                     label = { Text(if (isSetup || isRecovery) "Create a new password" else "Your password") },
-                                    visualTransformation = PasswordVisualTransformation(),
+                                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = {
+                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                            Icon(
+                                                if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                                if (passwordVisible) "Hide password" else "Show password"
+                                            )
+                                        }
+                                    },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (isSetup || isRecovery) ImeAction.Next else ImeAction.Done),
                                     keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); onLogin(name, phone, password, confirmPassword) }),
@@ -476,7 +487,15 @@ private fun WelcomeAndLogin(
                                     confirmPassword,
                                     { confirmPassword = it },
                                     label = { Text("Enter it again") },
-                                    visualTransformation = PasswordVisualTransformation(),
+                                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = {
+                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                            Icon(
+                                                if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                                if (passwordVisible) "Hide password" else "Show password"
+                                            )
+                                        }
+                                    },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                                     keyboardActions = KeyboardActions(onDone = {

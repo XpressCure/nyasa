@@ -3,6 +3,7 @@ import { AppLayout } from "./components/AppLayout.jsx";
 import { RequireAuth } from "./components/RequireAuth.jsx";
 import { CalendarPage } from "./pages/CalendarPage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { DownloadAppPage } from "./pages/DownloadAppPage.jsx";
 import { FamilyPage } from "./pages/FamilyPage.jsx";
 import { FamilyTreePage } from "./pages/FamilyTreePage.jsx";
 import { InviteAcceptPage } from "./pages/InviteAcceptPage.jsx";
@@ -23,6 +24,7 @@ export function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/download-app" element={<DownloadAppPage />} />
       <Route path="/legal" element={<LegalPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />

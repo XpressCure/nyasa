@@ -213,7 +213,7 @@ private fun SmaranInvitationCard(onClick: () -> Unit) {
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Prabhat Smaran", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("प्रभात स्मरण", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("Write Ram or Om on today's shared Kul page.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
@@ -266,7 +266,7 @@ private fun ContributionCard(project: Sankalp?, onContribute: () -> Unit, onBrow
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Contribute", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("योगदान", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
                         project?.let { "Support ${it.title}" } ?: "Add money to your Kosh",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -276,7 +276,7 @@ private fun ContributionCard(project: Sankalp?, onContribute: () -> Unit, onBrow
                 }
             }
             Button(onClick = onContribute, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(8.dp)) {
-                Text(if (project == null) "Open Kosh" else "Contribute now")
+                Text(if (project == null) "कोष खोलें" else "योगदान करें")
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
             }
@@ -366,7 +366,7 @@ private fun SankalpFocusCard(project: Sankalp, onOpen: () -> Unit, onContribute:
             Text(if (project.targetPaise > 0) "${(progress * 100).toInt()}% funded" else "No funding required", color = Leaf, style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(12.dp))
             Button(onClick = onContribute, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                Text("Contribute")
+                Text("योगदान")
             }
         }
     }
@@ -393,7 +393,7 @@ private fun FamilyPulse(
                 }
                 Spacer(Modifier.height(16.dp))
                 FamilyAction(Icons.Outlined.FamilyRestroom, "Browse family", "Find relatives and family profiles", onFamily)
-                FamilyAction(Icons.Outlined.Route, "Open Kul Map", "See how generations and branches connect", onMap)
+                FamilyAction(Icons.Outlined.Route, "कुल मानचित्र", "See how generations and branches connect", onMap)
                 FamilyAction(Icons.Outlined.AutoStories, "Preserve a memory", "Add to the family history and Virasat", onVirasat)
             }
         }
