@@ -49,6 +49,17 @@ body {
 .download-step-grid span { color: #765d61; line-height: 1.45; margin-top: 7px; }
 .download-trust-row { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 36px 24px; }
 .download-trust-row span { align-items: center; color: #69464e; display: flex; font-weight: 700; gap: 9px; justify-content: center; }
+.download-help-band { align-items: start; background: #fff; border-bottom: 1px solid #eadedb; border-top: 1px solid #eadedb; display: grid; gap: 54px; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); margin: 0 auto; max-width: 1080px; padding: 48px 24px; }
+.download-help-copy > span { align-items: center; color: #9e3f55; display: flex; font-weight: 800; gap: 8px; }
+.download-help-copy h2 { font-family: Georgia, "Times New Roman", serif; font-size: 34px; line-height: 1.15; margin: 12px 0 16px; }
+.download-help-copy p { color: #70575c; line-height: 1.6; margin: 0 0 12px; }
+.download-help-hindi { color: #5f3840 !important; font-size: 17px; }
+.download-help-steps { display: grid; gap: 12px; }
+.download-help-steps article { align-items: flex-start; background: #fff8f6; border: 1px solid #ead3d2; border-radius: 8px; display: flex; gap: 13px; padding: 17px; }
+.download-help-steps article > svg { color: #a93d56; flex: 0 0 auto; margin-top: 2px; }
+.download-help-steps strong, .download-help-steps span { display: block; }
+.download-help-steps span { color: #765d61; line-height: 1.5; margin-top: 5px; }
+.download-help-button { justify-self: start; min-height: 50px; }
 .download-app-footer { align-items: center; border-top: 1px solid #eadedb; display: flex; gap: 18px; padding: 24px; }
 .download-app-footer p { color: #745a5f; flex: 1; margin: 0; }
 .download-app-footer a { color: #764553; text-decoration: none; }
@@ -64,6 +75,9 @@ body {
   .download-app-button { width: 100%; }
   .download-phone-preview { justify-self: center; max-width: 340px; width: 100%; }
   .download-step-grid, .download-trust-row { grid-template-columns: 1fr; }
+  .download-help-band { gap: 28px; grid-template-columns: 1fr; padding: 38px 20px; }
+  .download-help-copy h2 { font-size: 29px; }
+  .download-help-button { justify-self: stretch; }
   .download-install-heading h2 { font-size: 32px; }
   .download-trust-row span { justify-content: flex-start; }
   .download-app-footer { align-items: flex-start; flex-wrap: wrap; }

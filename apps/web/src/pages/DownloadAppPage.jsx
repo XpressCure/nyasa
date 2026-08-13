@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, LockKeyhole, Smartphone } from "lucide-react";
+import { CheckCircle2, Download, LockKeyhole, Settings, ShieldCheck, Smartphone } from "lucide-react";
 import { Link } from "react-router-dom";
 import nyasaLogo from "../assets/nyasa-logo.png";
 
@@ -54,6 +54,28 @@ export function DownloadAppPage() {
         <span><LockKeyhole size={20} /> Private family workspace</span>
         <span><CheckCircle2 size={20} /> Official Nyas release</span>
         <span><Smartphone size={20} /> Designed for mobile</span>
+      </section>
+
+      <section className="download-help-band">
+        <div className="download-help-copy">
+          <span><ShieldCheck size={20} /> Installation help</span>
+          <h2>Did Android block the installation?</h2>
+          <p>This is Android's standard protection for apps shared outside the Play Store. The download is safe; permission must be given once to the browser used for downloading.</p>
+          <p className="download-help-hindi">अगर फोन इंस्टॉल रोकता है, तो नीचे दिए गए अनुसार अपने ब्राउज़र को एक बार अनुमति दें।</p>
+        </div>
+        <div className="download-help-steps">
+          <article>
+            <Settings size={22} />
+            <div><strong>Chrome / most Android phones</strong><span>Settings → Apps → Special app access → Install unknown apps → Chrome → Allow from this source.</span></div>
+          </article>
+          <article>
+            <Smartphone size={22} />
+            <div><strong>Samsung phones</strong><span>Settings → Security and privacy → More security settings → Install unknown apps → Chrome → Allow.</span></div>
+          </article>
+          <a className="download-app-button download-help-button" href={apkUrl} download>
+            <Download size={20} /> Download again
+          </a>
+        </div>
       </section>
 
       <footer className="download-app-footer">
