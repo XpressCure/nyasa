@@ -40,7 +40,15 @@ module.exports = (_env, argv) => {
         use: ["style-loader", "css-loader"]
       },
       {
+        test: /nyas-kosh-upi-qr\.jpe?g$/i,
+        type: "asset/resource",
+        generator: {
+          filename: "assets/nyas-kosh-upi-qr.jpeg"
+        }
+      },
+      {
         test: /\.(png|jpe?g)$/i,
+        exclude: /nyas-kosh-upi-qr\.jpe?g$/i,
         type: "asset/resource",
         generator: {
           filename: "assets/[name].[contenthash][ext]"

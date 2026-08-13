@@ -11,13 +11,16 @@ BANK_CONTRIBUTION_ENABLED=true
 BANK_ACCOUNT_NAME=YOUR ACCOUNT NAME
 BANK_ACCOUNT_NUMBER=YOUR ACCOUNT NUMBER
 BANK_IFSC=YOUR IFSC
-BANK_UPI_ID=
+BANK_UPI_ID=9621016427@pthdfc
+BANK_QR_IMAGE_URL=https://nyasa.xpresscure.com/assets/nyas-kosh-upi-qr.jpeg
 BANK_SMS_INGEST_SECRET=GENERATE_A_LONG_RANDOM_SECRET
 BANK_SMS_FAMILY_ID=YOUR_FAMILY_OBJECT_ID
 BANK_SMS_ALLOWED_SENDERS=UCOBANK,UCOBNK
 ```
 
 The account details are returned only to authenticated family members who have Kosh contribution permission.
+
+The QR image is deployed with the web application. It identifies the recipient as Kumar Saurabh and displays the same `9621016427@pthdfc` UPI handle. Before enabling contributions, make one INR 1 test transfer and verify the recipient in the UPI confirmation screen.
 
 ## Member flow
 

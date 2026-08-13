@@ -58,18 +58,21 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const familyId = localStorage.getItem("nyasa_family_id");
+  const usableUpiId = config?.upiId && config.upiId.includes("@") && !config.upiId.includes("YOUR_")
+    ? config.upiId
+    : "";
 
   const upiLink = useMemo(() => {
-    if (!config?.upiId) return "";
+    if (!usableUpiId) return "";
     const params = new URLSearchParams({
-      pa: config.upiId,
+      pa: usableUpiId,
       pn: config.accountName || "Nyas Kul Kosh",
       am: String(Number(amountRupees || 0).toFixed(2)),
       cu: "INR",
       tn: "Nyas Kul Kosh contribution"
     });
     return `upi://pay?${params.toString()}`;
-  }, [config, amountRupees]);
+  }, [config, usableUpiId, amountRupees]);
 
   useEffect(() => {
     if (!familyId) return;
@@ -157,7 +160,7 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
             <dl>
               {config.accountNumber ? <div><dt>Account</dt><dd>{config.accountNumber}</dd></div> : null}
               {config.ifsc ? <div><dt>IFSC</dt><dd>{config.ifsc}</dd></div> : null}
-              {config.upiId ? <div><dt>UPI</dt><dd>{config.upiId}</dd></div> : null}
+              {usableUpiId ? <div><dt>UPI</dt><dd>{usableUpiId}</dd></div> : null}
             </dl>
             <div className="button-row">
               {upiLink ? <a className="primary-link-button" href={upiLink}>Open UPI app</a> : null}
