@@ -289,6 +289,7 @@ class NyasViewModel : ViewModel() {
         "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED" -> "This profile has no login yet. Add your mobile number and create a password."
         "PASSWORD_REQUIRED" -> "Enter your Nyas password."
         "INVALID_CREDENTIALS" -> "The name, phone number, or password is incorrect."
+        "PHONE_ALREADY_REGISTERED" -> "This mobile number belongs to another Nyas login. Ask the owner to help recover the correct account."
         "INVALID_RECOVERY_CODE" -> "This one-time code is incorrect or has expired. Ask the owner for a new code."
         "RECOVERY_NAME_MISMATCH" -> "Enter the same member name for which the owner created this code."
         "LOGIN_TEMPORARILY_LOCKED" -> "Too many attempts. Please try again in a few minutes."

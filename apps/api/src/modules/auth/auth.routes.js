@@ -337,6 +337,7 @@ authRoutes.post(
     const claimedMatches = profileMatches.filter((member) => member.userId);
     let user;
     let profileToClaim = null;
+    let orphanPhoneUserToDetach = null;
     let effectiveLoginBody = body;
 
     if (!body.phone && !body.email) {
@@ -400,38 +401,53 @@ authRoutes.post(
           profileToClaim = canonicalCandidates[0];
         }
       } else {
-      const singleUnclaimedMatch = unclaimedMatches.length === 1 ? unclaimedMatches[0] : null;
-      const singleClaimedMatch = claimedMatches.length === 1 ? claimedMatches[0] : null;
-      const matchedProfile = singleClaimedMatch || singleUnclaimedMatch;
-      const loginBody = matchedProfile ? { ...body, fullName: matchedProfile.displayName } : body;
-      effectiveLoginBody = loginBody;
-      user = singleClaimedMatch?.userId
-        ? await User.findById(singleClaimedMatch.userId).select("+passwordHash")
-        : await findOrCreateLoginUser(loginBody);
+        const singleUnclaimedMatch = unclaimedMatches.length === 1 ? unclaimedMatches[0] : null;
+        const singleClaimedMatch = claimedMatches.length === 1 ? claimedMatches[0] : null;
+        const matchedProfile = singleClaimedMatch || singleUnclaimedMatch;
+        const loginBody = matchedProfile ? { ...body, fullName: matchedProfile.displayName } : body;
+        effectiveLoginBody = loginBody;
+        user = singleClaimedMatch?.userId
+          ? await User.findById(singleClaimedMatch.userId).select("+passwordHash")
+          : await findOrCreateLoginUser(loginBody);
 
-      if (!user) {
-        throw httpError(404, "This profile is linked to a user that could not be found.", "LINKED_USER_NOT_FOUND");
-      }
+        if (!user) {
+          throw httpError(404, "This profile is linked to a user that could not be found.", "LINKED_USER_NOT_FOUND");
+        }
 
-      if (singleClaimedMatch && body.phone && user.phone && user.phone !== body.phone) {
-        throw httpError(401, "The mobile number does not match this account.", "INVALID_CREDENTIALS");
-      }
-      if (!preparedFamily.family) {
-        preparedFamily = await prepareLaunchFamily(user);
-      }
+        if (singleClaimedMatch && body.phone && user.phone && user.phone !== body.phone) {
+          throw httpError(401, "The mobile number does not match this account.", "INVALID_CREDENTIALS");
+        }
 
-      const claimedByLogin = claimedMatches.find((member) => String(member.userId) === String(user._id));
-      if (claimedByLogin) {
-        profileToClaim = null;
-      } else if (unclaimedMatches.length === 1) {
-        profileToClaim = unclaimedMatches[0];
-      } else if (unclaimedMatches.length > 1) {
-        throw httpError(
-          409,
-          "More than one unclaimed profile matches this name. Please enter the full name as shown in the family tree.",
-          "NAME_MATCH_AMBIGUOUS"
-        );
-      }
+        if (phoneUser && singleClaimedMatch && String(phoneUser._id) !== String(user._id)) {
+          const phoneUserHasMembership = await FamilyMember.exists({ userId: phoneUser._id, status: "active" });
+          const samePersonName =
+            normalizeNameForMatch(phoneUser.fullName) === normalizeNameForMatch(singleClaimedMatch.displayName);
+          if (phoneUserHasMembership || !samePersonName) {
+            throw httpError(
+              409,
+              "This mobile number is already registered to another Nyas account. Ask the owner for help.",
+              "PHONE_ALREADY_REGISTERED"
+            );
+          }
+          orphanPhoneUserToDetach = phoneUser;
+        }
+
+        if (!preparedFamily.family) {
+          preparedFamily = await prepareLaunchFamily(user);
+        }
+
+        const claimedByLogin = claimedMatches.find((member) => String(member.userId) === String(user._id));
+        if (claimedByLogin) {
+          profileToClaim = null;
+        } else if (unclaimedMatches.length === 1) {
+          profileToClaim = unclaimedMatches[0];
+        } else if (unclaimedMatches.length > 1) {
+          throw httpError(
+            409,
+            "More than one unclaimed profile matches this name. Please enter the full name as shown in the family tree.",
+            "NAME_MATCH_AMBIGUOUS"
+          );
+        }
       }
     }
 
@@ -491,7 +507,25 @@ authRoutes.post(
       await userWithPassword.save();
       hasPassword = true;
     }
-    user = await updateUserLoginFields(userWithPassword || user, effectiveLoginBody);
+    if (orphanPhoneUserToDetach) {
+      orphanPhoneUserToDetach.phone = undefined;
+      orphanPhoneUserToDetach.status = "inactive";
+      orphanPhoneUserToDetach.authVersion = (orphanPhoneUserToDetach.authVersion || 0) + 1;
+      await orphanPhoneUserToDetach.save();
+    }
+
+    try {
+      user = await updateUserLoginFields(userWithPassword || user, effectiveLoginBody);
+    } catch (error) {
+      if (error?.code === 11000 && error?.keyPattern?.phone) {
+        throw httpError(
+          409,
+          "This mobile number is already registered to another Nyas account. Ask the owner for help.",
+          "PHONE_ALREADY_REGISTERED"
+        );
+      }
+      throw error;
+    }
 
     const launchMembership = await ensureLaunchFamilyMembership(user, {
       ...preparedFamily,
