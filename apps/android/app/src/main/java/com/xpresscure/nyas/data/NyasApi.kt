@@ -288,6 +288,60 @@ class NyasApi {
         )
     }
 
+    suspend fun smaranPage(session: NyasSession, date: String): SmaranPage = withContext(Dispatchers.IO) {
+        val data = execute("/smaran/family/${session.familyId}/page/$date", token = session.token).objectAt("data")
+        SmaranPage(
+            date = data.string("date", date),
+            editable = data.bool("editable"),
+            contributions = data.arrayAt("contributions").mapNotNull { element ->
+                element.takeIf { it.isJsonObject }?.asJsonObject?.let { item ->
+                    SmaranContribution(
+                        id = item.idString("id"),
+                        memberId = item.idString("memberId"),
+                        memberName = item.string("memberName", "Kul member"),
+                        isMine = item.bool("isMine"),
+                        savedAt = item.string("savedAt"),
+                        strokes = item.arrayAt("strokes").mapNotNull { strokeElement ->
+                            strokeElement.takeIf { it.isJsonObject }?.asJsonObject?.let { stroke ->
+                                SmaranStroke(
+                                    width = stroke.get("width")?.asFloat ?: 5f,
+                                    points = stroke.arrayAt("points").mapNotNull { pointElement ->
+                                        pointElement.takeIf { it.isJsonObject }?.asJsonObject?.let { point ->
+                                            SmaranPoint(point.get("x")?.asFloat ?: 0f, point.get("y")?.asFloat ?: 0f)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+        )
+    }
+
+    suspend fun smaranPages(session: NyasSession): List<SmaranPageSummary> = withContext(Dispatchers.IO) {
+        execute("/smaran/family/${session.familyId}/pages", token = session.token).arrayAt("data").mapNotNull { element ->
+            element.takeIf { it.isJsonObject }?.asJsonObject?.let {
+                SmaranPageSummary(it.string("date"), it.int("contributorCount"), it.int("strokeCount"))
+            }
+        }
+    }
+
+    suspend fun saveSmaran(session: NyasSession, date: String, strokes: List<SmaranStroke>): ActionResult = withContext(Dispatchers.IO) {
+        val strokeArray = JsonArray()
+        strokes.forEach { stroke ->
+            strokeArray.add(JsonObject().apply {
+                addProperty("width", stroke.width)
+                add("points", JsonArray().apply {
+                    stroke.points.forEach { point -> add(JsonObject().apply { addProperty("x", point.x); addProperty("y", point.y) }) }
+                })
+            })
+        }
+        val body = JsonObject().apply { addProperty("date", date); add("strokes", strokeArray) }
+        val root = execute("/smaran/family/${session.familyId}/me", "PUT", body, session.token)
+        ActionResult(root.string("message", "Smaran Pat saved."))
+    }
+
     suspend fun bankContributionConfig(session: NyasSession): BankContributionConfig = withContext(Dispatchers.IO) {
         val data = execute("/bank-contributions/family/${session.familyId}/config", token = session.token).objectAt("data")
         BankContributionConfig(

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.FamilyRestroom
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.People
@@ -113,6 +114,8 @@ internal fun HomeScreen(
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 NextActionCard(action) { onNavigate(action.route) }
                 Spacer(Modifier.height(12.dp))
+                SmaranInvitationCard { onNavigate(AppRoute.Smaran) }
+                Spacer(Modifier.height(12.dp))
                 ContributionCard(
                     project = fundingSankalp.firstOrNull(),
                     onContribute = { onContribute(fundingSankalp.firstOrNull()?.id) },
@@ -190,6 +193,30 @@ internal fun HomeScreen(
                 onMap = { onNavigate(AppRoute.Tree) },
                 onVirasat = { onNavigate(AppRoute.Virasat) }
             )
+        }
+    }
+}
+
+@Composable
+private fun SmaranInvitationCard(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .52f)
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(Modifier.size(44.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surface) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Prabhat Smaran", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Write Ram or Om on today's shared Kul page.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
         }
     }
 }

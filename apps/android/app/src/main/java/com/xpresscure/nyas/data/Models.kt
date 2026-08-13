@@ -347,6 +347,34 @@ data class VirasatEvent(
     val automatic: Boolean = false
 )
 
+data class SmaranPoint(val x: Float, val y: Float)
+
+data class SmaranStroke(
+    val points: List<SmaranPoint>,
+    val width: Float = 5f
+)
+
+data class SmaranContribution(
+    val id: String,
+    val memberId: String,
+    val memberName: String,
+    val isMine: Boolean,
+    val strokes: List<SmaranStroke>,
+    val savedAt: String = ""
+)
+
+data class SmaranPage(
+    val date: String,
+    val editable: Boolean,
+    val contributions: List<SmaranContribution>
+)
+
+data class SmaranPageSummary(
+    val date: String,
+    val contributorCount: Int,
+    val strokeCount: Int
+)
+
 sealed interface LoginChallenge {
     data object None : LoginChallenge
     data object Phone : LoginChallenge

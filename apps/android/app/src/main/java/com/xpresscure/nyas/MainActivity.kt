@@ -7,11 +7,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.xpresscure.nyas.ui.NyasApp
 import com.xpresscure.nyas.ui.theme.NyasTheme
+import com.xpresscure.nyas.smaran.SmaranReminderScheduler
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        SmaranReminderScheduler.schedule(this)
         enableEdgeToEdge()
         setContent {
             NyasTheme {

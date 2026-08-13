@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FamilyRestroom
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HowToVote
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
@@ -134,6 +135,7 @@ internal enum class AppRoute(val label: String, val context: String, val icon: I
     More("More", "More", Icons.Outlined.Menu, null),
     Sabha("Sankalp Sabha", "Proposals & voting", Icons.Outlined.HowToVote, "/sankalp-sabha"),
     Panchang("Calendar", "Family events", Icons.Outlined.CalendarMonth, "/calendar"),
+    Smaran("Smaran", "Shared daily writing", Icons.Outlined.Edit, null),
     Parichay("You", "Parichay", Icons.Outlined.Person, "/profile"),
     Tree("Kul Map", "Family tree", Icons.Outlined.AccountBalance, "/family-tree"),
     Virasat("Virasat", "Family history", Icons.Outlined.AutoStories, null),
@@ -518,6 +520,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         destination == AppRoute.Tree -> KulMapScreen(session = state.session!!)
                         destination == AppRoute.Virasat -> VirasatScreen(session = state.session!!)
                         destination == AppRoute.Panchang -> CalendarScreen(session = state.session!!)
+                        destination == AppRoute.Smaran -> SmaranScreen(session = state.session!!)
                         destination == AppRoute.Sabha -> SabhaScreen(session = state.session!!)
                         destination == AppRoute.Settings -> SettingsScreen(state.session!!, onTokenChanged, onLogout)
                         else -> HomeScreen(
@@ -566,6 +569,7 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
             add(AppRoute.Tree)
             add(AppRoute.Virasat)
             add(AppRoute.Panchang)
+            add(AppRoute.Smaran)
             add(AppRoute.Sabha)
             if (session.role in setOf("owner", "kosh_pramukh")) add(AppRoute.KoshMilan)
             add(AppRoute.Settings)
@@ -593,6 +597,7 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
 }
 
 private fun routeFromDeepLink(uri: Uri?): AppRoute {
+    if (uri?.scheme == "nyas" && uri.host == "smaran") return AppRoute.Smaran
     val path = uri?.path.orEmpty()
     return AppRoute.entries.firstOrNull { it.webPath == path } ?: AppRoute.Darshan
 }
