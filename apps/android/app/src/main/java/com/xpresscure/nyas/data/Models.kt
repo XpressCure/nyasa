@@ -101,6 +101,17 @@ data class KoshSummary(
     val contributionThisYearPaise: Long = 0
 )
 
+data class KoshLedgerEntry(
+    val id: String,
+    val type: String,
+    val direction: String,
+    val amountPaise: Long,
+    val description: String = "",
+    val status: String = "posted",
+    val projectTitle: String = "",
+    val createdAt: String = ""
+)
+
 data class BankContributionConfig(
     val enabled: Boolean = false,
     val minimumAmountRupees: Long = 2000,

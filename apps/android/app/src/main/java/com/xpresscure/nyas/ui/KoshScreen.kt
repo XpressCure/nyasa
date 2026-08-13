@@ -79,6 +79,7 @@ import com.xpresscure.nyas.data.ApiException
 import com.xpresscure.nyas.data.BankSmsReader
 import com.xpresscure.nyas.data.BankContributionConfig
 import com.xpresscure.nyas.data.KoshSummary
+import com.xpresscure.nyas.data.KoshLedgerEntry
 import com.xpresscure.nyas.data.NyasApi
 import com.xpresscure.nyas.data.NyasSession
 import com.xpresscure.nyas.data.Sankalp
@@ -100,6 +101,7 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
     var summary by remember { mutableStateOf(KoshSummary()) }
     var config by remember { mutableStateOf(BankContributionConfig()) }
     var projects by remember { mutableStateOf(emptyList<Sankalp>()) }
+    var ledger by remember { mutableStateOf(emptyList<KoshLedgerEntry>()) }
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
@@ -108,6 +110,7 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
     var bankSheet by remember { mutableStateOf(false) }
     var allocationProject by remember { mutableStateOf<Sankalp?>(null) }
     var success by remember { mutableStateOf<Pair<String, Long>?>(null) }
+    var myYogdaanOpen by remember { mutableStateOf(false) }
 
     fun refresh() {
         scope.launch {
@@ -117,10 +120,12 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
                 val summaryRequest = async { api.koshSummary(session) }
                 val projectRequest = async { api.sankalp(session) }
                 val configRequest = async { api.bankContributionConfig(session) }
+                val ledgerRequest = async { api.myKoshLedger(session) }
                 summary = summaryRequest.await()
                 projects = projectRequest.await().filter { it.status != "draft" && it.status != "archived" }
                     .sortedWith(compareBy<Sankalp> { it.fullyFunded }.thenByDescending { it.fundingPercent })
                 config = configRequest.await()
+                ledger = ledgerRequest.await()
                 if (preferredProjectId != null) allocationProject = projects.firstOrNull { it.id == preferredProjectId }
             } catch (exception: ApiException) {
                 error = exception.message.orEmpty()
@@ -157,10 +162,17 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
                         Text(money.format(summary.walletBalancePaise / 100.0), color = Forest, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                         Text("Ready to allocate to a Sankalp", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(18.dp))
-                        Button(onClick = { bankError = ""; bankSheet = true }, shape = RoundedCornerShape(8.dp)) {
-                            Icon(Icons.Outlined.AccountBalance, null)
-                            Spacer(Modifier.size(8.dp))
-                            Text("धन जोड़ें")
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(onClick = { bankError = ""; bankSheet = true }, shape = RoundedCornerShape(8.dp), modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Outlined.AccountBalance, null)
+                                Spacer(Modifier.size(6.dp))
+                                Text("धन जोड़ें")
+                            }
+                            OutlinedButton(onClick = { myYogdaanOpen = true }, shape = RoundedCornerShape(8.dp), modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Outlined.Payments, null)
+                                Spacer(Modifier.size(6.dp))
+                                Text("मेरा योगदान")
+                            }
                         }
                     }
                 }
@@ -256,6 +268,15 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
         )
     }
 
+    if (myYogdaanOpen) {
+        MyYogdaanSheet(
+            summary = summary,
+            projects = projects,
+            ledger = ledger,
+            onDismiss = { myYogdaanOpen = false }
+        )
+    }
+
     allocationProject?.let { project ->
         AllocationSheet(
             project = project,
@@ -283,6 +304,74 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
     success?.let { (message, amountPaise) ->
         SuccessDialog(message, amountPaise) { success = null }
     }
+}
+
+@Composable
+private fun MyYogdaanSheet(summary: KoshSummary, projects: List<Sankalp>, ledger: List<KoshLedgerEntry>, onDismiss: () -> Unit) {
+    val money = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
+    val allocatedPaise = projects.sumOf { it.myAllocatedPaise }
+    val addedPaise = ledger.filter { it.type == "contribution" && it.direction == "credit" && it.status == "posted" }.sumOf { it.amountPaise }
+    ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Text("मेरा योगदान", style = MaterialTheme.typography.headlineSmall)
+                Text("Your personal Kosh statement", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    KoshStat("Added", money.format(addedPaise / 100.0))
+                    KoshStat("Allocated", money.format(allocatedPaise / 100.0))
+                    KoshStat("Available", money.format(summary.walletBalancePaise / 100.0))
+                }
+            }
+            val supported = projects.filter { it.myAllocatedPaise > 0 }
+            if (supported.isNotEmpty()) {
+                item { Text("संकल्प अनुसार", style = MaterialTheme.typography.titleMedium) }
+                items(supported, key = { "project-${it.id}" }) { project ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Sage), shape = RoundedCornerShape(8.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(project.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                            Text(money.format(project.myAllocatedPaise / 100.0), color = Leaf, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            item { Text("लेन-देन", style = MaterialTheme.typography.titleMedium) }
+            if (ledger.isEmpty()) {
+                item { Text("Your Kosh activity will appear here after you add or allocate money.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                items(ledger, key = { "ledger-${it.id}" }) { entry ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(entry.projectTitle.ifBlank { ledgerTypeLabel(entry.type) }, fontWeight = FontWeight.SemiBold)
+                            Text(entry.description.ifBlank { ledgerTypeLabel(entry.type) }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                            if (entry.createdAt.isNotBlank()) Text(entry.createdAt.take(10), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Text(
+                            "${if (entry.direction == "credit") "+" else "−"}${money.format(entry.amountPaise / 100.0)}",
+                            color = if (entry.direction == "credit") Leaf else Forest,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    HorizontalDivider()
+                }
+            }
+            item { Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Done") } }
+        }
+    }
+}
+
+private fun ledgerTypeLabel(type: String) = when (type) {
+    "contribution" -> "Kosh added"
+    "allocation" -> "Sankalp Yogdaan"
+    "refund" -> "Returned to Kosh"
+    "reversal" -> "Reversed entry"
+    "adjustment" -> "Kosh adjustment"
+    else -> "Kosh activity"
 }
 
 @Composable

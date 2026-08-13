@@ -262,6 +262,25 @@ class NyasApi {
         )
     }
 
+    suspend fun myKoshLedger(session: NyasSession): List<KoshLedgerEntry> = withContext(Dispatchers.IO) {
+        execute("/treasury/family/${session.familyId}/transactions?scope=mine", token = session.token)
+            .arrayAt("data")
+            .mapNotNull { element ->
+                element.takeIf { it.isJsonObject }?.asJsonObject?.let { row ->
+                    KoshLedgerEntry(
+                        id = row.idString("id"),
+                        type = row.string("type"),
+                        direction = row.string("direction"),
+                        amountPaise = row.long("amountPaise"),
+                        description = row.string("description"),
+                        status = row.string("status", "posted"),
+                        projectTitle = row.objectOrNull("project")?.string("title").orEmpty(),
+                        createdAt = row.string("createdAt")
+                    )
+                }
+            }
+    }
+
     suspend fun fitness(session: NyasSession): FitnessDashboard = withContext(Dispatchers.IO) {
         val data = execute("/fitness/family/${session.familyId}/me", token = session.token).objectAt("data")
         val preference = data.objectOrNull("preference") ?: JsonObject()

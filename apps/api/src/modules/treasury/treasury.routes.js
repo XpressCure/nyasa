@@ -258,7 +258,7 @@ treasuryRoutes.get(
   asyncHandler(async (req, res) => {
     const query = { familyId: req.familyId };
 
-    if (req.member.role !== "owner" && req.member.role !== "admin") {
+    if (req.query.scope === "mine" || (req.member.role !== "owner" && req.member.role !== "admin")) {
       query.memberId = req.member._id;
     }
 
