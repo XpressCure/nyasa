@@ -118,6 +118,8 @@ import com.xpresscure.nyas.data.Sankalp
 import com.xpresscure.nyas.data.SessionStore
 import com.xpresscure.nyas.ui.theme.Forest
 import com.xpresscure.nyas.ui.theme.Gold
+import com.xpresscure.nyas.ui.theme.Sage
+import com.xpresscure.nyas.ui.theme.Sunlight
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 
@@ -273,11 +275,16 @@ private fun LaunchScreen() {
         animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "scale"
     )
-    Box(Modifier.fillMaxSize().background(Forest), contentAlignment = Alignment.Center) {
+    Box(
+        Modifier.fillMaxSize().background(
+            Brush.verticalGradient(listOf(Sunlight, Sage, MaterialTheme.colorScheme.background))
+        ),
+        contentAlignment = Alignment.Center
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Image(painterResource(R.drawable.nyas_logo), "Nyas", Modifier.size(116.dp).scale(pulse).clip(CircleShape))
             Spacer(Modifier.height(24.dp))
-            Text("NYAS", color = Color.White, style = MaterialTheme.typography.displaySmall)
+            Text("NYAS", color = Forest, style = MaterialTheme.typography.displaySmall)
             Text("Family  |  Trust  |  Future", color = Gold, style = MaterialTheme.typography.bodyLarge)
         }
     }
@@ -298,7 +305,7 @@ private fun WelcomeAndLogin(
 
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Forest, Color(0xFF20392C), MaterialTheme.colorScheme.background))
+            Brush.verticalGradient(listOf(Sunlight, Sage, MaterialTheme.colorScheme.background))
         )
     ) {
         LazyColumn(
@@ -315,13 +322,17 @@ private fun WelcomeAndLogin(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Image(painterResource(R.drawable.nyas_logo), "Nyas logo", Modifier.size(92.dp).clip(CircleShape))
                     Spacer(Modifier.height(16.dp))
-                    Text("Welcome to Nyas", color = Color.White, style = MaterialTheme.typography.headlineLarge)
-                    Text("Your family, connected.", color = Color(0xFFDDE8E0), style = MaterialTheme.typography.bodyLarge)
+                    Text("Welcome to Nyas", color = Forest, style = MaterialTheme.typography.headlineLarge)
+                    Text("Your family, connected.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                     Spacer(Modifier.height(24.dp))
                 }
             }
             item {
-                Card(shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                ) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         Text(if (needsPassword) "Secure sign in" else "Find your family profile", style = MaterialTheme.typography.titleLarge)
                         Text(
@@ -422,7 +433,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                     )
                 },
                 bottomBar = {
-                    if (!tablet) NavigationBar {
+                    if (!tablet) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 4.dp) {
                         primaryRoutes.forEach { item ->
                             NavigationBarItem(
                                 selected = route == item,

@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
+import nyasLogo from "../assets/nyasa-logo.png";
 
 const navSections = [
   {
@@ -60,7 +61,7 @@ export function AppLayout() {
       <button type="button" className="sidebar-backdrop" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">N</span>
+          <span className="brand-mark"><img src={nyasLogo} alt="" /></span>
           <div>
             <strong>न्यास</strong>
             <small>Kul OS</small>
@@ -75,7 +76,7 @@ export function AppLayout() {
                 if (item.planned) {
                   return (
                     <span className="nav-link nav-link-planned" key={item.label}>
-                      <Icon size={18} />
+                      <span className="nav-icon"><Icon size={18} /></span>
                       <span>{item.label}</span>
                       <small>soon</small>
                     </span>
@@ -90,7 +91,7 @@ export function AppLayout() {
                     className={`nav-link ${mobilePrimaryItems.some((primaryItem) => primaryItem.to === item.to) ? "mobile-primary-duplicate" : ""}`}
                     onClick={() => setMenuOpen(false)}
                   >
-                    <Icon size={18} />
+                    <span className="nav-icon"><Icon size={18} /></span>
                     <span>{item.label}</span>
                   </NavLink>
                 );

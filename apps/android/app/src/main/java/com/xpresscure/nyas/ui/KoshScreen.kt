@@ -85,6 +85,8 @@ import com.xpresscure.nyas.data.Sankalp
 import com.xpresscure.nyas.ui.theme.Forest
 import com.xpresscure.nyas.ui.theme.Gold
 import com.xpresscure.nyas.ui.theme.Leaf
+import com.xpresscure.nyas.ui.theme.Sage
+import com.xpresscure.nyas.ui.theme.Sunlight
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -135,18 +137,24 @@ fun KoshScreen(session: NyasSession, preferredProjectId: String? = null) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Card(shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = Forest)) {
-                Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Forest, Leaf))).padding(20.dp)) {
+            Card(
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Sage),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Sage, Sunlight))).padding(20.dp)) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Savings, null, tint = Gold, modifier = Modifier.size(28.dp))
                             Spacer(Modifier.size(10.dp))
-                            Text("Available in your Kosh", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                            Text("Available in your Kosh", color = Forest, style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.weight(1f))
-                            IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh", tint = Color.White) }
+                            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.78f)) {
+                                IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "Refresh", tint = Forest) }
+                            }
                         }
-                        Text(money.format(summary.walletBalancePaise / 100.0), color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                        Text("Ready to allocate to a Sankalp", color = Color(0xFFDDE8E0))
+                        Text(money.format(summary.walletBalancePaise / 100.0), color = Forest, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                        Text("Ready to allocate to a Sankalp", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(18.dp))
                         Button(onClick = { bankError = ""; bankSheet = true }, shape = RoundedCornerShape(8.dp)) {
                             Icon(Icons.Outlined.AccountBalance, null)

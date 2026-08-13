@@ -10,31 +10,40 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Typography
 import androidx.compose.ui.unit.sp
 
-val Forest = Color(0xFF14251D)
-val Leaf = Color(0xFF245F43)
-val Gold = Color(0xFFD9A441)
-val Marigold = Color(0xFFFFC85A)
-val Canvas = Color(0xFFF8F6F0)
-val Surface = Color(0xFFFFFDF8)
-val Ink = Color(0xFF17201B)
-val Muted = Color(0xFF5C675F)
-val Success = Color(0xFF247B4B)
+val Forest = Color(0xFF234B3A)
+val Leaf = Color(0xFF4F7A64)
+val Gold = Color(0xFFC58B2B)
+val Marigold = Color(0xFFF4C96B)
+val Canvas = Color(0xFFFBFAF7)
+val Surface = Color(0xFFFFFFFF)
+val Ink = Color(0xFF24312B)
+val Muted = Color(0xFF68756E)
+val Success = Color(0xFF3D7B59)
+val Sage = Color(0xFFEAF3ED)
+val Mist = Color(0xFFEAF3F6)
+val Blush = Color(0xFFF9ECEA)
+val Petal = Color(0xFFF5EEF7)
+val Sunlight = Color(0xFFFFF4D9)
 
 private val LightColors = lightColorScheme(
     primary = Forest,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE1EFE6),
+    primaryContainer = Sage,
     onPrimaryContainer = Forest,
     secondary = Gold,
     onSecondary = Ink,
-    secondaryContainer = Color(0xFFFFE8B2),
+    secondaryContainer = Sunlight,
     background = Canvas,
     onBackground = Ink,
     surface = Surface,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFECE9E0),
+    surfaceVariant = Color(0xFFF3F1EC),
     onSurfaceVariant = Muted,
-    outline = Color(0xFFC9C5B9),
+    outline = Color(0xFFD9DDD7),
+    outlineVariant = Color(0xFFE8EAE5),
+    tertiary = Color(0xFF5D7890),
+    tertiaryContainer = Mist,
+    onTertiaryContainer = Color(0xFF294557),
     error = Color(0xFFB3261E)
 )
 

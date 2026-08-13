@@ -65,6 +65,8 @@ import com.xpresscure.nyas.data.WeeklyFeature
 import com.xpresscure.nyas.ui.theme.Forest
 import com.xpresscure.nyas.ui.theme.Gold
 import com.xpresscure.nyas.ui.theme.Leaf
+import com.xpresscure.nyas.ui.theme.Sage
+import com.xpresscure.nyas.ui.theme.Sunlight
 import java.text.NumberFormat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -194,20 +196,24 @@ internal fun HomeScreen(
 
 @Composable
 private fun NextActionCard(action: RecommendedAction, onClick: () -> Unit) {
-    Card(shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = Forest)) {
-        Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Forest, Leaf))).padding(20.dp)) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Sage),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Sage, Sunlight))).padding(20.dp)) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(Modifier.size(42.dp), shape = CircleShape, color = Color.White.copy(alpha = 0.14f)) {
-                        Box(contentAlignment = Alignment.Center) { Icon(action.icon, null, tint = Gold) }
+                    Surface(Modifier.size(42.dp), shape = CircleShape, color = Color.White.copy(alpha = 0.78f)) {
+                        Box(contentAlignment = Alignment.Center) { Icon(action.icon, null, tint = Leaf) }
                     }
                     Spacer(Modifier.width(12.dp))
                     Text(action.eyebrow.uppercase(), color = Gold, style = MaterialTheme.typography.labelLarge)
                 }
                 Spacer(Modifier.height(18.dp))
-                Text(action.title, color = Color.White, style = MaterialTheme.typography.headlineSmall)
+                Text(action.title, color = Forest, style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(6.dp))
-                Text(action.description, color = Color(0xFFDDE8E0), style = MaterialTheme.typography.bodyLarge)
+                Text(action.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(18.dp))
                 Button(onClick = onClick) {
                     Text(action.action)
