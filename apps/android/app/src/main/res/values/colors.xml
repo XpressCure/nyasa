@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="nyas_green">#234B3A</color>
-    <color name="nyas_gold">#C58B2B</color>
-    <color name="nyas_canvas">#FBFAF7</color>
+    <color name="nyas_green">#8E4352</color>
+    <color name="nyas_gold">#C99668</color>
+    <color name="nyas_canvas">#FFF9F7</color>
 </resources>

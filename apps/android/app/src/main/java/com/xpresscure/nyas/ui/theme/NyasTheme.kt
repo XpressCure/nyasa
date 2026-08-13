@@ -10,20 +10,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Typography
 import androidx.compose.ui.unit.sp
 
-val Forest = Color(0xFF234B3A)
-val Leaf = Color(0xFF4F7A64)
-val Gold = Color(0xFFC58B2B)
-val Marigold = Color(0xFFF4C96B)
-val Canvas = Color(0xFFFBFAF7)
+val Forest = Color(0xFF8E4352)
+val Leaf = Color(0xFFC98591)
+val Gold = Color(0xFFC99668)
+val Marigold = Color(0xFFE6B89A)
+val Canvas = Color(0xFFFFF9F7)
 val Surface = Color(0xFFFFFFFF)
-val Ink = Color(0xFF24312B)
-val Muted = Color(0xFF68756E)
+val Ink = Color(0xFF34292D)
+val Muted = Color(0xFF77676D)
 val Success = Color(0xFF3D7B59)
-val Sage = Color(0xFFEAF3ED)
-val Mist = Color(0xFFEAF3F6)
-val Blush = Color(0xFFF9ECEA)
-val Petal = Color(0xFFF5EEF7)
-val Sunlight = Color(0xFFFFF4D9)
+val Sage = Color(0xFFFBEDEF)
+val Mist = Color(0xFFF5EDF1)
+val Blush = Color(0xFFF9E5E8)
+val Petal = Color(0xFFF4E9ED)
+val Sunlight = Color(0xFFFFF2EA)
 
 private val LightColors = lightColorScheme(
     primary = Forest,
@@ -37,22 +37,22 @@ private val LightColors = lightColorScheme(
     onBackground = Ink,
     surface = Surface,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFF3F1EC),
+    surfaceVariant = Color(0xFFF8F0F2),
     onSurfaceVariant = Muted,
-    outline = Color(0xFFD9DDD7),
-    outlineVariant = Color(0xFFE8EAE5),
-    tertiary = Color(0xFF5D7890),
+    outline = Color(0xFFE7D9DD),
+    outlineVariant = Color(0xFFF0E6E9),
+    tertiary = Color(0xFF9A6573),
     tertiaryContainer = Mist,
-    onTertiaryContainer = Color(0xFF294557),
+    onTertiaryContainer = Color(0xFF5A3340),
     error = Color(0xFFB3261E)
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFA8D5B7),
+    primary = Color(0xFFE5AAB5),
     secondary = Marigold,
-    background = Color(0xFF101713),
-    surface = Color(0xFF17211C),
-    onSurface = Color(0xFFF0F2EC)
+    background = Color(0xFF20171A),
+    surface = Color(0xFF2B1E23),
+    onSurface = Color(0xFFFFF4F6)
 )
 
 private val NyasTypography = Typography(
