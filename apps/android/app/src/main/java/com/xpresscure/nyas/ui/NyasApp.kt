@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
+import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AutoStories
@@ -126,6 +127,7 @@ import kotlinx.coroutines.async
 internal enum class AppRoute(val label: String, val context: String, val icon: ImageVector, val webPath: String?) {
     Darshan("Home", "Darshan", Icons.Outlined.Home, null),
     Kul("Family", "Kul", Icons.Outlined.FamilyRestroom, "/family"),
+    Swasthya("Swasthya", "Fitness & Kul challenges", Icons.AutoMirrored.Outlined.DirectionsWalk, null),
     Kosh("Kosh", "Family funds", Icons.Outlined.Savings, "/contribute"),
     KoshMilan("Kosh Milan", "Bank reconciliation", Icons.AutoMirrored.Outlined.FactCheck, "/kosh-reconciliation"),
     Sankalp("Sankalp", "Shared projects", Icons.Outlined.Route, "/projects"),
@@ -378,7 +380,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
     var moreOpen by rememberSaveable { mutableStateOf(false) }
     var fundingProjectId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbars = remember { SnackbarHostState() }
-    val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Sankalp, AppRoute.Kosh, AppRoute.Parichay)
+    val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Swasthya, AppRoute.Sankalp, AppRoute.Kosh)
 
     LaunchedEffect(state.myProfile?.id) {
         val profile = state.myProfile ?: return@LaunchedEffect
@@ -464,6 +466,7 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                             onOpenMap = { route = AppRoute.Tree },
                             onOpenVirasat = { route = AppRoute.Virasat }
                         )
+                        destination == AppRoute.Swasthya -> SwasthyaScreen(session = state.session!!)
                         destination == AppRoute.Kosh -> KoshScreen(
                             session = state.session!!,
                             preferredProjectId = fundingProjectId
@@ -521,11 +524,12 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
         }
         Spacer(Modifier.height(18.dp))
         val secondaryRoutes = buildList {
+            add(AppRoute.Parichay)
             add(AppRoute.Tree)
             add(AppRoute.Virasat)
             add(AppRoute.Panchang)
             add(AppRoute.Sabha)
-            if (session.role in setOf("owner", "admin", "kosh_pramukh")) add(AppRoute.KoshMilan)
+            if (session.role in setOf("owner", "kosh_pramukh")) add(AppRoute.KoshMilan)
             add(AppRoute.Settings)
         }
         secondaryRoutes.forEach { item ->

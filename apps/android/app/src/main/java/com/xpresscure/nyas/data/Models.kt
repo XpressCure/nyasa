@@ -138,6 +138,42 @@ data class KoshReconciliation(
     val declarations: List<KoshDeclaration> = emptyList()
 )
 
+data class FitnessDay(
+    val date: String,
+    val steps: Long = 0,
+    val activeMinutes: Int = 0,
+    val distanceMetres: Double = 0.0
+)
+
+data class FitnessPreference(
+    val dailyStepGoal: Int = 6000,
+    val shareWithFamily: Boolean = false,
+    val connectedToHealthConnect: Boolean = false
+)
+
+data class FitnessChallenge(
+    val title: String = "Nyas Kul Walk",
+    val subtitle: String = "10 lakh steps, together",
+    val targetSteps: Long = 1000000,
+    val totalSteps: Long = 0,
+    val participantCount: Int = 0
+)
+
+data class FitnessLeader(
+    val memberId: String,
+    val displayName: String,
+    val photoUrl: String = "",
+    val steps: Long = 0
+)
+
+data class FitnessDashboard(
+    val preference: FitnessPreference = FitnessPreference(),
+    val days: List<FitnessDay> = emptyList(),
+    val streak: Int = 0,
+    val challenge: FitnessChallenge = FitnessChallenge(),
+    val leaderboard: List<FitnessLeader> = emptyList()
+)
+
 data class Sankalp(
     val id: String,
     val title: String,

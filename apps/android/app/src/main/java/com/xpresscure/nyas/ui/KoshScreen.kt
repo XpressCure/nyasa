@@ -344,7 +344,7 @@ private fun BankContributionSheet(
                     AsyncImage(
                         model = config.qrImageUrl,
                         contentDescription = "Payment QR",
-                        modifier = Modifier.size(160.dp).align(Alignment.CenterHorizontally),
+                        modifier = Modifier.fillMaxWidth(.78f).height(420.dp).align(Alignment.CenterHorizontally),
                         onError = { qrFailed = true }
                     )
                 }

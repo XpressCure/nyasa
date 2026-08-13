@@ -16,6 +16,9 @@ import { paiseToRupees, rupeesToPaise } from "../treasury/money.js";
 import { calculatePostedBalance, getOrCreateMainTreasury, getOrCreateWallet } from "../treasury/treasury.service.js";
 
 export const selfDeclaredContributionRoutes = Router();
+const NYAS_KUL_KOSH_UPI_ID = "9415961950@ucobank";
+const NYAS_KUL_KOSH_ACCOUNT_NAME = "BRIJBHAN SINGH";
+const NYAS_KUL_KOSH_QR_URL = "https://nyasa.xpresscure.com/assets/nyas-kosh-upi-qr.jpeg";
 
 const MIN_CONTRIBUTION_RUPEES = 2000;
 const declarationSchema = z.object({
@@ -95,11 +98,11 @@ selfDeclaredContributionRoutes.get(
     res.json({ data: {
       enabled: env.BANK_CONTRIBUTION_ENABLED,
       minimumAmountRupees: MIN_CONTRIBUTION_RUPEES,
-      accountName: env.BANK_ACCOUNT_NAME || "",
+      accountName: NYAS_KUL_KOSH_ACCOUNT_NAME,
       accountNumber: env.BANK_ACCOUNT_NUMBER || "",
       ifsc: env.BANK_IFSC || "",
-      upiId: env.BANK_UPI_ID || "",
-      qrImageUrl: env.BANK_QR_IMAGE_URL || "",
+      upiId: NYAS_KUL_KOSH_UPI_ID,
+      qrImageUrl: NYAS_KUL_KOSH_QR_URL,
       paymentLink: env.BANK_PAYMENT_LINK || ""
     } });
   })
@@ -216,7 +219,7 @@ selfDeclaredContributionRoutes.post(
 
 selfDeclaredContributionRoutes.get(
   "/family/:familyId/reconciliation",
-  requireFamilyPermission(permissions.treasuryViewLedger),
+  requireFamilyPermission(permissions.treasuryReconcile),
   asyncHandler(async (req, res) => {
     const expectedBankBalancePaise = await calculateExpectedBankBalancePaise(req.familyId);
     const [latest, history, counts, recentDeclarations] = await Promise.all([
@@ -253,7 +256,7 @@ selfDeclaredContributionRoutes.get(
 
 selfDeclaredContributionRoutes.post(
   "/family/:familyId/reconciliation",
-  requireFamilyPermission(permissions.treasuryViewLedger),
+  requireFamilyPermission(permissions.treasuryReconcile),
   requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = reconciliationSchema.parse(req.body);
@@ -289,7 +292,7 @@ selfDeclaredContributionRoutes.post(
 
 selfDeclaredContributionRoutes.post(
   "/family/:familyId/declarations/:claimId/reconciliation",
-  requireFamilyPermission(permissions.treasuryViewLedger),
+  requireFamilyPermission(permissions.treasuryReconcile),
   requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = declarationReviewSchema.parse(req.body);

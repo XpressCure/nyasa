@@ -1,5 +1,6 @@
 package com.xpresscure.nyas.data
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.xpresscure.nyas.BuildConfig
@@ -211,6 +212,79 @@ class NyasApi {
             treasuryBalancePaise = data.objectAt("treasury").long("balancePaise"),
             walletBalancePaise = data.objectAt("wallet").long("balancePaise"),
             contributionThisYearPaise = data.long("contributionThisYearPaise")
+        )
+    }
+
+    suspend fun fitness(session: NyasSession): FitnessDashboard = withContext(Dispatchers.IO) {
+        val data = execute("/fitness/family/${session.familyId}/me", token = session.token).objectAt("data")
+        val preference = data.objectOrNull("preference") ?: JsonObject()
+        val challenge = data.objectOrNull("challenge") ?: JsonObject()
+        FitnessDashboard(
+            preference = FitnessPreference(
+                dailyStepGoal = preference.int("dailyStepGoal", 6000),
+                shareWithFamily = preference.bool("shareWithFamily"),
+                connectedToHealthConnect = preference.bool("connectedToHealthConnect")
+            ),
+            days = data.arrayAt("days").mapNotNull { element ->
+                element.takeIf { it.isJsonObject }?.asJsonObject?.let {
+                    FitnessDay(
+                        date = it.string("date"),
+                        steps = it.long("steps"),
+                        activeMinutes = it.int("activeMinutes"),
+                        distanceMetres = it.get("distanceMetres")?.takeUnless { value -> value.isJsonNull }?.asDouble ?: 0.0
+                    )
+                }
+            },
+            streak = data.int("streak"),
+            challenge = FitnessChallenge(
+                title = challenge.string("title", "Nyas Kul Walk"),
+                subtitle = challenge.string("subtitle", "10 lakh steps, together"),
+                targetSteps = challenge.long("targetSteps", 1000000),
+                totalSteps = challenge.long("totalSteps"),
+                participantCount = challenge.int("participantCount")
+            ),
+            leaderboard = data.arrayAt("leaderboard").mapNotNull { element ->
+                element.takeIf { it.isJsonObject }?.asJsonObject?.let {
+                    FitnessLeader(
+                        memberId = it.idString("memberId"),
+                        displayName = it.string("displayName", "Kul member"),
+                        photoUrl = it.string("photoUrl"),
+                        steps = it.long("steps")
+                    )
+                }
+            }
+        )
+    }
+
+    suspend fun syncFitness(session: NyasSession, days: List<FitnessDay>): ActionResult = withContext(Dispatchers.IO) {
+        val items = JsonArray()
+        days.forEach { day ->
+            items.add(JsonObject().apply {
+                addProperty("date", day.date)
+                addProperty("steps", day.steps)
+                addProperty("activeMinutes", day.activeMinutes)
+                addProperty("distanceMetres", day.distanceMetres)
+            })
+        }
+        val body = JsonObject().apply { add("days", items) }
+        val root = execute("/fitness/family/${session.familyId}/me/sync", "POST", body, session.token)
+        ActionResult(root.string("message", "Activity synced."))
+    }
+
+    suspend fun updateFitnessPreferences(
+        session: NyasSession,
+        dailyStepGoal: Int,
+        shareWithFamily: Boolean
+    ): FitnessPreference = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("dailyStepGoal", dailyStepGoal)
+            addProperty("shareWithFamily", shareWithFamily)
+        }
+        val data = execute("/fitness/family/${session.familyId}/me/preferences", "PUT", body, session.token).objectAt("data")
+        FitnessPreference(
+            dailyStepGoal = data.int("dailyStepGoal", dailyStepGoal),
+            shareWithFamily = data.bool("shareWithFamily", shareWithFamily),
+            connectedToHealthConnect = data.bool("connectedToHealthConnect")
         )
     }
 

@@ -12,6 +12,7 @@ import { documentRoutes } from "./modules/documents/document.routes.js";
 import { expenseRoutes } from "./modules/expenses/expense.routes.js";
 import { familyHubRoutes } from "./modules/family-hub/family-hub.routes.js";
 import { familyRoutes } from "./modules/families/family.routes.js";
+import { fitnessRoutes } from "./modules/fitness/fitness.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { invitationRoutes } from "./modules/invitations/invitation.routes.js";
 import { memberRoutes } from "./modules/members/member.routes.js";
@@ -37,6 +38,7 @@ export function createApp() {
   app.use("/api/auth", authRoutes);
   app.use("/api/bank-contributions", selfDeclaredContributionRoutes);
   app.use("/api/families", familyRoutes);
+  app.use("/api/fitness", fitnessRoutes);
   app.use("/api/invitations", invitationRoutes);
   app.use("/api/members", memberRoutes);
   app.use("/api/permissions", permissionRoutes);
