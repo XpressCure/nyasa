@@ -327,7 +327,7 @@ private fun WelcomeAndLogin(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         OutlinedTextField(name, { name = it }, label = { Text("Full name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        AnimatedVisibility(needsPhone || needsPassword) {
+                        AnimatedVisibility(needsPhone) {
                             OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10) }, label = { Text("Phone number") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
                         AnimatedVisibility(needsPassword) {

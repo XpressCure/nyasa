@@ -410,15 +410,6 @@ private fun recommendedAction(profile: FamilyMemberProfile?, hub: FamilyHubOverv
         AppRoute.Parichay,
         Icons.Outlined.People
     )
-    val funding = fundingSankalp.firstOrNull()
-    if (funding != null) return RecommendedAction(
-        "Sankalp needs support",
-        funding.title,
-        "See its progress and decide whether you would like to participate.",
-        "View Sankalp",
-        AppRoute.Sankalp,
-        Icons.Outlined.Route
-    )
     return RecommendedAction(
         "Explore your roots",
         "See your family across generations",
