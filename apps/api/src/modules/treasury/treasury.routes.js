@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAuth, requirePasswordAuth } from "../../middleware/auth.js";
 import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Expense } from "../../models/Expense.js";
+import { FamilyMember } from "../../models/FamilyMember.js";
 import { LedgerTransaction } from "../../models/LedgerTransaction.js";
 import { Project } from "../../models/Project.js";
 import { asyncHandler } from "../../utils/async-handler.js";
@@ -20,7 +21,8 @@ const MIN_WALLET_TOP_UP_RUPEES = 2000;
 const contributionSchema = z.object({
   memberId: z.string().min(1).optional(),
   amountRupees: z.coerce.number().positive(),
-  description: z.string().max(280).optional()
+  description: z.string().max(280).optional(),
+  reference: z.string().trim().max(80).optional()
 });
 
 const allocationSchema = z.object({
@@ -92,7 +94,7 @@ function calculateAllocationPolicy(project) {
   };
 }
 
-async function createContributionTransaction({ familyId, userId, memberId, amountPaise, description, source }) {
+async function createContributionTransaction({ familyId, userId, memberId, amountPaise, description, source, reference }) {
   const treasury = await getOrCreateMainTreasury({ familyId, userId });
   const wallet = await getOrCreateWallet({ familyId, memberId });
 
@@ -107,7 +109,7 @@ async function createContributionTransaction({ familyId, userId, memberId, amoun
     description,
     status: "posted",
     postedAt: new Date(),
-    metadata: { source },
+    metadata: { source, ...(reference ? { reference } : {}) },
     createdBy: userId
   });
 }
@@ -402,21 +404,34 @@ treasuryRoutes.get(
 
 treasuryRoutes.post(
   "/family/:familyId/manual-contributions",
-  requireFamilyPermission(permissions.treasuryViewLedger),
+  requireFamilyPermission(permissions.treasuryReconcile),
   requirePasswordAuth,
   asyncHandler(async (req, res) => {
     const body = contributionSchema.parse(req.body);
     const amountPaise = rupeesToPaise(body.amountRupees);
+    const targetMemberId = body.memberId || req.member._id;
 
     ensureMinimumWalletTopUp(body.amountRupees);
+
+    const targetMember = await FamilyMember.findOne({
+      _id: targetMemberId,
+      familyId: req.familyId,
+      status: "active",
+      livingStatus: { $ne: "deceased" }
+    }).select("_id displayName");
+
+    if (!targetMember) {
+      throw httpError(404, "Active family member not found.", "MEMBER_NOT_FOUND");
+    }
 
     const transaction = await createContributionTransaction({
       familyId: req.familyId,
       userId: req.user._id,
-      memberId: body.memberId || req.member._id,
+      memberId: targetMember._id,
       amountPaise,
       description: body.description || "Manual contribution",
-      source: "manual_admin_entry"
+      source: "manual_admin_entry",
+      reference: body.reference
     });
 
     await writeAuditLog({
@@ -426,16 +441,21 @@ treasuryRoutes.post(
       action: "treasury.manual_contribution_recorded",
       entityType: "LedgerTransaction",
       entityId: String(transaction._id),
-      summary: `Recorded manual contribution of INR ${paiseToRupees(amountPaise)}`,
+      summary: `Recorded manual contribution of INR ${paiseToRupees(amountPaise)} for ${targetMember.displayName}`,
       after: {
         memberId: transaction.memberId,
+        memberName: targetMember.displayName,
         amountPaise,
+        reference: body.reference || null,
         transactionId: transaction._id
       },
       req
     });
 
-    res.status(201).json({ data: transaction });
+    res.status(201).json({
+      message: `INR ${paiseToRupees(amountPaise)} added to ${targetMember.displayName}'s Kosh.`,
+      data: transaction
+    });
   })
 );
 

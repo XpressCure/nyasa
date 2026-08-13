@@ -34,12 +34,16 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -103,9 +107,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -199,6 +206,32 @@ class NyasViewModel : ViewModel() {
         }
     }
 
+    fun recoverPassword(
+        store: SessionStore,
+        name: String,
+        recoveryCode: String,
+        password: String,
+        confirmPassword: String
+    ) {
+        if (recoveryCode.isBlank()) {
+            state = state.copy(loginError = "Enter the one-time code shared by the Nyas owner.")
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(signingIn = true, loginError = "")
+            try {
+                val session = api.recoverPassword(name, recoveryCode, password, confirmPassword)
+                store.save(session)
+                state = state.copy(session = session, signingIn = false, loginChallenge = LoginChallenge.None)
+                loadDashboard()
+            } catch (error: ApiException) {
+                state = state.copy(signingIn = false, loginChallenge = LoginChallenge.Recovery, loginError = friendlyError(error))
+            } catch (_: Exception) {
+                state = state.copy(signingIn = false, loginError = "Could not reach Nyas. Check your connection and try again.")
+            }
+        }
+    }
+
     fun loadDashboard() {
         val session = state.session ?: return
         viewModelScope.launch {
@@ -237,6 +270,10 @@ class NyasViewModel : ViewModel() {
         state = state.copy(loginChallenge = LoginChallenge.None, loginError = "")
     }
 
+    fun startPasswordRecovery() {
+        state = state.copy(loginChallenge = LoginChallenge.Recovery, loginError = "")
+    }
+
     fun updateSessionToken(store: SessionStore, token: String) {
         val session = state.session ?: return
         val updated = session.copy(token = token)
@@ -252,6 +289,8 @@ class NyasViewModel : ViewModel() {
         "ACCOUNT_SETUP_REQUIRED", "PASSWORD_SETUP_REQUIRED" -> "This profile has no login yet. Add your mobile number and create a password."
         "PASSWORD_REQUIRED" -> "Enter your Nyas password."
         "INVALID_CREDENTIALS" -> "The name, phone number, or password is incorrect."
+        "INVALID_RECOVERY_CODE" -> "This one-time code is incorrect or has expired. Ask the owner for a new code."
+        "RECOVERY_NAME_MISMATCH" -> "Enter the same member name for which the owner created this code."
         "LOGIN_TEMPORARILY_LOCKED" -> "Too many attempts. Please try again in a few minutes."
         else -> error.message ?: "Please try again."
     }
@@ -274,6 +313,8 @@ fun NyasApp(deepLink: Uri?) {
             !signedIn -> WelcomeAndLogin(
                 model.state,
                 onLogin = { n, p, w, c -> model.signIn(store, n, p, w, c) },
+                onRecover = { n, code, w, c -> model.recoverPassword(store, n, code, w, c) },
+                onForgotPassword = model::startPasswordRecovery,
                 onReset = model::resetLogin
             )
             else -> AppShell(
@@ -314,16 +355,26 @@ private fun LaunchScreen() {
 private fun WelcomeAndLogin(
     state: AppUiState,
     onLogin: (String, String, String, String) -> Unit,
+    onRecover: (String, String, String, String) -> Unit,
+    onForgotPassword: () -> Unit,
     onReset: () -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var phone by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var recoveryCode by rememberSaveable { mutableStateOf("") }
     val isClaim = state.loginChallenge == LoginChallenge.ProfileClaim
     val isSetup = isClaim || state.loginChallenge == LoginChallenge.AccountSetup
+    val isRecovery = state.loginChallenge == LoginChallenge.Recovery
     val needsPhone = state.loginChallenge == LoginChallenge.Phone || isSetup
-    val needsPassword = state.loginChallenge == LoginChallenge.Password || isSetup
+    val needsPassword = state.loginChallenge == LoginChallenge.Password || isSetup || isRecovery
+    val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(state.loginChallenge) {
+        if (state.loginChallenge != LoginChallenge.None) listState.animateScrollToItem(1)
+    }
 
     Box(
         Modifier.fillMaxSize().background(
@@ -331,14 +382,15 @@ private fun WelcomeAndLogin(
         )
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().imePadding(),
+            state = listState,
             contentPadding = PaddingValues(
                 start = 20.dp,
                 end = 20.dp,
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 28.dp,
                 bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
             ),
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             item {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -360,6 +412,7 @@ private fun WelcomeAndLogin(
                             when {
                                 isClaim -> "Claim your Kul profile"
                                 isSetup -> "Create your login"
+                                isRecovery -> "Reset your password"
                                 needsPassword -> "Welcome back"
                                 else -> "Find your family profile"
                             },
@@ -369,36 +422,100 @@ private fun WelcomeAndLogin(
                             when {
                                 isClaim -> "A family member already added your name. Set your mobile number and password once; no old password is required."
                                 isSetup -> "This account has never had a password. Create one now for future sign-ins."
+                                isRecovery -> "Enter the one-time code shared privately by the Nyas owner, then choose a new password."
                                 needsPassword -> "Enter the password you created when you first claimed this profile."
                                 else -> "Start with your name. We will find whether your profile already exists."
                             },
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        OutlinedTextField(name, { name = it }, label = { Text("Full name") }, singleLine = true, enabled = state.loginChallenge == LoginChallenge.None, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(
+                            name,
+                            { name = it },
+                            label = { Text("Full name") },
+                            singleLine = true,
+                            enabled = state.loginChallenge == LoginChallenge.None || isRecovery,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         AnimatedVisibility(needsPhone) {
-                            OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10) }, label = { Text("Phone number") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(
+                                phone,
+                                { phone = it.filter(Char::isDigit).take(10) },
+                                label = { Text("Phone number") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = if (needsPassword) ImeAction.Next else ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        AnimatedVisibility(isRecovery) {
+                            OutlinedTextField(
+                                recoveryCode,
+                                { recoveryCode = it.uppercase() },
+                                label = { Text("One-time recovery code") },
+                                placeholder = { Text("NYAS-XXXX-XXXX") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                         AnimatedVisibility(needsPassword) {
                             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                OutlinedTextField(password, { password = it }, label = { Text(if (isSetup) "Create a new password" else "Your password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-                                if (isSetup) OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("Enter it again") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+                                OutlinedTextField(
+                                    password,
+                                    { password = it },
+                                    label = { Text(if (isSetup || isRecovery) "Create a new password" else "Your password") },
+                                    visualTransformation = PasswordVisualTransformation(),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (isSetup || isRecovery) ImeAction.Next else ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); onLogin(name, phone, password, confirmPassword) }),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                if (isSetup || isRecovery) OutlinedTextField(
+                                    confirmPassword,
+                                    { confirmPassword = it },
+                                    label = { Text("Enter it again") },
+                                    visualTransformation = PasswordVisualTransformation(),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = {
+                                        focusManager.clearFocus()
+                                        if (isRecovery) onRecover(name, recoveryCode, password, confirmPassword)
+                                        else onLogin(name, phone, password, confirmPassword)
+                                    }),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                             }
                         }
                         AnimatedVisibility(state.loginError.isNotBlank()) {
                             Text(state.loginError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                         }
                         Button(
-                            onClick = { onLogin(name, phone, password, confirmPassword) },
+                            onClick = {
+                                if (isRecovery) onRecover(name, recoveryCode, password, confirmPassword)
+                                else onLogin(name, phone, password, confirmPassword)
+                            },
                             enabled = !state.signingIn,
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             if (state.signingIn) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
                             else {
-                                Text(if (isClaim) "Claim profile & continue" else if (isSetup) "Create login & continue" else "Continue")
+                                Text(if (isRecovery) "Reset password & sign in" else if (isClaim) "Claim profile & continue" else if (isSetup) "Create login & continue" else "Continue")
                                 Spacer(Modifier.width(8.dp))
                                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                             }
+                        }
+                        if (state.loginChallenge == LoginChallenge.Password) {
+                            TextButton(
+                                onClick = {
+                                    password = ""
+                                    confirmPassword = ""
+                                    recoveryCode = ""
+                                    onForgotPassword()
+                                },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) { Text("Forgot password? Ask the owner for a recovery code") }
                         }
                         if (state.loginChallenge != LoginChallenge.None) {
                             TextButton(

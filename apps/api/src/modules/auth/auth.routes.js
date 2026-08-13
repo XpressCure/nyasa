@@ -1,16 +1,21 @@
 import jwt from "jsonwebtoken";
+import crypto from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { env } from "../../config/env.js";
 import { requireAuth } from "../../middleware/auth.js";
+import { requirePasswordAuth } from "../../middleware/auth.js";
+import { requireFamilyPermission } from "../../middleware/family-context.js";
 import { Family } from "../../models/Family.js";
 import { FamilyMember } from "../../models/FamilyMember.js";
 import { User } from "../../models/User.js";
+import { PasswordRecoveryGrant } from "../../models/PasswordRecoveryGrant.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { httpError } from "../../utils/http-error.js";
 import { writeAuditLog } from "../audit/audit.service.js";
 import { clearFailedLogins, getLoginLock, recordFailedLogin } from "./login-attempts.service.js";
 import { hashPassword, validatePassword, verifyPassword } from "./password.service.js";
+import { permissions } from "../permissions/permissions.js";
 
 export const authRoutes = Router();
 
@@ -32,6 +37,28 @@ const passwordChangeSchema = z.object({
   password: z.string(),
   confirmPassword: z.string()
 });
+
+const passwordRecoveryGrantSchema = z.object({ memberId: z.string().min(1) });
+const passwordRecoverySchema = z.object({
+  fullName: z.string().min(2),
+  recoveryCode: z.string().min(8).max(20),
+  password: z.string(),
+  confirmPassword: z.string()
+});
+
+function normalizeRecoveryCode(value = "") {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function hashRecoveryCode(value) {
+  return crypto.createHmac("sha256", env.JWT_SECRET).update(normalizeRecoveryCode(value)).digest("hex");
+}
+
+function createRecoveryCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const characters = Array.from({ length: 8 }, () => alphabet[crypto.randomInt(alphabet.length)]).join("");
+  return `NYAS-${characters.slice(0, 4)}-${characters.slice(4)}`;
+}
 
 function createToken(user, authLevel) {
   return jwt.sign(
@@ -121,6 +148,12 @@ function nameSimilarity(left = "", right = "") {
   }
 
   return 1 - distances[source.length][target.length] / Math.max(source.length, target.length);
+}
+
+function hasFamilyRelationships(member) {
+  return Boolean(
+    member?.fatherMemberId || member?.motherMemberId || member?.spouseMemberId || member?.childMemberIds?.length
+  );
 }
 
 async function findProfileMatches(familyId, fullName) {
@@ -340,6 +373,33 @@ authRoutes.post(
         );
       }
     } else {
+      const phoneUser = body.phone
+        ? await User.findOne({ phone: body.phone, status: "active" }).select("+passwordHash")
+        : null;
+      const phoneMembership = phoneUser && preparedFamily.family
+        ? await FamilyMember.findOne({
+            familyId: preparedFamily.family._id,
+            userId: phoneUser._id,
+            status: "active"
+          })
+        : null;
+
+      if (phoneUser && phoneMembership) {
+        if (nameSimilarity(body.fullName, phoneMembership.displayName) < 0.55) {
+          throw httpError(401, "The name does not match the account registered with this mobile number.", "INVALID_CREDENTIALS");
+        }
+        user = phoneUser;
+        effectiveLoginBody = { ...body, fullName: phoneMembership.displayName };
+        const canonicalCandidates = profileMatches.filter(
+          (member) =>
+            String(member._id) !== String(phoneMembership._id) &&
+            normalizeNameForMatch(member.displayName) === normalizeNameForMatch(phoneMembership.displayName) &&
+            hasFamilyRelationships(member)
+        );
+        if (!hasFamilyRelationships(phoneMembership) && canonicalCandidates.length === 1) {
+          profileToClaim = canonicalCandidates[0];
+        }
+      } else {
       const singleUnclaimedMatch = unclaimedMatches.length === 1 ? unclaimedMatches[0] : null;
       const singleClaimedMatch = claimedMatches.length === 1 ? claimedMatches[0] : null;
       const matchedProfile = singleClaimedMatch || singleUnclaimedMatch;
@@ -371,6 +431,7 @@ authRoutes.post(
           "More than one unclaimed profile matches this name. Please enter the full name as shown in the family tree.",
           "NAME_MATCH_AMBIGUOUS"
         );
+      }
       }
     }
 
@@ -465,6 +526,114 @@ authRoutes.post(
         family: launchMembership.family,
         member: launchMembership.member
       }
+    });
+  })
+);
+
+authRoutes.post(
+  "/family/:familyId/password-recovery-grants",
+  requireAuth,
+  requirePasswordAuth,
+  requireFamilyPermission(permissions.workspaceManageRoles),
+  asyncHandler(async (req, res) => {
+    const body = passwordRecoveryGrantSchema.parse(req.body);
+    const member = await FamilyMember.findOne({
+      _id: body.memberId,
+      familyId: req.familyId,
+      status: "active",
+      livingStatus: { $ne: "deceased" },
+      userId: { $exists: true, $ne: null }
+    });
+    if (!member) {
+      throw httpError(404, "Select an active member who already has a login account.", "RECOVERY_MEMBER_NOT_FOUND");
+    }
+
+    const user = await User.findOne({ _id: member.userId, status: "active" });
+    if (!user) throw httpError(404, "The linked login account could not be found.", "LINKED_USER_NOT_FOUND");
+
+    await PasswordRecoveryGrant.deleteMany({ userId: user._id, usedAt: null });
+    const recoveryCode = createRecoveryCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await PasswordRecoveryGrant.create({
+      familyId: req.familyId,
+      memberId: member._id,
+      userId: user._id,
+      codeHash: hashRecoveryCode(recoveryCode),
+      expiresAt,
+      createdByUserId: req.user._id
+    });
+
+    await writeAuditLog({
+      familyId: req.familyId,
+      actorUserId: req.user._id,
+      actorMemberId: req.member._id,
+      action: "auth.password_recovery_issued",
+      entityType: "User",
+      entityId: String(user._id),
+      summary: `One-time password recovery issued for ${member.displayName}`,
+      req
+    });
+
+    res.status(201).json({
+      data: { recoveryCode, expiresAt, memberId: member._id, memberName: member.displayName },
+      message: "One-time recovery code created. Share it privately; it expires in 15 minutes."
+    });
+  })
+);
+
+authRoutes.post(
+  "/password/recover",
+  asyncHandler(async (req, res) => {
+    const body = passwordRecoverySchema.parse(req.body);
+    validateNewPassword(body);
+    const grant = await PasswordRecoveryGrant.findOne({
+      codeHash: hashRecoveryCode(body.recoveryCode),
+      usedAt: null,
+      expiresAt: { $gt: new Date() }
+    });
+    if (!grant) throw httpError(401, "This recovery code is invalid or has expired.", "INVALID_RECOVERY_CODE");
+
+    const [member, user, family] = await Promise.all([
+      FamilyMember.findOne({ _id: grant.memberId, familyId: grant.familyId, status: "active" }),
+      User.findOne({ _id: grant.userId, status: "active" }).select("+passwordHash"),
+      Family.findById(grant.familyId)
+    ]);
+    if (!member || !user || !family) throw httpError(404, "This recovery account is no longer active.", "RECOVERY_ACCOUNT_INACTIVE");
+    if (nameSimilarity(body.fullName, member.displayName) < 0.72) {
+      throw httpError(401, "Enter the member name shown when the recovery code was created.", "RECOVERY_NAME_MISMATCH");
+    }
+
+    user.passwordHash = await hashPassword(body.password);
+    user.passwordSetAt = new Date();
+    user.authVersion = (user.authVersion || 0) + 1;
+    user.lastLoginAt = new Date();
+    if (!user.authProviders.some((provider) => provider.provider === "password")) {
+      user.authProviders.push({ provider: "password", verifiedAt: new Date() });
+    }
+    await user.save();
+    grant.usedAt = new Date();
+    await grant.save();
+
+    await writeAuditLog({
+      familyId: family._id,
+      actorUserId: user._id,
+      actorMemberId: member._id,
+      action: "auth.password_recovered",
+      entityType: "User",
+      entityId: String(user._id),
+      summary: `${member.displayName} completed owner-assisted password recovery`,
+      req
+    });
+
+    res.json({
+      data: {
+        token: createToken(user, "password"),
+        authLevel: "password",
+        user: { id: user._id, fullName: member.displayName, email: user.email, phone: user.phone, hasPassword: true },
+        family,
+        member
+      },
+      message: "Password reset. You are now signed in."
     });
   })
 );

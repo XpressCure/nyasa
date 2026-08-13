@@ -101,6 +101,7 @@ const updateStatusSchema = z.object({
 
 function serializeMember(member, { includeSensitive = false } = {}) {
   const data = member?.toObject ? member.toObject() : { ...member };
+  data.hasLogin = Boolean(data.userId);
 
   if (!includeSensitive) {
     delete data.health;

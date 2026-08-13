@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,10 +25,12 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +54,8 @@ import com.xpresscure.nyas.BuildConfig
 import com.xpresscure.nyas.data.ApiException
 import com.xpresscure.nyas.data.NyasApi
 import com.xpresscure.nyas.data.NyasSession
+import com.xpresscure.nyas.data.FamilyMemberProfile
+import com.xpresscure.nyas.data.PasswordRecoveryGrant
 import com.xpresscure.nyas.ui.theme.Leaf
 import kotlinx.coroutines.launch
 
@@ -64,6 +70,7 @@ fun SettingsScreen(
     var familyAlerts by remember { mutableStateOf(preferences.getBoolean("family_alerts", true)) }
     var sankalpAlerts by remember { mutableStateOf(preferences.getBoolean("sankalp_alerts", true)) }
     var passwordDialog by remember { mutableStateOf(false) }
+    var recoveryDialog by remember { mutableStateOf(false) }
 
     fun open(path: String) = CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, Uri.parse(BuildConfig.WEB_BASE_URL + path))
 
@@ -91,6 +98,10 @@ fun SettingsScreen(
             Text("Security", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             SettingsAction(Icons.Outlined.Lock, "Change password", "Use at least 8 characters") { passwordDialog = true }
+            if (session.role == "owner") {
+                HorizontalDivider()
+                SettingsAction(Icons.Outlined.Key, "Help a member sign in", "Create a secure, one-time password recovery code") { recoveryDialog = true }
+            }
             HorizontalDivider()
             SettingsInfo(Icons.Outlined.Security, "Protected on this device", "Your sign-in is encrypted using Android Keystore")
         }
@@ -124,6 +135,98 @@ fun SettingsScreen(
     if (passwordDialog) ChangePasswordDialog(session, onDismiss = { passwordDialog = false }, onChanged = {
         onTokenChanged(it); passwordDialog = false
     })
+    if (recoveryDialog) PasswordRecoveryDialog(session, onDismiss = { recoveryDialog = false })
+}
+
+@Composable
+private fun PasswordRecoveryDialog(session: NyasSession, onDismiss: () -> Unit) {
+    val api = remember { NyasApi() }
+    val scope = rememberCoroutineScope()
+    var query by remember { mutableStateOf("") }
+    var members by remember { mutableStateOf<List<FamilyMemberProfile>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var workingMemberId by remember { mutableStateOf("") }
+    var grant by remember { mutableStateOf<PasswordRecoveryGrant?>(null) }
+    var error by remember { mutableStateOf("") }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        try {
+            members = api.members(session).filter {
+                it.status == "active" && it.livingStatus != "deceased" && it.hasLogin
+            }
+        } catch (exception: ApiException) {
+            error = exception.message.orEmpty()
+        } finally {
+            loading = false
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (workingMemberId.isBlank()) onDismiss() },
+        title = { Text(if (grant == null) "Help a member sign in" else "Recovery code ready") },
+        text = {
+            if (grant != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Share this only with ${grant!!.memberName}. It works once and expires in 15 minutes.")
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                        SelectionContainer {
+                            Text(
+                                grant!!.recoveryCode,
+                                Modifier.fillMaxWidth().padding(18.dp),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text("They should tap Forgot password on the sign-in screen, enter this code, and choose a new password.")
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Choose the member whose password needs to be reset.")
+                    OutlinedTextField(
+                        query,
+                        { query = it },
+                        label = { Text("Search member") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (loading) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+                    val visible = members.filter { it.displayName.contains(query.trim(), ignoreCase = true) }.take(8)
+                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                        items(visible.size) { index ->
+                            val member = visible[index]
+                            Card(
+                                onClick = {
+                                    scope.launch {
+                                        workingMemberId = member.id
+                                        error = ""
+                                        try { grant = api.createPasswordRecoveryGrant(session, member.id) }
+                                        catch (exception: ApiException) { error = exception.message.orEmpty() }
+                                        finally { workingMemberId = "" }
+                                    }
+                                },
+                                enabled = workingMemberId.isBlank(),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                            ) {
+                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(member.displayName, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                                    if (workingMemberId == member.id) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    else Text("Create code", color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
+                    if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            if (grant != null) Button(onClick = onDismiss) { Text("Done") }
+        },
+        dismissButton = {
+            if (grant == null) TextButton(enabled = workingMemberId.isBlank(), onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

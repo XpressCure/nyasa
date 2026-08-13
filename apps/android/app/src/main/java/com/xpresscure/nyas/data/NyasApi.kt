@@ -50,6 +50,52 @@ class NyasApi {
             )
         }
 
+    suspend fun recoverPassword(
+        name: String,
+        recoveryCode: String,
+        password: String,
+        confirmPassword: String
+    ): NyasSession = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("fullName", name.trim())
+            addProperty("recoveryCode", recoveryCode.trim())
+            addProperty("password", password)
+            addProperty("confirmPassword", confirmPassword)
+        }
+        val data = execute("/auth/password/recover", "POST", body).objectAt("data")
+        val user = data.objectAt("user")
+        val family = data.objectAt("family")
+        val member = data.objectAt("member")
+        NyasSession(
+            token = data.string("token"),
+            userId = user.idString("id"),
+            fullName = user.string("fullName", name),
+            phone = user.string("phone"),
+            familyId = family.idString("_id"),
+            familyName = family.string("name", "Nyas"),
+            role = member.string("role", "member"),
+            memberId = member.idString("_id")
+        )
+    }
+
+    suspend fun createPasswordRecoveryGrant(
+        session: NyasSession,
+        memberId: String
+    ): PasswordRecoveryGrant = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply { addProperty("memberId", memberId) }
+        val data = execute(
+            "/auth/family/${session.familyId}/password-recovery-grants",
+            "POST",
+            body,
+            session.token
+        ).objectAt("data")
+        PasswordRecoveryGrant(
+            memberName = data.string("memberName"),
+            recoveryCode = data.string("recoveryCode"),
+            expiresAt = data.string("expiresAt")
+        )
+    }
+
     suspend fun changePassword(
         session: NyasSession,
         currentPassword: String,
@@ -563,6 +609,28 @@ class NyasApi {
         ActionResult(root.string("message", "Contribution matched with the bank statement."))
     }
 
+    suspend fun creditMemberKosh(
+        session: NyasSession,
+        memberId: String,
+        amountRupees: Long,
+        reference: String,
+        note: String
+    ): ActionResult = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply {
+            addProperty("memberId", memberId)
+            addProperty("amountRupees", amountRupees)
+            if (reference.isNotBlank()) addProperty("reference", reference.trim())
+            addProperty("description", note.trim().ifBlank { "Kosh entry recorded by Kosh team" })
+        }
+        val root = execute(
+            "/treasury/family/${session.familyId}/manual-contributions",
+            "POST",
+            body,
+            session.token
+        )
+        ActionResult(root.string("message", "Member Kosh credited."), amountRupees * 100)
+    }
+
     suspend fun allocate(session: NyasSession, projectId: String, amountRupees: Long): ActionResult =
         withContext(Dispatchers.IO) {
             val body = JsonObject().apply {
@@ -801,6 +869,7 @@ private fun parseMember(data: JsonObject): FamilyMemberProfile {
         displayName = data.string("displayName", "Family member"),
         role = data.string("role", "member"),
         status = data.string("status", "active"),
+        hasLogin = data.bool("hasLogin"),
         gender = data.string("gender", "prefer_not_to_say"),
         livingStatus = data.string("livingStatus", "living"),
         dateOfBirth = data.string("dateOfBirth"),

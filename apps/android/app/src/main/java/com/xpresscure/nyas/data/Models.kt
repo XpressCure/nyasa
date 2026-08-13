@@ -264,6 +264,7 @@ data class FamilyMemberProfile(
     val displayName: String,
     val role: String = "member",
     val status: String = "active",
+    val hasLogin: Boolean = false,
     val gender: String = "prefer_not_to_say",
     val livingStatus: String = "living",
     val dateOfBirth: String = "",
@@ -381,4 +382,11 @@ sealed interface LoginChallenge {
     data object Password : LoginChallenge
     data object ProfileClaim : LoginChallenge
     data object AccountSetup : LoginChallenge
+    data object Recovery : LoginChallenge
 }
+
+data class PasswordRecoveryGrant(
+    val memberName: String,
+    val recoveryCode: String,
+    val expiresAt: String
+)
