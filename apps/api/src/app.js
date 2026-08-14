@@ -19,6 +19,7 @@ import { memberRoutes } from "./modules/members/member.routes.js";
 import { permissionRoutes } from "./modules/permissions/permission.routes.js";
 import { projectRoutes } from "./modules/projects/project.routes.js";
 import { proposalRoutes } from "./modules/proposals/proposal.routes.js";
+import { productRoutes } from "./modules/product/product.routes.js";
 import { smaranRoutes } from "./modules/smaran/smaran.routes.js";
 import { treasuryRoutes } from "./modules/treasury/treasury.routes.js";
 
@@ -45,6 +46,7 @@ export function createApp() {
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/projects", projectRoutes);
   app.use("/api/proposals", proposalRoutes);
+  app.use("/api/product", productRoutes);
   app.use("/api/smaran", smaranRoutes);
   app.use("/api/expenses", expenseRoutes);
   app.use("/api/family-hub", familyHubRoutes);

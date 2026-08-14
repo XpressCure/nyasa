@@ -18,6 +18,7 @@ apps/api/uploads/
 
 # Android build and signing artifacts
 apps/android/.gradle/
+apps/android/.kotlin/
 apps/android/local.properties
 apps/android/app/build/
 apps/android/build/

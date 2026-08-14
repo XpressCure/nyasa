@@ -52,10 +52,12 @@ import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FamilyRestroom
+import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HowToVote
 import androidx.compose.material.icons.outlined.Edit
@@ -65,6 +67,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Wallet
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
@@ -125,6 +128,7 @@ import com.xpresscure.nyas.R
 import com.xpresscure.nyas.data.ApiException
 import com.xpresscure.nyas.data.DashboardData
 import com.xpresscure.nyas.data.FamilyHubOverview
+import com.xpresscure.nyas.data.FamilyMembership
 import com.xpresscure.nyas.data.FamilyMemberProfile
 import com.xpresscure.nyas.data.LoginChallenge
 import com.xpresscure.nyas.data.NyasApi
@@ -152,6 +156,10 @@ internal enum class AppRoute(val label: String, val context: String, val icon: I
     Parichay("You", "Parichay", Icons.Outlined.Person, "/profile"),
     Tree("कुल मानचित्र", "Family tree", Icons.Outlined.AccountBalance, "/family-tree"),
     Virasat("Virasat", "Family history", Icons.Outlined.AutoStories, null),
+    FamilySpaces("Family spaces", "Create or switch family", Icons.Outlined.FamilyRestroom, "/families"),
+    Moments("Moments", "Private family timeline", Icons.Outlined.CameraAlt, "/moments"),
+    Assets("Virasat Assets", "Land and rural property", Icons.Outlined.Landscape, "/assets"),
+    Finances("My finances", "Private account overview", Icons.Outlined.Wallet, "/financial-accounts"),
     Settings("Settings", "Account & security", Icons.Outlined.Settings, null)
 }
 
@@ -283,6 +291,29 @@ class NyasViewModel : ViewModel() {
         state = state.copy(session = updated)
     }
 
+    fun register(store: SessionStore, name: String, phone: String, password: String, confirmPassword: String) {
+        viewModelScope.launch {
+            state = state.copy(signingIn = true, loginError = "")
+            try {
+                val session = api.register(name, phone, password, confirmPassword)
+                store.save(session)
+                state = state.copy(session = session, signingIn = false, loginChallenge = LoginChallenge.None)
+            } catch (error: ApiException) {
+                state = state.copy(signingIn = false, loginError = friendlyError(error))
+            } catch (_: Exception) {
+                state = state.copy(signingIn = false, loginError = "Could not create the account. Check your connection and try again.")
+            }
+        }
+    }
+
+    fun selectFamily(store: SessionStore, membership: FamilyMembership) {
+        val current = state.session ?: return
+        val updated = current.copy(familyId = membership.familyId, familyName = membership.familyName, role = membership.role, memberId = membership.memberId)
+        store.save(updated)
+        state = state.copy(session = updated, dashboard = DashboardData(), familyHub = FamilyHubOverview(), myProfile = null)
+        loadDashboard()
+    }
+
     private fun friendlyError(error: ApiException): String = when (error.code) {
         "LOGIN_PHONE_REQUIRED" -> "Enter the mobile number registered with your account."
         "NAME_MATCH_AMBIGUOUS" -> "More than one Kul profile has a similar name. Enter your registered mobile number to identify yours."
@@ -316,6 +347,7 @@ fun NyasApp(deepLink: Uri?) {
             !signedIn -> WelcomeAndLogin(
                 model.state,
                 onLogin = { n, p, w, c -> model.signIn(store, n, p, w, c) },
+                onRegister = { n, p, w, c -> model.register(store, n, p, w, c) },
                 onRecover = { n, code, w, c -> model.recoverPassword(store, n, code, w, c) },
                 onForgotPassword = model::startPasswordRecovery,
                 onReset = model::resetLogin
@@ -325,6 +357,7 @@ fun NyasApp(deepLink: Uri?) {
                 deepLink = deepLink,
                 onRefresh = model::loadDashboard,
                 onTokenChanged = { model.updateSessionToken(store, it) },
+                onFamilySelected = { model.selectFamily(store, it) },
                 onLogout = { model.logout(store) }
             )
         }
@@ -358,6 +391,7 @@ private fun LaunchScreen() {
 private fun WelcomeAndLogin(
     state: AppUiState,
     onLogin: (String, String, String, String) -> Unit,
+    onRegister: (String, String, String, String) -> Unit,
     onRecover: (String, String, String, String) -> Unit,
     onForgotPassword: () -> Unit,
     onReset: () -> Unit
@@ -368,11 +402,13 @@ private fun WelcomeAndLogin(
     var confirmPassword by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var recoveryCode by rememberSaveable { mutableStateOf("") }
+    var productRegistration by rememberSaveable { mutableStateOf(false) }
     val isClaim = state.loginChallenge == LoginChallenge.ProfileClaim
     val isSetup = isClaim || state.loginChallenge == LoginChallenge.AccountSetup
     val isRecovery = state.loginChallenge == LoginChallenge.Recovery
-    val needsPhone = state.loginChallenge == LoginChallenge.Phone || isSetup
-    val needsPassword = state.loginChallenge == LoginChallenge.Password || isSetup || isRecovery
+    val needsPhone = state.loginChallenge == LoginChallenge.Phone || isSetup || productRegistration
+    val needsPassword = state.loginChallenge == LoginChallenge.Password || isSetup || isRecovery || productRegistration
+    val isCreatingPassword = isSetup || isRecovery || productRegistration
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
 
@@ -414,6 +450,7 @@ private fun WelcomeAndLogin(
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         Text(
                             when {
+                                productRegistration -> "Create your Nyas identity"
                                 isClaim -> "Claim your Kul profile"
                                 isSetup -> "Create your login"
                                 isRecovery -> "Reset your password"
@@ -424,6 +461,7 @@ private fun WelcomeAndLogin(
                         )
                         Text(
                             when {
+                                productRegistration -> "Your account starts without access to any family. Create or join a private family space next."
                                 isClaim -> "A family member already added your name. Set your mobile number and password once; no old password is required."
                                 isSetup -> "This account has never had a password. Create one now for future sign-ins."
                                 isRecovery -> "Enter the one-time code shared privately by the Nyas owner. The code identifies your account; now choose a new password."
@@ -437,7 +475,7 @@ private fun WelcomeAndLogin(
                             { name = it },
                             label = { Text("Full name") },
                             singleLine = true,
-                            enabled = state.loginChallenge == LoginChallenge.None || isRecovery,
+                            enabled = state.loginChallenge == LoginChallenge.None || isRecovery || productRegistration,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -468,7 +506,7 @@ private fun WelcomeAndLogin(
                                 OutlinedTextField(
                                     password,
                                     { password = it },
-                                    label = { Text(if (isSetup || isRecovery) "Create a new password" else "Your password") },
+                                    label = { Text(if (isCreatingPassword) "Create a new password" else "Your password") },
                                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     trailingIcon = {
                                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -479,11 +517,11 @@ private fun WelcomeAndLogin(
                                         }
                                     },
                                     singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (isSetup || isRecovery) ImeAction.Next else ImeAction.Done),
-                                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); onLogin(name, phone, password, confirmPassword) }),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (isCreatingPassword) ImeAction.Next else ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); if (productRegistration) onRegister(name, phone, password, confirmPassword) else onLogin(name, phone, password, confirmPassword) }),
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                if (isSetup || isRecovery) OutlinedTextField(
+                                if (isCreatingPassword) OutlinedTextField(
                                     confirmPassword,
                                     { confirmPassword = it },
                                     label = { Text("Enter it again") },
@@ -501,6 +539,7 @@ private fun WelcomeAndLogin(
                                     keyboardActions = KeyboardActions(onDone = {
                                         focusManager.clearFocus()
                                         if (isRecovery) onRecover(name, recoveryCode, password, confirmPassword)
+                                        else if (productRegistration) onRegister(name, phone, password, confirmPassword)
                                         else onLogin(name, phone, password, confirmPassword)
                                     }),
                                     modifier = Modifier.fillMaxWidth()
@@ -513,6 +552,7 @@ private fun WelcomeAndLogin(
                         Button(
                             onClick = {
                                 if (isRecovery) onRecover(name, recoveryCode, password, confirmPassword)
+                                else if (productRegistration) onRegister(name, phone, password, confirmPassword)
                                 else onLogin(name, phone, password, confirmPassword)
                             },
                             enabled = !state.signingIn,
@@ -521,12 +561,12 @@ private fun WelcomeAndLogin(
                         ) {
                             if (state.signingIn) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
                             else {
-                                Text(if (isRecovery) "Reset password & sign in" else if (isClaim) "Claim profile & continue" else if (isSetup) "Create login & continue" else "Continue")
+                                Text(if (isRecovery) "Reset password & sign in" else if (productRegistration) "Create account" else if (isClaim) "Claim profile & continue" else if (isSetup) "Create login & continue" else "Continue")
                                 Spacer(Modifier.width(8.dp))
                                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                             }
                         }
-                        if (!isRecovery) {
+                        if (!isRecovery && !productRegistration) {
                             TextButton(
                                 onClick = {
                                     password = ""
@@ -541,6 +581,17 @@ private fun WelcomeAndLogin(
                                     else "Already have a recovery code?"
                                 )
                             }
+                        }
+                        if (state.loginChallenge == LoginChallenge.None && !isRecovery) {
+                            TextButton(
+                                onClick = {
+                                    productRegistration = !productRegistration
+                                    phone = ""
+                                    password = ""
+                                    confirmPassword = ""
+                                },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) { Text(if (productRegistration) "I already belong to the Alahdadpur family" else "New family? Create a separate Nyas account") }
                         }
                         if (state.loginChallenge != LoginChallenge.None) {
                             TextButton(
@@ -561,8 +612,8 @@ private fun WelcomeAndLogin(
 }
 
 @Composable
-private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, onTokenChanged: (String) -> Unit, onLogout: () -> Unit) {
-    var route by rememberSaveable { mutableStateOf(routeFromDeepLink(deepLink)) }
+private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, onTokenChanged: (String) -> Unit, onFamilySelected: (FamilyMembership) -> Unit, onLogout: () -> Unit) {
+    var route by rememberSaveable { mutableStateOf(if (state.session?.familyId.isNullOrBlank()) AppRoute.FamilySpaces else routeFromDeepLink(deepLink)) }
     var moreOpen by rememberSaveable { mutableStateOf(false) }
     var fundingProjectId by rememberSaveable { mutableStateOf<String?>(null) }
     var lastBackPressAt by rememberSaveable { mutableStateOf(0L) }
@@ -572,7 +623,10 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
     val primaryRoutes = listOf(AppRoute.Darshan, AppRoute.Kul, AppRoute.Swasthya, AppRoute.Sankalp, AppRoute.Kosh)
 
     BackHandler(enabled = !moreOpen) {
-        if (route != AppRoute.Darshan) {
+        if (state.session?.familyId.isNullOrBlank()) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastBackPressAt <= 2_000L) (context as? Activity)?.finish() else { lastBackPressAt = now; scope.launch { snackbars.showSnackbar("Create or join a family to continue") } }
+        } else if (route != AppRoute.Darshan) {
             route = AppRoute.Darshan
             lastBackPressAt = 0L
         } else {
@@ -690,6 +744,10 @@ private fun AppShell(state: AppUiState, deepLink: Uri?, onRefresh: () -> Unit, o
                         destination == AppRoute.Parichay -> ParichayScreen(session = state.session!!)
                         destination == AppRoute.Tree -> KulMapScreen(session = state.session!!)
                         destination == AppRoute.Virasat -> VirasatScreen(session = state.session!!)
+                        destination == AppRoute.FamilySpaces -> FamilySpacesScreen(state.session!!, onFamilySelected)
+                        destination == AppRoute.Moments -> MomentsScreen(state.session!!)
+                        destination == AppRoute.Assets -> AssetsScreen(state.session!!)
+                        destination == AppRoute.Finances -> FinancialAccountsScreen(state.session!!)
                         destination == AppRoute.Panchang -> CalendarScreen(session = state.session!!)
                         destination == AppRoute.Smaran -> SmaranScreen(session = state.session!!)
                         destination == AppRoute.Sabha -> SabhaScreen(session = state.session!!)
@@ -739,6 +797,10 @@ private fun MoreSheet(session: NyasSession, onRoute: (AppRoute) -> Unit, onLogou
             add(AppRoute.Parichay)
             add(AppRoute.Tree)
             add(AppRoute.Virasat)
+            add(AppRoute.FamilySpaces)
+            add(AppRoute.Moments)
+            add(AppRoute.Assets)
+            add(AppRoute.Finances)
             add(AppRoute.Panchang)
             add(AppRoute.Smaran)
             add(AppRoute.Sabha)

@@ -28,6 +28,18 @@ const devLoginSchema = z.object({
   confirmPassword: z.string().max(128).optional()
 });
 
+const productRegistrationSchema = z.object({
+  fullName: z.string().trim().min(2).max(120),
+  phone: z.string().trim().min(6).max(24),
+  password: z.string().max(128),
+  confirmPassword: z.string().max(128)
+});
+
+const productLoginSchema = z.object({
+  phone: z.string().trim().min(6).max(24),
+  password: z.string().max(128)
+});
+
 const passwordSetupSchema = z.object({
   password: z.string(),
   confirmPassword: z.string()
@@ -330,6 +342,46 @@ async function ensureLaunchFamilyMembership(user, { family, isNewFamily, profile
 
   return { family, member };
 }
+
+authRoutes.post(
+  "/register",
+  asyncHandler(async (req, res) => {
+    const body = productRegistrationSchema.parse(req.body);
+    validateNewPassword(body);
+    if (await User.exists({ phone: body.phone })) throw httpError(409, "This mobile number already has a Nyas account.", "PHONE_ALREADY_REGISTERED");
+    const user = await User.create({
+      fullName: body.fullName,
+      phone: body.phone,
+      passwordHash: await hashPassword(body.password),
+      passwordSetAt: new Date(),
+      authProviders: [{ provider: "password", verifiedAt: new Date() }],
+      lastLoginAt: new Date(),
+      status: "active"
+    });
+    const token = createToken(user, "password");
+    res.status(201).json({ data: { token, user: { id: user._id, fullName: user.fullName, phone: user.phone, hasPassword: true }, authLevel: "password", family: null, member: null, next: "create_or_join_family" } });
+  })
+);
+
+authRoutes.post(
+  "/product-login",
+  asyncHandler(async (req, res) => {
+    const body = productLoginSchema.parse(req.body);
+    const loginIdentity = `phone:${body.phone}`;
+    const lock = getLoginLock(loginIdentity);
+    if (lock.locked) throw httpError(429, "Too many attempts. Try again later.", "LOGIN_TEMPORARILY_LOCKED");
+    const user = await User.findOne({ phone: body.phone, status: "active" }).select("+passwordHash");
+    if (!user?.passwordHash || !(await verifyPassword(body.password, user.passwordHash))) {
+      recordFailedLogin(loginIdentity);
+      throw httpError(401, "The phone number or password is incorrect.", "INVALID_CREDENTIALS");
+    }
+    clearFailedLogins(loginIdentity);
+    user.lastLoginAt = new Date();
+    await user.save();
+    const membership = await FamilyMember.findOne({ userId: user._id, status: "active" }).populate("familyId");
+    res.json({ data: { token: createToken(user, "password"), user: { id: user._id, fullName: user.fullName, phone: user.phone, hasPassword: true }, authLevel: "password", family: membership?.familyId || null, member: membership || null, next: membership ? "family" : "create_or_join_family" } });
+  })
+);
 
 authRoutes.post(
   ["/login", "/dev-login"],

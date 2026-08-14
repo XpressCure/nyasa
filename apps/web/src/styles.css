@@ -6502,3 +6502,47 @@ button[type="submit"]:hover {
     transition-duration: 0.01ms !important;
   }
 }
+/* Public-product modules */
+.family-switcher { margin: 12px 14px 4px; padding: 10px 12px; border: 1px solid var(--border, #e8d9cb); border-radius: 14px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.68); }
+.family-switcher label { flex: 1; min-width: 0; display: flex; align-items: center; position: relative; }
+.family-switcher select { width: 100%; appearance: none; border: 0; background: transparent; font: inherit; font-weight: 700; padding-right: 20px; color: inherit; }
+.family-switcher label svg { position: absolute; right: 0; pointer-events: none; }
+.family-switcher > a { color: inherit; display: grid; place-items: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.product-page { padding: clamp(20px, 4vw, 48px); max-width: 1280px; margin: 0 auto; }
+.page-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.primary-action, .secondary-action { border: 0; border-radius: 999px; padding: 11px 17px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 750; cursor: pointer; }
+.primary-action { background: #6f352f; color: white; }
+.secondary-action { background: #f2e7db; color: #5c312d; }
+.secondary-action:disabled { opacity: .58; cursor: not-allowed; }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; margin: 20px 0; }
+.product-card, .product-panel, .privacy-note, .finance-summary, .moment-card { background: rgba(255,255,255,.88); border: 1px solid #eadfd5; box-shadow: 0 14px 34px rgba(79,48,39,.07); border-radius: 22px; }
+.product-card { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.product-card h2, .product-panel h2, .moment-card h2 { margin: 0; }
+.product-card p { margin: 0; color: #6d605b; display: flex; align-items: center; gap: 6px; }
+.product-card dl { margin: 6px 0; display: grid; gap: 8px; }
+.product-card dl div { display: flex; justify-content: space-between; gap: 16px; border-top: 1px solid #f0e7e0; padding-top: 8px; }
+.product-card dt { color: #80736d; }.product-card dd { margin: 0; text-align: right; font-weight: 650; }
+.product-panel { padding: clamp(18px, 3vw, 30px); margin: 20px 0; }
+.product-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.product-form label { display: grid; gap: 6px; color: #5f514c; font-size: .9rem; font-weight: 700; }
+.product-form input, .product-form select, .product-form textarea { width: 100%; border: 1px solid #d9c9bd; border-radius: 12px; padding: 11px 12px; background: white; color: #352a27; font: inherit; box-sizing: border-box; }
+.product-form .wide-field { grid-column: 1 / -1; }
+.product-form button { justify-self: start; }
+.section-kicker { color: #9b5b43; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; font-size: .76rem; }
+.form-message { background: #fff3d8; border: 1px solid #eed8a5; border-radius: 12px; padding: 11px 14px; }
+.status-pill { width: fit-content; display: inline-flex; align-items: center; gap: 5px; background: #f1e9e0; color: #6b4338; border-radius: 999px; padding: 5px 9px; font-size: .74rem; font-weight: 800; text-transform: capitalize; }
+.status-official_portal_checked { background: #e4f2e8; color: #27633a; }
+.card-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: #f4e6da; color: #743c33; }
+.card-actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+.card-actions a, .card-actions button { border: 0; background: #f2ebe5; color: #66372f; border-radius: 10px; padding: 8px 10px; display: inline-flex; align-items: center; gap: 5px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+.privacy-note { margin: 18px 0; padding: 16px 18px; display: flex; gap: 12px; color: #514640; }.privacy-note p { margin: 4px 0 0; color: #746862; }
+.empty-state { min-height: 240px; display: grid; place-items: center; align-content: center; text-align: center; color: #756762; }.empty-state h2 { margin: 12px 0 4px; }.empty-state p { max-width: 480px; margin: 0; }
+.timeline { display: grid; gap: 18px; margin: 22px 0; }
+.moment-card { overflow: hidden; display: grid; grid-template-columns: minmax(180px, 34%) 1fr; }
+.moment-card > img, .moment-placeholder { width: 100%; height: 100%; min-height: 240px; object-fit: cover; background: linear-gradient(145deg,#f4e2d1,#e4c9ba); display: grid; place-items: center; color: #815043; }
+.moment-body { padding: 24px; }.moment-body p { color: #685c57; line-height: 1.6; }.moment-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; color: #7b6b64; font-size: .8rem; }.moment-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.finance-summary { padding: 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: linear-gradient(135deg,#4f312c,#7d4b3f); color: white; }.finance-summary div { display: grid; gap: 3px; }.finance-summary strong { font-size: clamp(1.8rem,5vw,3rem); }.finance-summary button { border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); color: white; border-radius: 999px; padding: 9px 13px; display: flex; gap: 7px; align-items: center; }
+.account-card > strong { font-size: 1.65rem; }.account-card > small { color: #82746e; }
+@media (max-width: 700px) { .product-form { grid-template-columns: 1fr; }.product-form .wide-field { grid-column: auto; }.moment-card { grid-template-columns: 1fr; }.moment-card > img, .moment-placeholder { min-height: 210px; max-height: 300px; }.product-page { padding-bottom: 100px; } }
+.product-auth-panel { max-width: 560px; }.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #f1e8e0; padding: 5px; border-radius: 14px; margin: 16px 0; }.auth-tabs button { border: 0; background: transparent; padding: 10px; border-radius: 10px; font-weight: 750; }.auth-tabs button.active { background: white; box-shadow: 0 3px 12px rgba(70,40,32,.1); }.text-link { display: inline-flex; align-items: center; gap: 6px; color: #6f352f; font-weight: 700; margin-top: 14px; }

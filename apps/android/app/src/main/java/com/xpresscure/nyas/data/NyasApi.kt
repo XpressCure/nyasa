@@ -50,6 +50,13 @@ class NyasApi {
             )
         }
 
+    suspend fun register(name: String, phone: String, password: String, confirmPassword: String): NyasSession = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply { addProperty("fullName", name.trim()); addProperty("phone", phone.trim()); addProperty("password", password); addProperty("confirmPassword", confirmPassword) }
+        val data = execute("/auth/register", "POST", body).objectAt("data")
+        val user = data.objectAt("user")
+        NyasSession(data.string("token"), user.idString("id"), user.string("fullName", name), user.string("phone", phone), "", "No family selected", "member", "")
+    }
+
     suspend fun recoverPassword(
         name: String,
         recoveryCode: String,
@@ -824,6 +831,87 @@ class NyasApi {
             addProperty("description", description.trim())
         }
         parseVirasat(execute("/family-hub/family/${session.familyId}/history", "POST", body, session.token).objectAt("data"))
+    }
+
+    suspend fun familyMemberships(session: NyasSession): List<FamilyMembership> = withContext(Dispatchers.IO) {
+        execute("/families", token = session.token).arrayAt("data").mapNotNull { element ->
+            element.takeIf { it.isJsonObject }?.asJsonObject?.let { membership ->
+                val family = membership.objectOrNull("familyId") ?: return@let null
+                FamilyMembership(
+                    membershipId = membership.idString("_id"),
+                    familyId = family.idString("_id"),
+                    familyName = family.string("name", "Family"),
+                    role = membership.string("role", "member"),
+                    memberId = membership.idString("_id")
+                )
+            }
+        }
+    }
+
+    suspend fun createFamily(session: NyasSession, name: String, location: String): FamilyMembership = withContext(Dispatchers.IO) {
+        val slug = name.lowercase(Locale.US).replace(Regex("[^a-z0-9]+"), "-").trim('-') + "-" + UUID.randomUUID().toString().take(6)
+        val body = JsonObject().apply { addProperty("name", name.trim()); addProperty("slug", slug); addProperty("primaryLocation", location.trim()) }
+        val data = execute("/families", "POST", body, session.token).objectAt("data")
+        val family = data.objectAt("family"); val member = data.objectAt("member")
+        FamilyMembership(member.idString("_id"), family.idString("_id"), family.string("name"), member.string("role", "owner"), member.idString("_id"))
+    }
+
+    suspend fun ruralAssets(session: NyasSession): List<RuralAsset> = withContext(Dispatchers.IO) {
+        execute("/product/families/${session.familyId}/assets", token = session.token).arrayAt("data").mapNotNull { element ->
+            element.takeIf { it.isJsonObject }?.asJsonObject?.let {
+                RuralAsset(it.idString("_id"), it.string("title"), it.string("assetType"), listOf(it.string("village"), it.string("tehsil"), it.string("district"), it.string("state")).filter(String::isNotBlank).joinToString(", "), it.string("khasraNumber", it.string("surveyNumber", it.string("ulpin"))), it.string("verificationStatus", "family_declared"), it.string("officialPortalUrl"), it.string("caretaker"))
+            }
+        }
+    }
+
+    suspend fun addRuralAsset(session: NyasSession, title: String, type: String, state: String, village: String, landId: String, portalUrl: String): RuralAsset = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply { addProperty("title", title.trim()); addProperty("assetType", type); addProperty("state", state.trim()); addProperty("village", village.trim()); addProperty("khasraNumber", landId.trim()); addProperty("officialPortalUrl", portalUrl.trim()); add("recordedOwners", JsonArray()) }
+        val data = execute("/product/families/${session.familyId}/assets", "POST", body, session.token).objectAt("data")
+        RuralAsset(data.idString("_id"), data.string("title"), data.string("assetType"), listOf(data.string("village"), data.string("state")).filter(String::isNotBlank).joinToString(", "), data.string("khasraNumber"), data.string("verificationStatus"), data.string("officialPortalUrl"), data.string("caretaker"))
+    }
+
+    suspend fun moments(session: NyasSession): List<FamilyMoment> = withContext(Dispatchers.IO) {
+        execute("/product/families/${session.familyId}/moments", token = session.token).arrayAt("data").mapNotNull { element -> element.takeIf { it.isJsonObject }?.asJsonObject?.let {
+            val photo = it.arrayOrNull("photos")?.firstOrNull()?.takeIf { p -> p.isJsonObject }?.asJsonObject
+            FamilyMoment(it.idString("_id"), it.string("title"), it.string("story"), it.string("eventDate"), it.string("location"), it.string("visibility", "family"), photo?.string("url").orEmpty(), photo?.idString("documentId").orEmpty())
+        } }
+    }
+
+    suspend fun addMoment(session: NyasSession, title: String, story: String, date: String, location: String, photoUrl: String, private: Boolean): FamilyMoment = withContext(Dispatchers.IO) {
+        val photos = JsonArray().apply { if (photoUrl.isNotBlank()) add(JsonObject().apply { addProperty("url", photoUrl.trim()) }) }
+        val body = JsonObject().apply { addProperty("title", title.trim()); addProperty("story", story.trim()); addProperty("eventDate", date); addProperty("location", location.trim()); addProperty("visibility", if (private) "private" else "family"); addProperty("category", "everyday"); add("photos", photos); add("selectedMemberIds", JsonArray()); add("taggedMemberIds", JsonArray()) }
+        val data = execute("/product/families/${session.familyId}/moments", "POST", body, session.token).objectAt("data")
+        FamilyMoment(data.idString("_id"), data.string("title"), data.string("story"), data.string("eventDate"), data.string("location"), data.string("visibility"), photoUrl)
+    }
+
+    suspend fun uploadMomentPhoto(session: NyasSession, momentId: String, originalName: String, mimeType: String, bytes: ByteArray): FamilyMoment = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply { addProperty("originalName", originalName); addProperty("mimeType", mimeType); addProperty("sizeBytes", bytes.size); addProperty("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP)) }
+        val data = execute("/product/families/${session.familyId}/moments/$momentId/photos", "POST", body, session.token).objectAt("data")
+        val photo = data.arrayOrNull("photos")?.lastOrNull()?.takeIf { it.isJsonObject }?.asJsonObject
+        FamilyMoment(data.idString("_id"), data.string("title"), data.string("story"), data.string("eventDate"), data.string("location"), data.string("visibility"), photo?.string("url").orEmpty(), photo?.idString("documentId").orEmpty())
+    }
+
+    suspend fun momentPhoto(session: NyasSession, momentId: String, documentId: String): ByteArray = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${BuildConfig.API_BASE_URL.trimEnd('/')}/product/families/${session.familyId}/moments/$momentId/photos/$documentId")
+            .header("Authorization", "Bearer ${session.token}")
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw ApiException("MOMENT_PHOTO_DOWNLOAD_FAILED", "Could not load this photograph.")
+            response.body?.bytes() ?: byteArrayOf()
+        }
+    }
+
+    suspend fun financialAccounts(session: NyasSession): List<FinancialAccountOverview> = withContext(Dispatchers.IO) {
+        execute("/product/families/${session.familyId}/financial-accounts", token = session.token).arrayAt("data").mapNotNull { element -> element.takeIf { it.isJsonObject }?.asJsonObject?.let {
+            FinancialAccountOverview(it.idString("_id"), it.string("nickname"), it.string("institutionName"), it.string("accountType"), it.string("maskedNumber"), it.get("balancePaise")?.takeIf { value -> !value.isJsonNull }?.asLong, it.string("sharingScope", "only_me"), it.bool("isShared"))
+        } }
+    }
+
+    suspend fun addFinancialAccount(session: NyasSession, nickname: String, institution: String, type: String, lastFour: String, balance: String, shareSummary: Boolean): FinancialAccountOverview = withContext(Dispatchers.IO) {
+        val body = JsonObject().apply { addProperty("nickname", nickname.trim()); addProperty("institutionName", institution.trim()); addProperty("accountType", type); addProperty("maskedNumber", lastFour.trim()); if (balance.isBlank()) add("balanceRupees", com.google.gson.JsonNull.INSTANCE) else addProperty("balanceRupees", balance.toDouble()); addProperty("sharingScope", if (shareSummary) "family_summary" else "only_me"); add("sharedWithMemberIds", JsonArray()) }
+        val data = execute("/product/families/${session.familyId}/financial-accounts", "POST", body, session.token).objectAt("data")
+        FinancialAccountOverview(data.idString("_id"), data.string("nickname"), data.string("institutionName"), data.string("accountType"), data.string("maskedNumber"), data.get("balancePaise")?.takeIf { !it.isJsonNull }?.asLong, data.string("sharingScope"))
     }
 
     private fun execute(path: String, method: String = "GET", body: JsonObject? = null, token: String = ""): JsonObject {

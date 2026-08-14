@@ -11,6 +11,47 @@ data class NyasSession(
     val memberId: String
 )
 
+data class FamilyMembership(
+    val membershipId: String,
+    val familyId: String,
+    val familyName: String,
+    val role: String,
+    val memberId: String
+)
+
+data class RuralAsset(
+    val id: String,
+    val title: String,
+    val assetType: String,
+    val location: String = "",
+    val landIdentifier: String = "",
+    val verificationStatus: String = "family_declared",
+    val officialPortalUrl: String = "",
+    val caretaker: String = ""
+)
+
+data class FamilyMoment(
+    val id: String,
+    val title: String,
+    val story: String = "",
+    val eventDate: String,
+    val location: String = "",
+    val visibility: String = "family",
+    val photoUrl: String = "",
+    val photoDocumentId: String = ""
+)
+
+data class FinancialAccountOverview(
+    val id: String,
+    val nickname: String,
+    val institutionName: String,
+    val accountType: String,
+    val maskedNumber: String = "",
+    val balancePaise: Long? = null,
+    val sharingScope: String = "only_me",
+    val shared: Boolean = false
+)
+
 data class DashboardMetrics(
     val members: Int = 0,
     val activeSankalp: Int = 0,

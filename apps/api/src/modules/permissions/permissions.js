@@ -17,6 +17,11 @@ export const permissions = {
   expensesView: "expenses.view",
   expensesSubmit: "expenses.submit",
   expensesApprove: "expenses.approve",
+  assetsView: "assets.view",
+  assetsManage: "assets.manage",
+  momentsView: "moments.view",
+  momentsCreate: "moments.create",
+  financeAccountsUse: "finance_accounts.use",
   auditView: "reports.audit"
 };
 
@@ -38,6 +43,11 @@ export const rolePermissions = {
     permissions.expensesView,
     permissions.expensesSubmit,
     permissions.expensesApprove,
+    permissions.assetsView,
+    permissions.assetsManage,
+    permissions.momentsView,
+    permissions.momentsCreate,
+    permissions.financeAccountsUse,
     permissions.auditView
   ],
   project_lead: [
@@ -49,7 +59,11 @@ export const rolePermissions = {
     permissions.projectsView,
     permissions.projectsManageAssigned,
     permissions.expensesView,
-    permissions.expensesSubmit
+    permissions.expensesSubmit,
+    permissions.assetsView,
+    permissions.momentsView,
+    permissions.momentsCreate,
+    permissions.financeAccountsUse
   ],
   kosh_pramukh: [
     permissions.workspaceView,
@@ -61,6 +75,11 @@ export const rolePermissions = {
     permissions.treasuryAllocateOwn,
     permissions.projectsView,
     permissions.expensesView,
+    permissions.assetsView,
+    permissions.assetsManage,
+    permissions.momentsView,
+    permissions.momentsCreate,
+    permissions.financeAccountsUse,
     permissions.auditView
   ],
   member: [
@@ -70,9 +89,13 @@ export const rolePermissions = {
     permissions.treasuryContribute,
     permissions.treasuryAllocateOwn,
     permissions.projectsView,
-    permissions.expensesView
+    permissions.expensesView,
+    permissions.assetsView,
+    permissions.momentsView,
+    permissions.momentsCreate,
+    permissions.financeAccountsUse
   ],
-  viewer: [permissions.workspaceView, permissions.membersView, permissions.projectsView, permissions.expensesView],
+  viewer: [permissions.workspaceView, permissions.membersView, permissions.projectsView, permissions.expensesView, permissions.assetsView, permissions.momentsView],
   external_advisor: [permissions.projectsView]
 };
 

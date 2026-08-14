@@ -1,8 +1,9 @@
-import { Archive, BookOpenText, CalendarDays, ClipboardCheck, GitBranch, HandCoins, HeartHandshake, Home, Images, Landmark, Menu, MoreHorizontal, Search, UserCircle, Users, X } from "lucide-react";
+import { Archive, BookOpenText, Building2, CalendarDays, Camera, ClipboardCheck, GitBranch, HandCoins, HeartHandshake, Home, Images, LandPlot, Landmark, Menu, MoreHorizontal, Search, UserCircle, Users, WalletCards, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
 import { SessionPanel } from "./SessionPanel.jsx";
+import { FamilySwitcher } from "./FamilySwitcher.jsx";
 import { hasPermission, loadCurrentSession } from "../lib/session.js";
 import nyasLogo from "../assets/nyasa-logo.png";
 
@@ -14,6 +15,10 @@ const navSections = [
       { to: "/dashboard", label: "Darshan", icon: Home },
       { to: "/calendar", label: "Panchang", icon: CalendarDays },
       { to: "/family", label: "Kul", icon: Users },
+      { to: "/families", label: "Family Spaces", icon: Building2 },
+      { to: "/moments", label: "Moments", icon: Camera },
+      { to: "/assets", label: "Virasat Assets", icon: LandPlot },
+      { to: "/financial-accounts", label: "My Finances", icon: WalletCards },
       { to: "/profile", label: "Parichay", icon: UserCircle },
       { to: "/treasury", label: "Kosh", icon: Landmark },
       { to: "/contribute", label: "Yogdaan", icon: HandCoins },
@@ -26,7 +31,7 @@ const navSections = [
   {
     title: "आगे आने वाला",
     items: [
-      { label: "Kul Gallery", icon: Images, planned: true },
+      { to: "/moments", label: "Kul Gallery", icon: Images },
       { label: "Kul Research", icon: Search, planned: true },
       { label: "Seva Works", icon: HeartHandshake, planned: true },
       { label: "Virasat Library", icon: BookOpenText, planned: true }
@@ -68,6 +73,7 @@ export function AppLayout() {
             <small>Kul OS</small>
           </div>
         </div>
+        <FamilySwitcher />
         <nav className="nav-list">
           {navSections.map((section) => (
             <div className="nav-section" key={section.title}>

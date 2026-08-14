@@ -384,6 +384,7 @@ export function HomePage() {
           <a href="#kosh">Kosh</a>
           <Link to="/legal">Legal</Link>
           <Link to="/login">Sign in</Link>
+          <Link to="/get-started">Create your family</Link>
           <Link to="/download-app">Android app</Link>
           <Link className="home-primary-link" to="/dashboard">
             Open portal
@@ -418,6 +419,7 @@ export function HomePage() {
               Start profile today
               <ArrowRight size={18} />
             </Link>
+            <Link className="home-secondary" to="/get-started">Create a separate family space</Link>
             <Link className="home-secondary" to="/dashboard">
               Open dashboard
             </Link>
@@ -745,6 +747,7 @@ export function HomePage() {
           <Link to="/privacy">Privacy Policy</Link>
           <Link to="/terms">Terms, cancellation and refunds</Link>
           <Link to="/login">Member sign in</Link>
+          <Link to="/get-started">Create a Nyas family</Link>
         </div>
       </footer>
     </main>

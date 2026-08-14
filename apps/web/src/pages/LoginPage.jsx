@@ -1,6 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { apiGet, apiPost } from "../lib/api.js";
 
 function hasProfileDetails(member) {
@@ -212,6 +213,7 @@ export function LoginPage() {
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <button type="submit" disabled={busy}>{buttonLabel}</button>
         </form>
+        <Link className="text-link" to="/get-started">Not part of the Alahdadpur family? Create a separate Nyas account</Link>
       </section>
     </main>
   );
