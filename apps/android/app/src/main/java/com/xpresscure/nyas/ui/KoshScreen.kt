@@ -2,6 +2,9 @@
 
 package com.xpresscure.nyas.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -386,6 +389,7 @@ private fun BankContributionSheet(
     val usableUpiId = config.upiId.takeIf {
         it.contains('@') && !it.contains("YOUR_", ignoreCase = true) && !it.contains("PLACEHOLDER", ignoreCase = true)
     }.orEmpty()
+    val upiPhoneNumber = usableUpiId.substringBefore('@').takeIf { it.matches(Regex("\\d{10}")) }.orEmpty()
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
         Column(
             Modifier
@@ -440,6 +444,33 @@ private fun BankContributionSheet(
                     singleLine = true
                 )
                 if (usableUpiId.isNotBlank()) {
+                    if (upiPhoneNumber.isNotBlank()) {
+                        Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Pay to UPI mobile number", style = MaterialTheme.typography.labelLarge)
+                                Text(upiPhoneNumber, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                                Text("Copy this number, open your UPI app, choose Pay to mobile number, and verify ${config.accountName} before paying.", style = MaterialTheme.typography.bodySmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            clipboard.setPrimaryClip(ClipData.newPlainText("Nyas UPI number", upiPhoneNumber))
+                                            smsNotice = "UPI number copied. Paste it under Pay to mobile number in your UPI app."
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("Copy number") }
+                                    Button(
+                                        onClick = {
+                                            val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
+                                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                                                .onFailure { smsNotice = "No UPI app could open. Paste the copied number in your UPI app." }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("Open UPI app") }
+                                }
+                            }
+                        }
+                    }
                     Button(
                         onClick = {
                             val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")

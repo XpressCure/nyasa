@@ -61,9 +61,11 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
   const usableUpiId = config?.upiId && config.upiId.includes("@") && !config.upiId.includes("YOUR_")
     ? config.upiId
     : "";
+  const upiPhoneNumber = /^\d{10}$/.test(usableUpiId.split("@")[0] || "")
+    ? usableUpiId.split("@")[0]
+    : "";
   const amountValue = Number(amountRupees);
   const amountIsValid = Number.isFinite(amountValue) && amountValue >= (config?.minimumAmountRupees || 0);
-  const shouldPreferBankTransfer = amountIsValid && amountValue > 2000 && config?.accountNumber && config?.ifsc;
   const suggestedAmounts = [2000, 5000, 10000];
 
   const upiLink = useMemo(() => {
@@ -108,10 +110,10 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
     }
   }
 
-  async function copyBankDetail(value, label) {
+  async function copyPaymentDetail(value, label, guidance) {
     try {
       await navigator.clipboard.writeText(value);
-      notify("success", `${label} copied`, "Paste it in your bank app to add the Nyas account as beneficiary.");
+      notify("success", `${label} copied`, guidance);
     } catch {
       notify("warning", `Could not copy ${label}`, "Press and hold the value above to copy it manually.");
     }
@@ -217,19 +219,24 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
               />
               <small>₹2,000 is the minimum, not the maximum. For more than ₹2,000, select your linked bank account instead of UPI Lite.</small>
             </label>
-            {shouldPreferBankTransfer ? (
-              <div className="bank-transfer-recommendation">
-                <span>Recommended for {formatMoney(amountValue)}</span>
-                <strong>Transfer through your bank app</strong>
-                <p>Some UPI apps apply a ₹2,000 risk limit. Add this account as a beneficiary and use IMPS, NEFT, or bank transfer.</p>
+            {upiPhoneNumber ? (
+              <div className="upi-number-transfer">
+                <span>Pay to UPI mobile number</span>
+                <strong>{upiPhoneNumber}</strong>
+                <p>Copy this number, open any UPI app, choose “Pay to mobile number,” paste it and verify <b>{config.accountName}</b> before paying.</p>
                 <div>
-                  <button type="button" onClick={() => copyBankDetail(config.accountNumber, "Account number")}>Copy account number</button>
-                  <button type="button" onClick={() => copyBankDetail(config.ifsc, "IFSC")}>Copy IFSC</button>
+                  <button
+                    type="button"
+                    onClick={() => copyPaymentDetail(upiPhoneNumber, "UPI mobile number", "Open any UPI app, choose Pay to mobile number, and paste it there.")}
+                  >
+                    Copy UPI number
+                  </button>
+                  {flexibleUpiLink ? <a className="primary-link-button" href={flexibleUpiLink}>Open UPI app</a> : null}
                 </div>
               </div>
             ) : null}
             <div className="button-row">
-              {flexibleUpiLink ? <a className={shouldPreferBankTransfer ? "secondary-button" : "primary-link-button"} href={flexibleUpiLink}>{shouldPreferBankTransfer ? "Try UPI anyway" : "Open any UPI app"}</a> : null}
+              {flexibleUpiLink ? <a className="primary-link-button" href={flexibleUpiLink}>Open any UPI app</a> : null}
               {upiLink ? <a className="secondary-button" href={upiLink}>Pay exact {formatMoney(Number(amountRupees))}</a> : null}
               {config.paymentLink ? <a className="secondary-button" href={config.paymentLink} target="_blank" rel="noreferrer">Open bank link</a> : null}
             </div>
