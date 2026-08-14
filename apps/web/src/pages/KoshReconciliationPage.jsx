@@ -1,4 +1,4 @@
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { IndianRupee, RefreshCw, Search, ShieldCheck, UserRoundPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader.jsx";
@@ -35,11 +35,19 @@ export function KoshReconciliationPage() {
   const [snapshotNote, setSnapshotNote] = useState("");
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [memberQuery, setMemberQuery] = useState("");
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberAmount, setMemberAmount] = useState("");
+  const [memberReference, setMemberReference] = useState("");
+  const [memberNote, setMemberNote] = useState("");
+  const [reviewingCredit, setReviewingCredit] = useState(false);
   const familyId = localStorage.getItem("nyasa_family_id");
 
   useEffect(() => {
     loadCurrentSession().then(setSession).catch((error) => setNotice({ type: "error", text: error.message }));
     loadReconciliation();
+    loadMembers();
   }, [familyId]);
 
   async function loadReconciliation() {
@@ -49,6 +57,18 @@ export function KoshReconciliationPage() {
       setData(response.data);
       setDrafts(Object.fromEntries(response.data.recentDeclarations.map((item) => [item.id, buildDraft(item)])));
       if (response.data.latest) setActualBalanceRupees(String(response.data.latest.actualBankBalanceRupees));
+    } catch (error) {
+      setNotice({ type: "error", text: error.message });
+    }
+  }
+
+  async function loadMembers() {
+    if (!familyId) return;
+    try {
+      const response = await apiGet(`/members/family/${familyId}`);
+      setMembers(response.data
+        .filter((member) => member.status === "active" && member.livingStatus !== "deceased")
+        .sort((left, right) => left.displayName.localeCompare(right.displayName)));
     } catch (error) {
       setNotice({ type: "error", text: error.message });
     }
@@ -111,7 +131,52 @@ export function KoshReconciliationPage() {
     }
   }
 
+  function prepareMemberCredit(event) {
+    event.preventDefault();
+    const amount = Number(memberAmount);
+    if (!selectedMember) {
+      setNotice({ type: "error", text: "Select the family member whose bank contribution you verified." });
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < 2000) {
+      setNotice({ type: "error", text: "A Kosh contribution must be at least ₹2,000." });
+      return;
+    }
+    setReviewingCredit(true);
+  }
+
+  async function creditMemberKosh() {
+    const amount = Number(memberAmount);
+    setBusyId("member-credit");
+    try {
+      const response = await apiPost(`/treasury/family/${familyId}/manual-contributions`, {
+        memberId: selectedMember._id,
+        amountRupees: amount,
+        reference: memberReference.trim() || undefined,
+        description: memberNote.trim() || "Kosh entry recorded by Kosh team"
+      });
+      setReviewingCredit(false);
+      setSelectedMember(null);
+      setMemberQuery("");
+      setMemberAmount("");
+      setMemberReference("");
+      setMemberNote("");
+      setNotice({ type: "success", text: response.message });
+      await loadReconciliation();
+    } catch (error) {
+      setNotice({ type: "error", text: error.message });
+    } finally {
+      setBusyId("");
+    }
+  }
+
   const passwordVerified = session?.authLevel === "password";
+  const memberMatches = selectedMember || memberQuery.trim().length < 2
+    ? []
+    : members
+      .filter((member) => member._id !== session?.member?.id)
+      .filter((member) => member.displayName.toLowerCase().includes(memberQuery.trim().toLowerCase()))
+      .slice(0, 6);
 
   return (
     <section>
@@ -148,6 +213,43 @@ export function KoshReconciliationPage() {
         </form>
       </section>
 
+      <section className="content-band spaced-band member-kosh-credit-panel">
+        <div className="section-heading-row">
+          <div>
+            <span className="section-kicker">Verified bank contribution</span>
+            <h2>Add to a member's Kosh</h2>
+            <p className="section-note">Use this only after matching the member's transfer in the bank statement. The amount is credited immediately and recorded in the ledger and audit trail.</p>
+          </div>
+          <UserRoundPlus size={28} aria-hidden="true" />
+        </div>
+        <form className="member-kosh-credit-form" onSubmit={prepareMemberCredit}>
+          <div className="member-credit-search">
+            <label htmlFor="member-credit-search"><Search size={16} /> Living family member</label>
+            <input
+              id="member-credit-search"
+              value={selectedMember?.displayName || memberQuery}
+              onChange={(event) => { setMemberQuery(event.target.value); setSelectedMember(null); }}
+              placeholder="Type at least 2 letters"
+              autoComplete="off"
+            />
+            {memberMatches.length ? (
+              <div className="member-credit-results" role="listbox" aria-label="Matching family members">
+                {memberMatches.map((member) => (
+                  <button key={member._id} type="button" onClick={() => { setSelectedMember(member); setMemberQuery(member.displayName); }}>
+                    <strong>{member.displayName}</strong>
+                    <span>{member.city || member.placeOfResidence || "Family member"}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <label>Amount received<input type="number" min="2000" step="1" value={memberAmount} onChange={(event) => setMemberAmount(event.target.value)} placeholder="Minimum ₹2,000" required /></label>
+          <label>Bank reference / UTR<input value={memberReference} onChange={(event) => setMemberReference(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 80))} placeholder="Optional" /></label>
+          <label className="member-credit-note">Note<input value={memberNote} onChange={(event) => setMemberNote(event.target.value.slice(0, 280))} placeholder="Statement date or reason for entry" /></label>
+          <button type="submit" disabled={!passwordVerified || busyId === "member-credit"}><IndianRupee size={17} /> Review Kosh credit</button>
+        </form>
+      </section>
+
       <section className="content-band spaced-band declaration-review-list">
         <div className="section-heading-row">
           <div><span className="section-kicker">Transaction matching</span><h2>Member declarations</h2><p className="section-note">Confirm the exact amount in the bank. Nyas posts only the difference as a correction.</p></div>
@@ -180,6 +282,22 @@ export function KoshReconciliationPage() {
           );
         }) : <p className="empty-copy">No member declarations are waiting in this Kosh.</p>}
       </section>
+
+      {reviewingCredit && selectedMember ? (
+        <div className="member-credit-dialog-backdrop" role="presentation" onMouseDown={() => { if (busyId !== "member-credit") setReviewingCredit(false); }}>
+          <section className="member-credit-dialog" role="dialog" aria-modal="true" aria-labelledby="member-credit-title" onMouseDown={(event) => event.stopPropagation()}>
+            <span className="section-kicker">Final review</span>
+            <h2 id="member-credit-title">Credit {selectedMember.displayName}'s Kosh?</h2>
+            <strong className="member-credit-review-amount">{formatMoney(Number(memberAmount))}</strong>
+            <p>This immediately increases the member's wallet and creates a permanent ledger and audit entry.</p>
+            {memberReference ? <div className="member-credit-reference"><span>Bank reference</span><strong>{memberReference}</strong></div> : null}
+            <div className="member-credit-dialog-actions">
+              <button className="secondary-button" type="button" onClick={() => setReviewingCredit(false)} disabled={busyId === "member-credit"}>Change details</button>
+              <button type="button" onClick={creditMemberKosh} disabled={busyId === "member-credit"}>{busyId === "member-credit" ? "Crediting..." : "Confirm and credit Kosh"}</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }
