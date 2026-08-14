@@ -48,7 +48,7 @@ function amountInIndianWords(amount) {
 export function BankContributionPanel({ compact = false, onLedgerChanged, passwordVerified, notify }) {
   const [config, setConfig] = useState(null);
   const [declarations, setDeclarations] = useState([]);
-  const [amountRupees, setAmountRupees] = useState("2000");
+  const [amountRupees, setAmountRupees] = useState("");
   const [paidAt, setPaidAt] = useState(localDateTimeValue());
   const [utr, setUtr] = useState("");
   const [sourceAccountLast4, setSourceAccountLast4] = useState("");
@@ -61,13 +61,16 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
   const usableUpiId = config?.upiId && config.upiId.includes("@") && !config.upiId.includes("YOUR_")
     ? config.upiId
     : "";
+  const amountValue = Number(amountRupees);
+  const amountIsValid = Number.isFinite(amountValue) && amountValue >= (config?.minimumAmountRupees || 0);
 
   const upiLink = useMemo(() => {
-    if (!usableUpiId) return "";
+    const amount = Number(amountRupees);
+    if (!usableUpiId || !Number.isFinite(amount) || amount < (config?.minimumAmountRupees || 0)) return "";
     const params = new URLSearchParams({
       pa: usableUpiId,
       pn: config.accountName || "Nyas Kul Kosh",
-      am: String(Number(amountRupees || 0).toFixed(2)),
+      am: amount.toFixed(2),
       cu: "INR",
       tn: "Nyas Kul Kosh contribution"
     });
@@ -94,6 +97,10 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
 
   function reviewDeclaration(event) {
     event.preventDefault();
+    if (!amountIsValid) {
+      notify("warning", "Check the amount", `Please enter at least ${formatMoney(config.minimumAmountRupees)} before continuing.`);
+      return;
+    }
     if (!attested) {
       notify("warning", "Confirmation needed", "Please confirm that this amount has actually been transferred to the Nyas bank account.");
       return;
@@ -114,7 +121,7 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
         attested,
         declarationToken
       });
-      setAmountRupees("2000");
+      setAmountRupees("");
       setPaidAt(localDateTimeValue());
       setUtr("");
       setSourceAccountLast4("");
@@ -162,8 +169,23 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
               {config.ifsc ? <div><dt>IFSC</dt><dd>{config.ifsc}</dd></div> : null}
               {usableUpiId ? <div><dt>UPI</dt><dd>{usableUpiId}</dd></div> : null}
             </dl>
+            <label className="upi-amount-field">
+              Amount to transfer
+              <input
+                type="number"
+                min={config.minimumAmountRupees}
+                inputMode="numeric"
+                value={amountRupees}
+                onChange={(event) => setAmountRupees(event.target.value)}
+                placeholder={`Minimum ${formatMoney(config.minimumAmountRupees)}`}
+                required
+              />
+              <small>Enter the amount first. Your UPI app will open with this amount.</small>
+            </label>
             <div className="button-row">
-              {upiLink ? <a className="primary-link-button" href={upiLink}>Open UPI app</a> : null}
+              {upiLink ? <a className="primary-link-button" href={upiLink}>Pay {formatMoney(Number(amountRupees))} with UPI</a> : (
+                <button type="button" disabled>Enter an amount to open UPI</button>
+              )}
               {config.paymentLink ? <a className="secondary-button" href={config.paymentLink} target="_blank" rel="noreferrer">Open bank link</a> : null}
             </div>
           </div>
@@ -172,7 +194,10 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
         {passwordVerified ? (
           <form className="self-declaration-form" onSubmit={reviewDeclaration}>
             <h3>I have transferred this amount</h3>
-            <label>Amount transferred<input type="number" min={config.minimumAmountRupees} value={amountRupees} onChange={(event) => setAmountRupees(event.target.value)} required /></label>
+            <div className="transferred-amount-summary">
+              <span>Amount transferred</span>
+              <strong>{amountRupees ? formatMoney(Number(amountRupees)) : "Enter the amount beside the QR"}</strong>
+            </div>
             <label>Date and time<input type="datetime-local" max={localDateTimeValue()} value={paidAt} onChange={(event) => setPaidAt(event.target.value)} required /></label>
             {compact ? (
               <details className="optional-contribution-details">
@@ -189,7 +214,7 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
               </>
             )}
             <label className="attestation-check"><input type="checkbox" checked={attested} onChange={(event) => setAttested(event.target.checked)} /><span>I confirm that I have transferred this amount to the Nyas account and entered it correctly.</span></label>
-            <button type="submit" disabled={busy || !attested}>{busy ? "Recording..." : "Add to my Kosh Wallet"}</button>
+            <button type="submit" disabled={busy || !attested || !amountIsValid}>{busy ? "Recording..." : "Add to my Kosh Wallet"}</button>
             <small>Minimum contribution: {formatMoney(config.minimumAmountRupees)}. Kosh Pramukh will later match this declaration with the bank statement.</small>
           </form>
         ) : <div className="bank-security-note"><strong>Secure your account first</strong><span>Set or verify your password in Parichay before recording real money.</span></div>}

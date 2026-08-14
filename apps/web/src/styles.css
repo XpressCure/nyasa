@@ -5586,6 +5586,38 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.upi-amount-field {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+  font-weight: 700;
+}
+
+.upi-amount-field small {
+  color: #69716d;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.transferred-amount-summary {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid #d8c48d;
+  border-radius: 6px;
+  background: #fffaf0;
+}
+
+.transferred-amount-summary span {
+  color: #69716d;
+  font-size: 13px;
+}
+
+.transferred-amount-summary strong {
+  font-size: 20px;
+}
+
 .primary-link-button {
   display: inline-flex;
   align-items: center;
@@ -5807,6 +5839,7 @@ button:disabled {
   }
 
   .self-declaration-form h3,
+  .transferred-amount-summary,
   .self-declaration-form .attestation-check,
   .self-declaration-form > button,
   .self-declaration-form > small {

@@ -377,7 +377,7 @@ private fun BankContributionSheet(
     onConfirm: (Long, String) -> Unit
 ) {
     val context = LocalContext.current
-    var amount by remember { mutableStateOf(config.minimumAmountRupees.toString()) }
+    var amount by remember { mutableStateOf("") }
     var utr by remember { mutableStateOf("") }
     var review by remember { mutableStateOf(false) }
     var smsNotice by remember { mutableStateOf("") }
@@ -429,15 +429,28 @@ private fun BankContributionSheet(
                         if (usableUpiId.isNotBlank()) Text("UPI: $usableUpiId")
                     }
                 }
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it.filter(Char::isDigit).take(9) },
+                    label = { Text("Amount to transfer") },
+                    prefix = { Text("₹ ") },
+                    supportingText = { Text("Minimum ₹${config.minimumAmountRupees}. Enter this before opening UPI.") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
                 if (usableUpiId.isNotBlank()) OutlinedButton(
                     onClick = {
                         val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
                             .onFailure { smsNotice = "No UPI app could open this payment request. Scan the QR or use the bank details below." }
                     },
+                    enabled = parsed >= config.minimumAmountRupees,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
-                ) { Text("Open UPI app") }
+                ) {
+                    Text(if (parsed >= config.minimumAmountRupees) "Pay ₹${NumberFormat.getNumberInstance(Locale("en", "IN")).format(parsed)} with UPI" else "Enter amount to open UPI")
+                }
                 if (usableUpiId.isBlank()) {
                     Text(
                         "Pay using the bank details above. A direct UPI button will appear after the Kosh team configures its verified UPI ID.",
@@ -455,16 +468,6 @@ private fun BankContributionSheet(
                         Text(smsNotice, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it.filter(Char::isDigit).take(9) },
-                    label = { Text("Amount sent") },
-                    prefix = { Text("₹ ") },
-                    supportingText = { Text("Minimum ₹${config.minimumAmountRupees}") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
                 OutlinedTextField(
                     value = utr,
                     onValueChange = { utr = it.filter(Char::isLetterOrDigit).take(40).uppercase() },
