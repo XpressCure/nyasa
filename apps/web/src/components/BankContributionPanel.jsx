@@ -63,6 +63,7 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
     : "";
   const amountValue = Number(amountRupees);
   const amountIsValid = Number.isFinite(amountValue) && amountValue >= (config?.minimumAmountRupees || 0);
+  const suggestedAmounts = [2000, 5000, 10000];
 
   const upiLink = useMemo(() => {
     const amount = Number(amountRupees);
@@ -76,6 +77,17 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
     });
     return `upi://pay?${params.toString()}`;
   }, [config, usableUpiId, amountRupees]);
+
+  const flexibleUpiLink = useMemo(() => {
+    if (!usableUpiId) return "";
+    const params = new URLSearchParams({
+      pa: usableUpiId,
+      pn: config.accountName || "Nyas Kul Kosh",
+      cu: "INR",
+      tn: "Nyas Kul Kosh contribution"
+    });
+    return `upi://pay?${params.toString()}`;
+  }, [config, usableUpiId]);
 
   useEffect(() => {
     if (!familyId) return;
@@ -171,23 +183,36 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
             </dl>
             <label className="upi-amount-field">
               Amount to transfer
+              <div className="upi-amount-suggestions" aria-label="Suggested contribution amounts">
+                {suggestedAmounts.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    className={amountValue === amount ? "selected" : ""}
+                    onClick={() => setAmountRupees(String(amount))}
+                  >
+                    {formatMoney(amount)}
+                  </button>
+                ))}
+              </div>
               <input
                 type="number"
                 min={config.minimumAmountRupees}
+                step="1"
                 inputMode="numeric"
                 value={amountRupees}
                 onChange={(event) => setAmountRupees(event.target.value)}
-                placeholder={`Minimum ${formatMoney(config.minimumAmountRupees)}`}
+                placeholder={`Enter any amount from ${formatMoney(config.minimumAmountRupees)}`}
                 required
               />
-              <small>Enter the amount first. Your UPI app will open with this amount.</small>
+              <small>₹2,000 is the minimum, not the maximum. For more than ₹2,000, select your linked bank account instead of UPI Lite.</small>
             </label>
             <div className="button-row">
-              {upiLink ? <a className="primary-link-button" href={upiLink}>Pay {formatMoney(Number(amountRupees))} with UPI</a> : (
-                <button type="button" disabled>Enter an amount to open UPI</button>
-              )}
+              {flexibleUpiLink ? <a className="primary-link-button" href={flexibleUpiLink}>Open any UPI app</a> : null}
+              {upiLink ? <a className="secondary-button" href={upiLink}>Pay exact {formatMoney(Number(amountRupees))}</a> : null}
               {config.paymentLink ? <a className="secondary-button" href={config.paymentLink} target="_blank" rel="noreferrer">Open bank link</a> : null}
             </div>
+            {flexibleUpiLink ? <small className="upi-direct-note">Use this on the same phone instead of scanning the QR from Gallery. Enter any amount in your UPI app and select a linked bank account for amounts above ₹2,000.</small> : null}
           </div>
         </div>
 

@@ -5529,14 +5529,14 @@ button:disabled {
 
 .bank-destination-card {
   display: grid;
-  grid-template-columns: 156px 1fr;
-  gap: 18px;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
   align-items: start;
 }
 
 .bank-qr-image,
 .bank-qr-placeholder {
-  width: 156px;
+  width: 240px;
   aspect-ratio: 1;
   border: 1px solid #d8d1c2;
   border-radius: 6px;
@@ -5591,6 +5591,35 @@ button:disabled {
   gap: 7px;
   margin: 14px 0;
   font-weight: 700;
+}
+
+.upi-amount-suggestions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.upi-amount-suggestions button {
+  min-height: 42px;
+  padding: 8px;
+  border: 1px solid #d9cfc7;
+  background: #fffaf8;
+  color: #542f34;
+  font-weight: 700;
+}
+
+.upi-amount-suggestions button.selected {
+  border-color: #a84f61;
+  background: #f8e8ec;
+  color: #7f2e40;
+  box-shadow: 0 0 0 2px rgb(168 79 97 / 12%);
+}
+
+.upi-direct-note {
+  display: block;
+  margin-top: 10px;
+  color: #69716d;
+  line-height: 1.45;
 }
 
 .upi-amount-field small {
@@ -5824,13 +5853,14 @@ button:disabled {
   }
 
   .bank-destination-card {
-    grid-template-columns: 112px 1fr;
+    grid-template-columns: 1fr;
     padding: 14px;
   }
 
   .bank-qr-image,
   .bank-qr-placeholder {
-    width: 112px;
+    width: min(100%, 340px);
+    justify-self: center;
   }
 
   .bank-destination-card dl div {

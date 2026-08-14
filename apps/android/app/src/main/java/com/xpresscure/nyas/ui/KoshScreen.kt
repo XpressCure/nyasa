@@ -417,7 +417,7 @@ private fun BankContributionSheet(
                     AsyncImage(
                         model = config.qrImageUrl,
                         contentDescription = "Payment QR",
-                        modifier = Modifier.fillMaxWidth(.78f).height(420.dp).align(Alignment.CenterHorizontally),
+                        modifier = Modifier.fillMaxWidth(.94f).height(480.dp).align(Alignment.CenterHorizontally),
                         onError = { qrFailed = true }
                     )
                 }
@@ -439,17 +439,32 @@ private fun BankContributionSheet(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
-                if (usableUpiId.isNotBlank()) OutlinedButton(
-                    onClick = {
-                        val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                            .onFailure { smsNotice = "No UPI app could open this payment request. Scan the QR or use the bank details below." }
-                    },
-                    enabled = parsed >= config.minimumAmountRupees,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(if (parsed >= config.minimumAmountRupees) "Pay ₹${NumberFormat.getNumberInstance(Locale("en", "IN")).format(parsed)} with UPI" else "Enter amount to open UPI")
+                if (usableUpiId.isNotBlank()) {
+                    Button(
+                        onClick = {
+                            val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                                .onFailure { smsNotice = "No UPI app could open this payment request. Scan the QR or use the bank details below." }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) { Text("Open any UPI app") }
+                    if (parsed >= config.minimumAmountRupees) OutlinedButton(
+                        onClick = {
+                            val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                                .onFailure { smsNotice = "No UPI app could open this payment request. Scan the QR or use the bank details below." }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Pay exact ₹${NumberFormat.getNumberInstance(Locale("en", "IN")).format(parsed)}")
+                    }
+                    Text(
+                        "On the same phone, use the direct UPI button instead of scanning from Gallery. Select your linked bank account for amounts above ₹2,000.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 if (usableUpiId.isBlank()) {
                     Text(
