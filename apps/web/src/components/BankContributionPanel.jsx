@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../lib/api.js";
 
 function formatMoney(amountRupees = 0) {
@@ -58,39 +58,9 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const familyId = localStorage.getItem("nyasa_family_id");
-  const usableUpiId = config?.upiId && config.upiId.includes("@") && !config.upiId.includes("YOUR_")
-    ? config.upiId
-    : "";
-  const upiPhoneNumber = /^\d{10}$/.test(usableUpiId.split("@")[0] || "")
-    ? usableUpiId.split("@")[0]
-    : "";
   const amountValue = Number(amountRupees);
   const amountIsValid = Number.isFinite(amountValue) && amountValue >= (config?.minimumAmountRupees || 0);
   const suggestedAmounts = [2000, 5000, 10000];
-
-  const upiLink = useMemo(() => {
-    const amount = Number(amountRupees);
-    if (!usableUpiId || !Number.isFinite(amount) || amount < (config?.minimumAmountRupees || 0)) return "";
-    const params = new URLSearchParams({
-      pa: usableUpiId,
-      pn: config.accountName || "Nyas Kul Kosh",
-      am: amount.toFixed(2),
-      cu: "INR",
-      tn: "Nyas Kul Kosh contribution"
-    });
-    return `upi://pay?${params.toString()}`;
-  }, [config, usableUpiId, amountRupees]);
-
-  const flexibleUpiLink = useMemo(() => {
-    if (!usableUpiId) return "";
-    const params = new URLSearchParams({
-      pa: usableUpiId,
-      pn: config.accountName || "Nyas Kul Kosh",
-      cu: "INR",
-      tn: "Nyas Kul Kosh contribution"
-    });
-    return `upi://pay?${params.toString()}`;
-  }, [config, usableUpiId]);
 
   useEffect(() => {
     if (!familyId) return;
@@ -107,15 +77,6 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
       setDeclarations(mineResponse.data);
     } catch (error) {
       notify("error", "Kosh contribution unavailable", error.message);
-    }
-  }
-
-  async function copyPaymentDetail(value, label, guidance) {
-    try {
-      await navigator.clipboard.writeText(value);
-      notify("success", `${label} copied`, guidance);
-    } catch {
-      notify("warning", `Could not copy ${label}`, "Press and hold the value above to copy it manually.");
     }
   }
 
@@ -174,27 +135,24 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
       <div className="section-heading-row">
         <div>
           <span className="section-kicker">विश्वास आधारित योगदान</span>
-          <h2>Bank से अपने Kosh Wallet में जोड़ें</h2>
-          <p className="section-note">QR या UPI से राशि भेजें, फिर वही राशि नीचे दर्ज करें।</p>
+          <h2>अपने Kosh Wallet में योगदान दर्ज करें</h2>
+          <p className="section-note">राशि भेजने के बाद उसका सही विवरण यहाँ दर्ज करें।</p>
         </div>
         <span className="trust-badge">Kul trust system</span>
       </div>
 
       <div className="direct-payment-layout">
-        <div className="bank-destination-card">
-          {config.qrImageUrl ? <img className="bank-qr-image" src={config.qrImageUrl} alt="Nyas Kul Kosh payment QR code" /> : (
-            <div className="bank-qr-placeholder"><strong>QR</strong><span>Add BANK_QR_IMAGE_URL</span></div>
-          )}
+        <div className="bank-destination-card contribution-guidance-card">
           <div>
-            <span>Send money to</span>
-            <h3>{config.accountName || "Nyas Kul Kosh"}</h3>
-            <dl>
-              {config.accountNumber ? <div><dt>Account</dt><dd>{config.accountNumber}</dd></div> : null}
-              {config.ifsc ? <div><dt>IFSC</dt><dd>{config.ifsc}</dd></div> : null}
-              {usableUpiId ? <div><dt>UPI</dt><dd>{usableUpiId}</dd></div> : null}
-            </dl>
+            <span>Simple two-step process</span>
+            <h3>Complete the contribution first</h3>
+            <ol>
+              <li>Use the current payment instructions shared by the Kosh team.</li>
+              <li>After the transfer succeeds, enter the same amount and reference here.</li>
+            </ol>
+            <p className="section-note">Nyas does not initiate payments. Your entry remains available to the Kosh Pramukh for statement reconciliation.</p>
             <label className="upi-amount-field">
-              Amount to transfer
+              Amount already transferred
               <div className="upi-amount-suggestions" aria-label="Suggested contribution amounts">
                 {suggestedAmounts.map((amount) => (
                   <button
@@ -217,30 +175,8 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
                 placeholder={`Enter any amount from ${formatMoney(config.minimumAmountRupees)}`}
                 required
               />
-              <small>₹2,000 is the minimum, not the maximum. For more than ₹2,000, select your linked bank account instead of UPI Lite.</small>
+              <small>Minimum contribution: {formatMoney(config.minimumAmountRupees)}. Enter only the amount that was successfully transferred.</small>
             </label>
-            {upiPhoneNumber ? (
-              <div className="upi-number-transfer">
-                <span>Pay to UPI mobile number</span>
-                <strong>{upiPhoneNumber}</strong>
-                <p>Copy this number, open any UPI app, choose “Pay to mobile number,” paste it and verify <b>{config.accountName}</b> before paying.</p>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => copyPaymentDetail(upiPhoneNumber, "UPI mobile number", "Open any UPI app, choose Pay to mobile number, and paste it there.")}
-                  >
-                    Copy UPI number
-                  </button>
-                  {flexibleUpiLink ? <a className="primary-link-button" href={flexibleUpiLink}>Open UPI app</a> : null}
-                </div>
-              </div>
-            ) : null}
-            <div className="button-row">
-              {flexibleUpiLink ? <a className="primary-link-button" href={flexibleUpiLink}>Open any UPI app</a> : null}
-              {upiLink ? <a className="secondary-button" href={upiLink}>Pay exact {formatMoney(Number(amountRupees))}</a> : null}
-              {config.paymentLink ? <a className="secondary-button" href={config.paymentLink} target="_blank" rel="noreferrer">Open bank link</a> : null}
-            </div>
-            {flexibleUpiLink ? <small className="upi-direct-note">Use this on the same phone instead of scanning the QR from Gallery. Enter any amount in your UPI app and select a linked bank account for amounts above ₹2,000.</small> : null}
           </div>
         </div>
 
@@ -249,7 +185,7 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
             <h3>I have transferred this amount</h3>
             <div className="transferred-amount-summary">
               <span>Amount transferred</span>
-              <strong>{amountRupees ? formatMoney(Number(amountRupees)) : "Enter the amount beside the QR"}</strong>
+              <strong>{amountRupees ? formatMoney(Number(amountRupees)) : "Enter the transferred amount"}</strong>
             </div>
             <label>Date and time<input type="datetime-local" max={localDateTimeValue()} value={paidAt} onChange={(event) => setPaidAt(event.target.value)} required /></label>
             {compact ? (

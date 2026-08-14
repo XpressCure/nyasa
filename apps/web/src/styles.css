@@ -5622,48 +5622,13 @@ button:disabled {
   line-height: 1.45;
 }
 
-.upi-number-transfer {
+.contribution-guidance-card ol {
   display: grid;
-  gap: 7px;
+  gap: 10px;
   margin: 14px 0;
-  padding: 14px;
-  border: 1px solid #e0bdc6;
-  border-radius: 8px;
-  background: #fff9fa;
-}
-
-.upi-number-transfer > span {
-  color: #80515b;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.upi-number-transfer > strong {
-  color: #542f34;
-  font-size: 24px;
-  letter-spacing: 0;
-}
-
-.upi-number-transfer p {
-  margin: 0;
-  color: #62575a;
-  line-height: 1.45;
-}
-
-.upi-number-transfer > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.upi-number-transfer button {
-  min-height: 42px;
-  padding: 8px 12px;
-  border: 1px solid #c98e9b;
-  background: #fff;
-  color: #743848;
-  font-weight: 700;
+  padding-left: 22px;
+  color: #50484a;
+  line-height: 1.5;
 }
 
 .upi-amount-field small {

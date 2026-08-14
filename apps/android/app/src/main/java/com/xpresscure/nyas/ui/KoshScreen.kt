@@ -2,11 +2,6 @@
 
 package com.xpresscure.nyas.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -68,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -379,17 +373,10 @@ private fun BankContributionSheet(
     onDismiss: () -> Unit,
     onConfirm: (Long, String) -> Unit
 ) {
-    val context = LocalContext.current
     var amount by remember { mutableStateOf("") }
     var utr by remember { mutableStateOf("") }
     var review by remember { mutableStateOf(false) }
-    var smsNotice by remember { mutableStateOf("") }
-    var qrFailed by remember(config.qrImageUrl) { mutableStateOf(false) }
     val parsed = amount.toLongOrNull() ?: 0
-    val usableUpiId = config.upiId.takeIf {
-        it.contains('@') && !it.contains("YOUR_", ignoreCase = true) && !it.contains("PLACEHOLDER", ignoreCase = true)
-    }.orEmpty()
-    val upiPhoneNumber = usableUpiId.substringBefore('@').takeIf { it.matches(Regex("\\d{10}")) }.orEmpty()
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)) {
         Column(
             Modifier
@@ -416,104 +403,28 @@ private fun BankContributionSheet(
                 TextButton(onClick = { review = false }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Change amount") }
             } else {
                 Text("कोष में धन जोड़ें", style = MaterialTheme.typography.headlineSmall)
-                Text("1. Send money to the family account.  2. Record the same amount here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (config.qrImageUrl.isNotBlank() && !qrFailed) {
-                    AsyncImage(
-                        model = config.qrImageUrl,
-                        contentDescription = "Payment QR",
-                        modifier = Modifier.fillMaxWidth(.94f).height(480.dp).align(Alignment.CenterHorizontally),
-                        onError = { qrFailed = true }
-                    )
-                }
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                        Text(config.accountName, fontWeight = FontWeight.Bold)
-                        if (config.accountNumber.isNotBlank()) Text("Account: ${config.accountNumber}")
-                        if (config.ifsc.isNotBlank()) Text("IFSC: ${config.ifsc}")
-                        if (usableUpiId.isNotBlank()) Text("UPI: $usableUpiId")
+                Text("Record a contribution after completing it through the instructions shared by the Kosh team.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Nyas does not initiate payments", fontWeight = FontWeight.Bold)
+                        Text("Enter only a successfully transferred amount. The Kosh Pramukh will match it with the account statement.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it.filter(Char::isDigit).take(9) },
-                    label = { Text("Amount to transfer") },
+                    label = { Text("Amount already transferred") },
                     prefix = { Text("₹ ") },
-                    supportingText = { Text("Minimum ₹${config.minimumAmountRupees}. Enter this before opening UPI.") },
+                    supportingText = { Text("Minimum ₹${config.minimumAmountRupees}. Enter only the successful amount.") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
-                if (usableUpiId.isNotBlank()) {
-                    if (upiPhoneNumber.isNotBlank()) {
-                        Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
-                            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Pay to UPI mobile number", style = MaterialTheme.typography.labelLarge)
-                                Text(upiPhoneNumber, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                                Text("Copy this number, open your UPI app, choose Pay to mobile number, and verify ${config.accountName} before paying.", style = MaterialTheme.typography.bodySmall)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                            clipboard.setPrimaryClip(ClipData.newPlainText("Nyas UPI number", upiPhoneNumber))
-                                            smsNotice = "UPI number copied. Paste it under Pay to mobile number in your UPI app."
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    ) { Text("Copy number") }
-                                    Button(
-                                        onClick = {
-                                            val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
-                                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                                                .onFailure { smsNotice = "No UPI app could open. Paste the copied number in your UPI app." }
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    ) { Text("Open UPI app") }
-                                }
-                            }
-                        }
-                    }
-                    Button(
-                        onClick = {
-                            val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                                .onFailure { smsNotice = "No UPI app could open this payment request. Scan the QR or use the bank details below." }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) { Text("Open any UPI app") }
-                    if (parsed >= config.minimumAmountRupees) OutlinedButton(
-                        onClick = {
-                            val uri = Uri.parse("upi://pay?pa=${Uri.encode(usableUpiId)}&pn=${Uri.encode(config.accountName)}&am=$parsed&cu=INR&tn=${Uri.encode("Nyas Kul Kosh contribution")}")
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                                .onFailure { smsNotice = "No UPI app could open this payment request. Scan the QR or use the bank details below." }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Pay exact ₹${NumberFormat.getNumberInstance(Locale("en", "IN")).format(parsed)}")
-                    }
-                    Text(
-                        "On the same phone, use the direct UPI button instead of scanning from Gallery. Select your linked bank account for amounts above ₹2,000.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (usableUpiId.isBlank()) {
-                    Text(
-                        "Pay using the bank details above. A direct UPI button will appear after the Kosh team configures its verified UPI ID.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
                 Text(
-                    "Enter the amount and bank reference shown by your UPI or banking app. Nyas does not read your personal messages.",
+                    "Enter the amount and transaction reference shown by your payment source. Nyas does not read your personal messages.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (smsNotice.isNotBlank()) {
-                    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
-                        Text(smsNotice, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
                 OutlinedTextField(
                     value = utr,
                     onValueChange = { utr = it.filter(Char::isLetterOrDigit).take(40).uppercase() },
