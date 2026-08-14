@@ -1,4 +1,4 @@
-import { Archive, BookOpenText, CalendarDays, ClipboardCheck, GitBranch, HeartHandshake, Home, Images, Landmark, Menu, MoreHorizontal, Search, UserCircle, Users, X } from "lucide-react";
+import { Archive, BookOpenText, CalendarDays, ClipboardCheck, GitBranch, HandCoins, HeartHandshake, Home, Images, Landmark, Menu, MoreHorizontal, Search, UserCircle, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ApiStatus } from "./ApiStatus.jsx";
@@ -15,7 +15,8 @@ const navSections = [
       { to: "/calendar", label: "Panchang", icon: CalendarDays },
       { to: "/family", label: "Kul", icon: Users },
       { to: "/profile", label: "Parichay", icon: UserCircle },
-      { to: "/contribute", label: "Kosh", icon: Landmark },
+      { to: "/treasury", label: "Kosh", icon: Landmark },
+      { to: "/contribute", label: "Yogdaan", icon: HandCoins },
       { to: "/kosh-reconciliation", label: "Kosh Milan", icon: ClipboardCheck, permission: "treasury.reconcile" },
       { to: "/projects", label: "Sankalp", icon: GitBranch },
       { to: "/sankalp-sabha", label: "Sankalp Sabha", icon: Users },
@@ -36,7 +37,7 @@ const navSections = [
 const mobilePrimaryItems = [
   { to: "/dashboard", label: "Darshan", icon: Home },
   { to: "/family", label: "Kul", icon: Users },
-  { to: "/contribute", label: "Kosh", icon: Landmark },
+  { to: "/contribute", label: "Yogdaan", icon: HandCoins },
   { to: "/projects", label: "Sankalp", icon: GitBranch }
 ];
 
