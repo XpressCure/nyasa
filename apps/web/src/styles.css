@@ -5622,6 +5622,49 @@ button:disabled {
   line-height: 1.45;
 }
 
+.bank-transfer-recommendation {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #dcb8c1;
+  border-radius: 8px;
+  background: #fff4f6;
+}
+
+.bank-transfer-recommendation > span {
+  color: #8b3f50;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.bank-transfer-recommendation > strong {
+  color: #542f34;
+  font-size: 17px;
+}
+
+.bank-transfer-recommendation p {
+  margin: 0;
+  color: #62575a;
+  line-height: 1.45;
+}
+
+.bank-transfer-recommendation > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bank-transfer-recommendation button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #c98e9b;
+  background: #fff;
+  color: #743848;
+  font-weight: 700;
+}
+
 .upi-amount-field small {
   color: #69716d;
   font-size: 13px;

@@ -63,6 +63,7 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
     : "";
   const amountValue = Number(amountRupees);
   const amountIsValid = Number.isFinite(amountValue) && amountValue >= (config?.minimumAmountRupees || 0);
+  const shouldPreferBankTransfer = amountIsValid && amountValue > 2000 && config?.accountNumber && config?.ifsc;
   const suggestedAmounts = [2000, 5000, 10000];
 
   const upiLink = useMemo(() => {
@@ -104,6 +105,15 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
       setDeclarations(mineResponse.data);
     } catch (error) {
       notify("error", "Kosh contribution unavailable", error.message);
+    }
+  }
+
+  async function copyBankDetail(value, label) {
+    try {
+      await navigator.clipboard.writeText(value);
+      notify("success", `${label} copied`, "Paste it in your bank app to add the Nyas account as beneficiary.");
+    } catch {
+      notify("warning", `Could not copy ${label}`, "Press and hold the value above to copy it manually.");
     }
   }
 
@@ -207,8 +217,19 @@ export function BankContributionPanel({ compact = false, onLedgerChanged, passwo
               />
               <small>₹2,000 is the minimum, not the maximum. For more than ₹2,000, select your linked bank account instead of UPI Lite.</small>
             </label>
+            {shouldPreferBankTransfer ? (
+              <div className="bank-transfer-recommendation">
+                <span>Recommended for {formatMoney(amountValue)}</span>
+                <strong>Transfer through your bank app</strong>
+                <p>Some UPI apps apply a ₹2,000 risk limit. Add this account as a beneficiary and use IMPS, NEFT, or bank transfer.</p>
+                <div>
+                  <button type="button" onClick={() => copyBankDetail(config.accountNumber, "Account number")}>Copy account number</button>
+                  <button type="button" onClick={() => copyBankDetail(config.ifsc, "IFSC")}>Copy IFSC</button>
+                </div>
+              </div>
+            ) : null}
             <div className="button-row">
-              {flexibleUpiLink ? <a className="primary-link-button" href={flexibleUpiLink}>Open any UPI app</a> : null}
+              {flexibleUpiLink ? <a className={shouldPreferBankTransfer ? "secondary-button" : "primary-link-button"} href={flexibleUpiLink}>{shouldPreferBankTransfer ? "Try UPI anyway" : "Open any UPI app"}</a> : null}
               {upiLink ? <a className="secondary-button" href={upiLink}>Pay exact {formatMoney(Number(amountRupees))}</a> : null}
               {config.paymentLink ? <a className="secondary-button" href={config.paymentLink} target="_blank" rel="noreferrer">Open bank link</a> : null}
             </div>
