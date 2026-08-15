@@ -7,6 +7,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(4000),
   MONGODB_URI: z.string().min(1),
+  MONGODB_DB_NAME: z.string().optional().transform((value) => value || undefined),
   JWT_SECRET: z.string().min(16),
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
